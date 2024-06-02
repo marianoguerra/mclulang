@@ -1,7 +1,6 @@
 import { expect, test } from "bun:test";
 import {
   AnyTag,
-  asend,
   atom,
   AtomTag,
   block,
@@ -17,6 +16,7 @@ import {
   name,
   NIL,
   NilTag,
+  quote,
   rawHandlersToHandlers,
   send,
   sends,
@@ -74,9 +74,8 @@ const anyHandlers = rawHandlersToHandlers({
   map(subject, msg, env) {
     return dispatchSend(subject, msg, env);
   },
-  "@then"(subject, pair, env) {
-    const cond = evalu(subject, env);
-    if (isTrue(cond)) {
+  "then"(subject, pair, env) {
+    if (isTrue(subject)) {
       return evalu(pair.a, env);
     } else {
       return evalu(pair.b, env);
@@ -85,7 +84,7 @@ const anyHandlers = rawHandlersToHandlers({
 });
 
 const sendHandlers = rawHandlersToHandlers({
-  "@does"(msg, impl, env) {
+  "does"(msg, impl, env) {
     const subject = msg.subject[evalSym](env),
       object = msg.msg.object[evalSym](env),
       subjectTag = getTag(subject),
@@ -137,13 +136,6 @@ test("block", () => {
   ).toBe(10n);
 });
 
-test("def asend", () => {
-  const e = prelude();
-  // 0 add 0 @does 42
-  expect(asend(send(0n, msg("add", 0n)), msg("@does", 42n)).eval(e)).toBe(42n);
-  expect(send(10n, msg("add", 1n)).eval(e)).toBe(42n);
-});
-
 test("any map msg", () => {
   const e = prelude();
   expect(send(10n, msg("map", msg("+", 1n))).eval(e)).toBe(11n);
@@ -162,12 +154,13 @@ function run(code, e = prelude()) {
 
 test("compile", () => {
   expect(run("10")).toBe(10n);
-  expect(run("10 + 2")).toBe(12n);
-  expect(run("{10}")).toBe(10n);
+  //expect(run("10 + 2")).toBe(12n);
+  expect(run("{10 + 2}")).toBe(12n);
+  expect(run("10 map \ + 2")).toBe(12n);
   expect(run("{$a is 10, a}")).toBe(10n);
-  expect(run("{0 add 0 @does (it + that), 1 add 9}")).toBe(10n);
-  expect(run("{(0 add 0) @does (it + that), 1 add 9}")).toBe(10n);
-  expect(run("1 @then 2 : 3 @then 4 : 5")).toBe(2n);
-  expect(run("() @then 2 : 1 @then 4 : 5")).toBe(4n);
-  expect(run("() @then 2 : () @then 4 : 5")).toBe(5n);
+  expect(run("{@(0 add 0) does @(it + that), 1 add 9}")).toBe(10n);
+  expect(run("{@(0 add 0) does @(it + that), 1 add 9}")).toBe(10n);
+  expect(run("1 then @ 2 : 3 then @ 4 : 5")).toBe(2n);
+  expect(run("() then @ 2 : 1 then @ 4 : 5")).toBe(4n);
+  expect(run("() then @ 2 : () then @ 4 : 5")).toBe(5n);
 });

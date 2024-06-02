@@ -5,10 +5,10 @@ function tag(name) {
 export const evalSym = Symbol("eval"),
   tagSym = tag("Tag"),
   AtomTag = tag("Atom"),
+  QuoteTag = tag("Quote"),
   BlockTag = tag("Block"),
   NilTag = tag("Nil"),
   PairTag = tag("Pair"),
-  ASendTag = tag("ASend"),
   SendTag = tag("Send"),
   MsgTag = tag("Msg"),
   AnyTag = tag("Any"),
@@ -46,6 +46,19 @@ export class Atom extends Base {
   constructor(name) {
     super();
     this.name = name;
+  }
+}
+
+export class Quote extends Base {
+  [tagSym] = QuoteTag;
+
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+
+  [evalSym](_env) {
+    return this.value;
   }
 }
 
@@ -166,30 +179,6 @@ export function dispatchSend(subject, msg, env) {
   );
 }
 
-export class ASend extends Base {
-  [tagSym] = ASendTag;
-
-  constructor(subject, msg) {
-    super();
-    this.subject = subject;
-    this.msg = msg;
-  }
-
-  [evalSym](env) {
-    const subject = this.subject,
-      { verb, object } = this.msg,
-      handler = env.lookupHandler(getTag(subject), verb, getTag(object));
-
-    if (handler === null) {
-      console.warn("verb", verb, "not found for", subject, verb, object);
-    }
-
-    return handler[evalSym](
-      env.enter().bind("it", subject).bind("that", object),
-    );
-  }
-}
-
 export class NativeHandler extends Base {
   constructor(name, fn) {
     super();
@@ -276,6 +265,9 @@ export function name(v) {
 export function atom(v) {
   return new Atom(v);
 }
+export function quote(v) {
+  return new Quote(v);
+}
 export function env(v) {
   return new Env(v);
 }
@@ -284,9 +276,6 @@ export function msg(verb, object) {
 }
 export function send(subject, msg) {
   return new Send(subject, msg);
-}
-export function asend(subject, msg) {
-  return new ASend(subject, msg);
 }
 export function sends(subject, ...msgs) {
   let sub = subject;
@@ -317,12 +306,12 @@ Msg.prototype.toSExpr = function () {
 Send.prototype.toSExpr = function () {
   return ["send", this.subject.toSExpr(), this.msg.toSExpr()];
 };
-ASend.prototype.toSExpr = function () {
-  return ["asend", this.subject.toSExpr(), this.msg.toSExpr()];
-};
 Nil.prototype.toSExpr = function () {
   return "nil";
 };
 Block.prototype.toSExpr = function () {
   return ["block", this.items.map((item) => item.toSExpr())];
+};
+Quote.prototype.toSExpr = function () {
+  return ["@", this.value.toSExpr()];
 };

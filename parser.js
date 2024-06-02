@@ -1,5 +1,5 @@
 import * as ohm from "ohm-js";
-import { asend, atom, Block, msg, name, nil, Pair, send } from "./mclulang.js";
+import { atom, Block, msg, name, nil, Pair, Quote, send } from "./mclulang.js";
 
 const rawGrammar = `
   McLulang {
@@ -7,7 +7,7 @@ const rawGrammar = `
 
     Exprs = Send ("," Send)*
 
-    Value = Pair | identifier | QMsg | number | atom | Block | nil | ParSend
+    Value = Pair | identifier | Quote | QMsg | number | atom | Block | nil | ParSend
 
     Send = Value Msg*
 
@@ -15,6 +15,7 @@ const rawGrammar = `
     ParSend = "(" Send ")"
 
     QMsg = "\" Msg
+    Quote = "@" Value
 
     Pair = Value ":" Send
 
@@ -27,7 +28,7 @@ const rawGrammar = `
     atom = "$" identifier
 
     verb = verbStart verbPart*
-    verbStart = "@" | "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
     verbPart = verbStart | digit
 
     nil = "()"
@@ -57,6 +58,9 @@ semantics.addOperation("ast", {
   QMsg(_, msg) {
     return msg.ast();
   },
+  Quote(_, v) {
+    return new Quote(v.ast());
+  },
   Msg(verb, object) {
     return msg(verb.ast(), object.ast());
   },
@@ -69,10 +73,8 @@ semantics.addOperation("ast", {
   Send(subject, iterMsg) {
     let r = subject.ast();
     for (let i = 0; i < iterMsg.numChildren; i++) {
-      const msg = iterMsg.child(i),
-        msgAst = msg.ast(),
-        code = msg.sourceString;
-      r = code.at(0) === "@" ? asend(r, msgAst) : send(r, msgAst);
+      const msg = iterMsg.child(i);
+      r = send(r, msg.ast());
     }
 
     return r;
