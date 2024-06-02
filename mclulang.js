@@ -4,7 +4,7 @@ function tag(name) {
 
 export const evalSym = Symbol("eval"),
   tagSym = tag("Tag"),
-  AtomTag = tag("Atom"),
+  NameTag = tag("Name"),
   QuoteTag = tag("Quote"),
   BlockTag = tag("Block"),
   NilTag = tag("Nil"),
@@ -30,6 +30,7 @@ export class Base {
 }
 
 export class Name extends Base {
+  [tagSym] = NameTag;
   constructor(name) {
     super();
     this.name = name;
@@ -37,15 +38,6 @@ export class Name extends Base {
 
   [evalSym](env) {
     return env.lookup(this.name);
-  }
-}
-
-export class Atom extends Base {
-  [tagSym] = AtomTag;
-
-  constructor(name) {
-    super();
-    this.name = name;
   }
 }
 
@@ -262,9 +254,6 @@ export function rawHandlersToHandlers(o) {
 export function name(v) {
   return new Name(v);
 }
-export function atom(v) {
-  return new Atom(v);
-}
 export function quote(v) {
   return new Quote(v);
 }
@@ -293,9 +282,6 @@ export function nil() {
 
 Name.prototype.toSExpr = function () {
   return ["name", this.name];
-};
-Atom.prototype.toSExpr = function () {
-  return ["atom", this.name];
 };
 Pair.prototype.toSExpr = function () {
   return ["pair", this.a.toSExpr(), this.b.toSExpr()];

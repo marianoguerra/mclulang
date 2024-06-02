@@ -1,5 +1,5 @@
 import * as ohm from "ohm-js";
-import { atom, Block, msg, name, nil, Pair, Quote, send } from "./mclulang.js";
+import { Block, msg, name, nil, Pair, Quote, send } from "./mclulang.js";
 
 const rawGrammar = `
   McLulang {
@@ -7,7 +7,7 @@ const rawGrammar = `
 
     Exprs = Send ("," Send)*
 
-    Value = Pair | identifier | Quote | QMsg | number | atom | Block | nil | ParSend
+    Value = Pair | identifier | Quote | QMsg | number | Block | nil | ParSend
 
     Send = Value Msg*
 
@@ -24,8 +24,6 @@ const rawGrammar = `
     identifier = identStart identPart*
     identStart = letter | "_"
     identPart = identStart | digit
-
-    atom = "$" identifier
 
     verb = verbStart verbPart*
     verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
@@ -45,9 +43,6 @@ semantics.addOperation("ast", {
   },
   Exprs(expr, _, iter) {
     return [expr.ast()].concat(iter.children.map((c) => c.ast()));
-  },
-  atom(_a, _b) {
-    return atom(this.sourceString.slice(1));
   },
   verb(_a, _b) {
     return this.sourceString;
