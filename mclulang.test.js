@@ -1,17 +1,17 @@
 import { expect, test } from "bun:test";
 import {
-  alt,
   AnyTag,
   asend,
   atom,
   AtomTag,
   block,
-  clause,
   dispatchSend,
   env,
   evalSym,
+  evalu,
   getTag,
   IntTag,
+  isTrue,
   msg,
   MsgTag,
   name,
@@ -70,29 +70,22 @@ const atomHandlers = rawHandlersToHandlers({
   },
 });
 
-const nilHandlers = rawHandlersToHandlers({
-  then(nil, _body, _env) {
-    return nil;
-  },
-  else(_nil, body, env) {
-    return body[evalSym](env);
-  },
-});
-
 const anyHandlers = rawHandlersToHandlers({
-  then(_v, body, _env) {
-    return body[evalSym](env);
-  },
-  else(v, _body, _env) {
-    return v;
-  },
   map(subject, msg, env) {
     return dispatchSend(subject, msg, env);
+  },
+  "@then"(subject, pair, env) {
+    const cond = evalu(subject, env);
+    if (isTrue(cond)) {
+      return evalu(pair.a, env);
+    } else {
+      return evalu(pair.b, env);
+    }
   },
 });
 
 const sendHandlers = rawHandlersToHandlers({
-  $does(msg, impl, env) {
+  "@does"(msg, impl, env) {
     const subject = msg.subject[evalSym](env),
       object = msg.msg.object[evalSym](env),
       subjectTag = getTag(subject),
@@ -109,7 +102,6 @@ function prelude() {
   return env()
     .bindHandlers(SendTag, AnyTag, sendHandlers)
     .bindHandlers(AnyTag, AnyTag, anyHandlers)
-    .bindHandlers(NilTag, AnyTag, nilHandlers)
     .bindHandlers(AtomTag, AnyTag, atomHandlers)
     .bindHandlers(IntTag, IntTag, intHandlers)
     .bindHandlers(StrTag, StrTag, strHandlers);
@@ -145,38 +137,10 @@ test("block", () => {
   ).toBe(10n);
 });
 
-test("nil then/else", () => {
-  expect(sends(NIL, msg("then", 10n), msg("else", 5n)).eval(prelude())).toBe(
-    5n,
-  );
-});
-
-test("any then/else", () => {
-  expect(sends("hi", msg("then", 10n), msg("else", 5n)).eval(prelude())).toBe(
-    10n,
-  );
-});
-
-test("clause", () => {
-  expect(clause(NIL, 10n).eval(env())).toBe(NIL);
-  expect(clause("hi", 10n).eval(env())).toBe(10n);
-});
-
-test("alt", () => {
-  expect(alt(clause(NIL, 10n)).eval(env())).toBe(NIL);
-  expect(alt(clause("hi", 10n)).eval(env())).toBe(10n);
-  expect(alt(clause(NIL, 1n), clause("hi", 10n)).eval(env())).toBe(10n);
-  expect(
-    alt(clause(NIL, 1n), clause("hi", 10n), clause("hello", 11n)).eval(env()),
-  ).toBe(10n);
-  // make sure last one isn't evaled passing null
-  expect(alt(clause(NIL, 1n), clause("hi", 10n), null).eval(env())).toBe(10n);
-});
-
 test("def asend", () => {
   const e = prelude();
-  // 0 add 0 $does 42
-  expect(asend(send(0n, msg("add", 0n)), msg("$does", 42n)).eval(e)).toBe(42n);
+  // 0 add 0 @does 42
+  expect(asend(send(0n, msg("add", 0n)), msg("@does", 42n)).eval(e)).toBe(42n);
   expect(send(10n, msg("add", 1n)).eval(e)).toBe(42n);
 });
 
@@ -185,17 +149,25 @@ test("any map msg", () => {
   expect(send(10n, msg("map", msg("+", 1n))).eval(e)).toBe(11n);
 });
 
-function run(code, e = prelude()) {
+function getFirstAst(code, e = prelude()) {
   const ast = compile(code);
-  console.log(code, ast[0].toSExpr());
-  return ast[0][evalSym](e);
+  return ast[0];
+}
+
+function run(code, e = prelude()) {
+  const ast = getFirstAst(code, e);
+  console.log(code, ast.toSExpr());
+  return ast[evalSym](e);
 }
 
 test("compile", () => {
   expect(run("10")).toBe(10n);
   expect(run("10 + 2")).toBe(12n);
   expect(run("{10}")).toBe(10n);
-  expect(run("{:a is 10, a}")).toBe(10n);
-  expect(run("{0 add 0 $does (it + that), 1 add 9}")).toBe(10n);
-  expect(run("{(0 add 0) $does (it + that), 1 add 9}")).toBe(10n);
+  expect(run("{$a is 10, a}")).toBe(10n);
+  expect(run("{0 add 0 @does (it + that), 1 add 9}")).toBe(10n);
+  expect(run("{(0 add 0) @does (it + that), 1 add 9}")).toBe(10n);
+  expect(run("1 @then 2 : 3 @then 4 : 5")).toBe(2n);
+  expect(run("() @then 2 : 1 @then 4 : 5")).toBe(4n);
+  expect(run("() @then 2 : () @then 4 : 5")).toBe(5n);
 });

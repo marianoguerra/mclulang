@@ -1,15 +1,5 @@
 import * as ohm from "ohm-js";
-import {
-  alt,
-  asend,
-  atom,
-  Block,
-  clause,
-  msg,
-  name,
-  nil,
-  send,
-} from "./mclulang.js";
+import { asend, atom, Block, msg, name, nil, Pair, send } from "./mclulang.js";
 
 const rawGrammar = `
   McLulang {
@@ -17,7 +7,7 @@ const rawGrammar = `
 
     Exprs = Send ("," Send)*
 
-    Value = identifier | QMsg | Clause | number | atom | Alt | Block | nil | ParSend
+    Value = Pair | identifier | QMsg | number | atom | Block | nil | ParSend
 
     Send = Value Msg*
 
@@ -26,7 +16,7 @@ const rawGrammar = `
 
     QMsg = "\" Msg
 
-    Clause = Value "=>" Value
+    Pair = Value ":" Send
 
     number = digit+
 
@@ -34,15 +24,14 @@ const rawGrammar = `
     identStart = letter | "_"
     identPart = identStart | digit
 
-    atom = ":" identifier
+    atom = "$" identifier
 
     verb = verbStart verbPart*
-    verbStart = "$" | "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbStart = "@" | "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
     verbPart = verbStart | digit
 
     nil = "()"
 
-    Alt = "{" ("|" Clause)* "}"
     Block = "{" Exprs "}"
   }
 `;
@@ -71,19 +60,19 @@ semantics.addOperation("ast", {
   Msg(verb, object) {
     return msg(verb.ast(), object.ast());
   },
-  Clause(head, _, body) {
-    return clause(head.ast(), body.ast());
-  },
   ParSend(_o, send, _c) {
     return send.ast();
+  },
+  Pair(a, _, b) {
+    return new Pair(a.ast(), b.ast());
   },
   Send(subject, iterMsg) {
     let r = subject.ast();
     for (let i = 0; i < iterMsg.numChildren; i++) {
-      const msg = iterMsg.child(i);
-      r = msg.sourceString.at(0) === "$"
-        ? asend(r, msg.ast())
-        : send(r, msg.ast());
+      const msg = iterMsg.child(i),
+        msgAst = msg.ast(),
+        code = msg.sourceString;
+      r = code.at(0) === "@" ? asend(r, msgAst) : send(r, msgAst);
     }
 
     return r;
@@ -96,9 +85,6 @@ semantics.addOperation("ast", {
   },
   Block(_l, exprs, _r) {
     return new Block(exprs.ast());
-  },
-  Alt(_l, _pipes, iter, _r) {
-    return alt(iter.children.map((c) => c.ast()));
   },
 });
 

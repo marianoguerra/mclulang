@@ -6,9 +6,8 @@ export const evalSym = Symbol("eval"),
   tagSym = tag("Tag"),
   AtomTag = tag("Atom"),
   BlockTag = tag("Block"),
-  ClauseTag = tag("Clause"),
-  AltTag = tag("Alt"),
   NilTag = tag("Nil"),
+  PairTag = tag("Pair"),
   ASendTag = tag("ASend"),
   SendTag = tag("Send"),
   MsgTag = tag("Msg"),
@@ -16,40 +15,51 @@ export const evalSym = Symbol("eval"),
   IntTag = tag("Int"),
   StrTag = tag("Str");
 
-export class Name {
-  constructor(name) {
-    this.name = name;
-  }
-
-  [evalSym](env) {
-    return env.lookup(this.name);
-  }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-
-  toSExpr() {
-    return ["name", this.name];
-  }
+export function evalu(v, env) {
+  return v[evalSym](env);
 }
 
-export class Atom {
-  [tagSym] = AtomTag;
-
-  constructor(name) {
-    this.name = name;
-  }
-
-  [evalSym](_env) {
+export class Base {
+  [evalSym](env) {
     return this;
   }
 
   eval(env) {
     return this[evalSym](env);
   }
-  toSExpr() {
-    return ["atom", this.name];
+}
+
+export class Name extends Base {
+  constructor(name) {
+    super();
+    this.name = name;
+  }
+
+  [evalSym](env) {
+    return env.lookup(this.name);
+  }
+}
+
+export class Atom extends Base {
+  [tagSym] = AtomTag;
+
+  constructor(name) {
+    super();
+    this.name = name;
+  }
+}
+
+export class Pair extends Base {
+  [tagSym] = PairTag;
+
+  constructor(a, b) {
+    super();
+    this.a = a;
+    this.b = b;
+  }
+
+  [evalSym](env) {
+    return new Pair(this.a[evalSym](env), this.b[evalSym](env));
   }
 }
 
@@ -112,10 +122,11 @@ export class Env {
   }
 }
 
-export class Msg {
+export class Msg extends Base {
   [tagSym] = MsgTag;
 
   constructor(verb, object) {
+    super();
     this.verb = verb;
     this.object = object;
   }
@@ -123,19 +134,13 @@ export class Msg {
   [evalSym](env) {
     return new Msg(this.verb, this.object[evalSym](env));
   }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["msg", this.verb, this.object.toSExpr()];
-  }
 }
 
-export class Send {
+export class Send extends Base {
   [tagSym] = SendTag;
 
   constructor(subject, msg) {
+    super();
     this.subject = subject;
     this.msg = msg;
   }
@@ -145,13 +150,6 @@ export class Send {
       msg = this.msg[evalSym](env);
 
     return dispatchSend(subject, msg, env);
-  }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["send", this.subject.toSExpr(), this.msg.toSExpr()];
   }
 }
 
@@ -168,10 +166,11 @@ export function dispatchSend(subject, msg, env) {
   );
 }
 
-export class ASend {
+export class ASend extends Base {
   [tagSym] = ASendTag;
 
   constructor(subject, msg) {
+    super();
     this.subject = subject;
     this.msg = msg;
   }
@@ -189,17 +188,11 @@ export class ASend {
       env.enter().bind("it", subject).bind("that", object),
     );
   }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["asend", this.subject.toSExpr(), this.msg.toSExpr()];
-  }
 }
 
-export class NativeHandler {
+export class NativeHandler extends Base {
   constructor(name, fn) {
+    super();
     this.name = name;
     this.fn = fn;
   }
@@ -207,25 +200,10 @@ export class NativeHandler {
   [evalSym](env) {
     return this.fn(env.lookup("it"), env.lookup("that"), env);
   }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
 }
 
-class Nil {
+class Nil extends Base {
   [tagSym] = NilTag;
-
-  [evalSym](_env) {
-    return this;
-  }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["nil"];
-  }
 }
 
 export const NIL = new Nil();
@@ -234,10 +212,15 @@ export function isFalse(v) {
   return v === NIL;
 }
 
-export class Block {
+export function isTrue(v) {
+  return v !== NIL;
+}
+
+export class Block extends Base {
   [tagSym] = BlockTag;
 
   constructor(items) {
+    super();
     this.items = items;
   }
 
@@ -248,75 +231,6 @@ export class Block {
     }
     return r;
   }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["block", this.items.map((item) => item.toSExpr())];
-  }
-}
-
-export class Clause {
-  [tagSym] = ClauseTag;
-
-  constructor(head, body) {
-    this.head = head;
-    this.body = body;
-  }
-
-  _eval(env) {
-    const v = this.head[evalSym](env);
-    if (isFalse(v)) {
-      return null;
-    } else {
-      return this.body[evalSym](env);
-    }
-  }
-
-  [evalSym](env) {
-    return this._eval(env) ?? NIL;
-  }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["clause", this.head.toSExpr(), this.body.toSExpr()];
-  }
-}
-
-export class Alt {
-  [tagSym] = AltTag;
-
-  constructor(items) {
-    this.items = items;
-  }
-
-  [evalSym](env) {
-    for (const item of this.items) {
-      const v = item._eval(env);
-      if (v !== null) {
-        return v;
-      }
-    }
-    return NIL;
-  }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
-  toSExpr() {
-    return ["alt", this.items.map((item) => item.toSExpr())];
-  }
-}
-
-export function rawHandlersToHandlers(o) {
-  const r = {};
-  for (const key in o) {
-    r[key] = new NativeHandler(key, o[key]);
-  }
-  return r;
 }
 
 export function getTag(o) {
@@ -330,18 +244,31 @@ export function setTag(o, t) {
 setTag(BigInt.prototype, IntTag);
 setTag(String.prototype, StrTag);
 
-BigInt.prototype[evalSym] = function (_env) {
-  return this;
-};
-String.prototype[evalSym] = function (_env) {
-  return this;
-};
-BigInt.prototype.toSExpr = function () {
-  return this;
-};
-String.prototype.toSExpr = function () {
-  return this;
-};
+Object.assign(BigInt.prototype, {
+  [evalSym](_env) {
+    return this;
+  },
+  toSExpr() {
+    return this;
+  },
+});
+
+Object.assign(String.prototype, {
+  [evalSym](_env) {
+    return this;
+  },
+  toSExpr() {
+    return this;
+  },
+});
+
+export function rawHandlersToHandlers(o) {
+  const r = {};
+  for (const key in o) {
+    r[key] = new NativeHandler(key, o[key]);
+  }
+  return r;
+}
 
 export function name(v) {
   return new Name(v);
@@ -371,12 +298,31 @@ export function sends(subject, ...msgs) {
 export function block(...items) {
   return new Block(items);
 }
-export function clause(head, body) {
-  return new Clause(head, body);
-}
-export function alt(...clauses) {
-  return new Alt(clauses);
-}
 export function nil() {
   return NIL;
 }
+
+Name.prototype.toSExpr = function () {
+  return ["name", this.name];
+};
+Atom.prototype.toSExpr = function () {
+  return ["atom", this.name];
+};
+Pair.prototype.toSExpr = function () {
+  return ["pair", this.a.toSExpr(), this.b.toSExpr()];
+};
+Msg.prototype.toSExpr = function () {
+  return ["msg", this.verb, this.object.toSExpr()];
+};
+Send.prototype.toSExpr = function () {
+  return ["send", this.subject.toSExpr(), this.msg.toSExpr()];
+};
+ASend.prototype.toSExpr = function () {
+  return ["asend", this.subject.toSExpr(), this.msg.toSExpr()];
+};
+Nil.prototype.toSExpr = function () {
+  return "nil";
+};
+Block.prototype.toSExpr = function () {
+  return ["block", this.items.map((item) => item.toSExpr())];
+};
