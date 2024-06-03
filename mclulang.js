@@ -71,7 +71,7 @@ class Send {
 }
 
 const mkTag = Symbol,
-  ANY_TAG = mkTag("Nil"),
+  ANY_TAG = mkTag("Any"),
   NIL_TAG = mkTag("Nil"),
   INT_TAG = mkTag("Int"),
   PAIR_TAG = mkTag("Pair"),
