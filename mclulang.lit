@@ -1,0 +1,913 @@
+@title McLulang: The message is the language
+@code_type javascript .js
+
+@toc
+
+@s Introduction
+
+You can grow this language by appending each code snippet to the end
+of a file called `mclulang.test.js`
+and running `bun test --watch mclulang.test.js` after you add the first snippet.
+
+The end result is here [mclulang.test.js](https://github.com/marianoguerra/mclulang/blob/main/mclulang.test.js)
+
+@s Setup
+
+--- Includes
+import * as ohm from "ohm-js";
+import { expect, test } from "bun:test";
+---
+
+@s In the beginning there was nothing
+
+--- Nil
+class Nil {
+  eval(_e) {
+    return this;
+  }
+}
+
+const NIL = new Nil();
+---
+
+Need a basic env to eval
+
+--- BasicEnv
+let Env = class Env {};
+
+function env() {
+  return new Env();
+}
+---
+
+utility function to create languages since we are going to be evolving it
+
+--- MkLang
+function mkLang(g, s) {
+  const grammar = ohm.grammar(g),
+    semantics = grammar.createSemantics();
+
+  semantics.addOperation("toAst", s);
+
+  function parse(code) {
+    const matchResult = grammar.match(code);
+    if (matchResult.failed()) {
+      console.warn("parse failed", matchResult.message);
+      return null;
+    }
+    const ast = semantics(matchResult).toAst();
+    return ast;
+  }
+
+  function run(code, e = env()) {
+    const ast = parse(code);
+    return ast ? ast.eval(e) : null;
+  }
+
+  return { parse, run };
+}
+---
+
+The first version allows only nil `()`
+
+--- Lang0
+const lang0 = mkLang(
+  `McLulang {
+    Main = nil
+  
+    nil = "(" ")"
+  }`,
+  {
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+Let's test that it works
+
+--- TestLang0
+test("in the beginning there was nothing", () => {
+  const { run } = lang0;
+  expect(run("()")).toBe(NIL);
+});
+---
+
+@s Scalar
+
+--- Lang1
+const lang1 = mkLang(
+  `McLulang {
+    Main = Scalar
+  
+    Scalar = int | nil
+
+    int = digit+
+    nil = "(" ")"
+  }`,
+  {
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+Monkey patch BigInt to have eval, we could use a symbol but for code clarity we monkey patch:
+
+--- MonkeyPatchBigInt
+BigInt.prototype.eval = function (_e) {
+  return this;
+};
+---
+
+Test that it works:
+
+--- TestLang1
+test("then the programmer made the Scalar and saw it was good", () => {
+  const { run } = lang1;
+  expect(run("42")).toBe(42n);
+});
+---
+
+@s Pairs
+
+--- Pair
+class Pair {
+  constructor(a, b) {
+    this.a = a;
+    this.b = b;
+  }
+
+  eval(e) {
+    return new Pair(this.a.eval(e), this.b.eval(e));
+  }
+}
+---
+
+The language can now parse `Values` or `Scalar`s
+
+--- Lang2
+const lang2 = mkLang(
+  `McLulang {
+    Main = Value
+  
+    Value = Pair | Scalar
+
+    Pair = Scalar ":" Value
+
+    Scalar = int | nil
+
+    int = digit+
+    nil = "(" ")"
+  }`,
+  {
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+Test that it works, notice how we can used chained pairs to create a cons list:
+
+--- TestLang2
+test("but it saw the Scalar was alone, so it made the Pair", () => {
+  const { run } = lang2;
+  expect(run("10")).toBe(10n);
+  {
+    const v = run("1 : 2");
+    expect(v.a).toBe(1n);
+    expect(v.b).toBe(2n);
+  }
+  {
+    const v = run("1 : 2 : 3");
+    expect(v.a).toBe(1n);
+    expect(v.b.a).toBe(2n);
+    expect(v.b.b).toBe(3n);
+  }
+});
+---
+
+@ Names
+
+--- Name
+class Name {
+  constructor(value) {
+    this.value = value;
+  }
+
+  eval(e) {
+    return e.lookup(this.value);
+  }
+}
+---
+
+We need to update `Env` to `bind` and `lookup` names
+
+--- EnvForName
+Env = class Env {
+  constructor() {
+    this.bindings = {};
+  }
+
+  bind(key, value) {
+    this.bindings[key] = value;
+    return this;
+  }
+
+  lookup(key) {
+    return this.bindings[key] ?? NIL;
+  }
+};
+---
+
+Let's add names to our language:
+
+--- Lang3
+const lang3 = mkLang(
+  `McLulang {
+    Main = Value
+  
+    Value = Pair | Scalar
+
+    Pair = Scalar ":" Value
+
+    Scalar = int | nil | name
+
+    int = digit+
+    nil = "(" ")"
+
+    name = nameStart namePart*
+    nameStart = letter | "_"
+    namePart = nameStart | digit
+  }`,
+  {
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+And test that unbound names return `NIL` and bound ones return its value:
+
+--- TestLang3
+test("with more than one thing it needed the Name", () => {
+  const { run } = lang3;
+  expect(run("a")).toBe(NIL);
+  expect(run("foo")).toBe(NIL);
+  const e = env();
+  e.bind("foo", 20n);
+  expect(run("foo", e)).toBe(20n);
+});
+---
+
+@s Blocks
+
+--- Block
+class Block {
+  constructor(items = []) {
+    this.items = items;
+  }
+
+  eval(e) {
+    let r = NIL;
+    for (const item of this.items) {
+      r = item.eval(e);
+    }
+
+    return r;
+  }
+}
+---
+
+Extend the language to support `Block`
+
+--- Lang4
+const lang4 = mkLang(
+  `McLulang {
+    Main = Value
+  
+    Value = Pair | PairHead
+
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar
+
+    Block = "{" Exprs "}"
+
+    Exprs = Value ("," Value )*
+
+    Scalar = int | nil | name
+
+    int = digit+
+    nil = "(" ")"
+
+    name = nameStart namePart*
+    nameStart = letter | "_"
+    namePart = nameStart | digit
+  }`,
+  {
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    Block(_o, exprs, _c) {
+      return new Block(exprs.toAst());
+    },
+    Exprs(first, _, rest) {
+      return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+And test that its `eval` returns the last expression in the `Block`:
+
+--- TestLang4
+test("the Name allowed more than pairs, the Block was created", () => {
+  const { run } = lang4;
+  expect(run("{1}")).toBe(1n);
+  expect(run("{1, 2}")).toBe(2n);
+  expect(run("{1, 2, a}", env().bind("a", 3n))).toBe(3n);
+});
+---
+
+@s Msg
+
+--- Msg
+class Msg {
+  constructor(verb, object) {
+    this.verb = verb;
+    this.object = object;
+  }
+
+  eval(e) {
+    return new Msg(this.verb, this.object.eval(e));
+  }
+}
+---
+
+@s Send
+
+--- Send
+class Send {
+  constructor(subject, msg) {
+    this.subject = subject;
+    this.msg = msg;
+  }
+
+  eval(e) {
+    return dispatchMessage(this.subject.eval(e), this.msg.eval(e), e);
+  }
+}
+---
+
+@s Dispatching messages
+
+Need to attach tags to different types to decide which handler to use for a message send:
+
+--- TagUtils
+const tagSym = Symbol("Tag");
+export function getTag(v) {
+  return v[tagSym];
+}
+export function setTag(Cls, tag) {
+  Cls.prototype[tagSym] = tag;
+}
+export function mkTag(name, Cls) {
+  const tag = Symbol(name);
+  if (Cls) {
+    setTag(Cls, tag);
+  }
+  return tag;
+}
+---
+
+Create and assign tags to our existing types:
+
+--- Tags
+export const ANY_TAG = mkTag("Any"),
+  NIL_TAG = mkTag("Nil", Nil),
+  INT_TAG = mkTag("Int", BigInt),
+  PAIR_TAG = mkTag("Pair", Pair),
+  NAME_TAG = mkTag("Name", Name),
+  BLOCK_TAG = mkTag("Block", Block),
+  MSG_TAG = mkTag("Msg", Msg),
+  SEND_TAG = mkTag("Send", Send);
+---
+
+Redefine `Env` to allow `bindHandler` and `lookupHandler`
+
+--- EnvForSend
+Env = class Env {
+  constructor() {
+    this.bindings = {};
+    this.handlers = {};
+  }
+
+  bind(key, value) {
+    this.bindings[key] = value;
+    return this;
+  }
+
+  lookup(key) {
+    return this.bindings[key] ?? NIL;
+  }
+
+  bindHandler(tag, verb, handler) {
+    this.handlers[tag] ??= {};
+    this.handlers[tag][verb] = handler;
+    return this;
+  }
+
+  bindHandlers(tag, handlers) {
+    for (const verb in handlers) {
+      this.bindHandler(tag, verb, handlers[verb]);
+    }
+    return this;
+  }
+
+  lookupHandler(tag, verb) {
+    return this.handlers[tag]?.[verb] ?? this.handlers[ANY_TAG]?.[verb] ?? null;
+  }
+};
+---
+
+Create a `dispatchMessage` function to lookup a handler and dispatch the message to it:
+
+--- DispatchMessageForLang5
+let dispatchMessage = (subject, msg, e) => {
+  const handler = e.lookupHandler(getTag(subject), msg.verb);
+  if (handler === null) {
+    console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
+  }
+  return handler(subject, msg.object, e, msg);
+};
+---
+
+Extend the language to allow `Msg` `Send`s
+
+--- Lang5
+const lang5 = mkLang(
+  `McLulang {
+    Main = Send
+  
+    Send = Value Msg*
+    Msg = verb Value
+
+    Value = Pair | PairHead
+
+    ParSend = "(" Send ")"
+
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | ParSend
+
+    Block = "{" Exprs "}"
+
+    Exprs = Send ("," Send )*
+
+    Scalar = int | nil | name
+
+    int = digit+
+    nil = "(" ")"
+
+    name = nameStart namePart*
+    nameStart = letter | "_"
+    namePart = nameStart | digit
+
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+  }`,
+  {
+    ParSend(_o, v, _c) {
+      return v.toAst();
+    },
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    Msg(verb, object) {
+      return new Msg(verb.toAst(), object.toAst());
+    },
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    Block(_o, exprs, _c) {
+      return new Block(exprs.toAst());
+    },
+    Exprs(first, _, rest) {
+      return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+Test that message sends are handled by the right handler and that evaluation happens from left to right:
+
+--- TestLang5
+test("to communicate it created the message", () => {
+  const { run } = lang5,
+    e = env().bindHandlers(INT_TAG, {
+      "+": (a, b) => a + b,
+      "*": (a, b) => a * b,
+    });
+
+  expect(run("1 + 2", e)).toBe(3n);
+  expect(run("10 + 2 * 3", e)).toBe(36n);
+  expect(run("10 + (2 * 3)", e)).toBe(16n);
+});
+---
+
+@s Message quotes and map
+
+To get a message as a value we have to quote it with `^`:
+
+--- Lang6
+const lang6 = mkLang(
+  `McLulang {
+    Main = Send
+  
+    Send = Value Msg*
+    Msg = verb Value
+
+    Value = Pair | PairHead
+
+    ParSend = "(" Send ")"
+
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | ParSend
+
+    Block = "{" Exprs "}"
+
+    Exprs = Send ("," Send )*
+
+    Scalar = int | nil | name | MsgQuote
+
+    MsgQuote = "^" Msg
+
+    int = digit+
+    nil = "(" ")"
+
+    name = nameStart namePart*
+    nameStart = letter | "_"
+    namePart = nameStart | digit
+
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+  }`,
+  {
+    ParSend(_o, v, _c) {
+      return v.toAst();
+    },
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    Msg(verb, object) {
+      return new Msg(verb.toAst(), object.toAst());
+    },
+    MsgQuote(_, msg) {
+      return msg.toAst();
+    },
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    Block(_o, exprs, _c) {
+      return new Block(exprs.toAst());
+    },
+    Exprs(first, _, rest) {
+      return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+Define a handler for `send` that dispatches the message it gets as object to the subject, if it's a pair it forwards the `send` to both values:
+
+--- TestLang6
+test("with the message came the quote, a quote could be forwarded to anyone", () => {
+  const { run } = lang6,
+    e = env()
+      .bindHandler(INT_TAG, "+", (s, o) => s + o)
+      .bindHandler(ANY_TAG, "send", (s, _o, e, m) =>
+        dispatchMessage(s, m.object, e),
+      )
+      .bindHandler(
+        PAIR_TAG,
+        "send",
+        (s, _o, e, m) =>
+          new Pair(dispatchMessage(s.a, m, e), dispatchMessage(s.b, m, e)),
+      );
+
+  expect(run("1 send ^ + 2", e)).toBe(3n);
+  {
+    const v = run("1 : 2 send ^ + 2", e);
+    expect(v.a).toBe(3n);
+    expect(v.b).toBe(4n);
+  }
+  {
+    const v = run("1 : 2 : 3 send ^ + 2", e);
+    expect(v.a).toBe(3n);
+    expect(v.b.a).toBe(4n);
+    expect(v.b.b).toBe(5n);
+  }
+});
+---
+
+@s Later evaluation
+
+Introduce `Later` which wraps a value and on `eval` it returns the value:
+
+--- Later
+class Later {
+  constructor(value) {
+    this.value = value;
+  }
+
+  eval(_e) {
+    return this.value;
+  }
+}
+---
+
+Extend the language to support `Later` with `@`:
+
+--- Lang7
+const lang7 = mkLang(
+  `McLulang {
+    Main = Send
+  
+    Send = Value Msg*
+    Msg = verb Value
+
+    Value = Pair | PairHead
+
+    Later = "@" Value
+    ParSend = "(" Send ")"
+
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | Later | ParSend
+
+    Block = "{" Exprs "}"
+
+    Exprs = Send ("," Send )*
+
+    Scalar = int | nil | name | MsgQuote
+
+    MsgQuote = "^" Msg
+
+    int = digit+
+    nil = "(" ")"
+
+    name = nameStart namePart*
+    nameStart = letter | "_"
+    namePart = nameStart | digit
+
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+  }`,
+  {
+    Later(_, v) {
+      return new Later(v.toAst());
+    },
+    ParSend(_o, v, _c) {
+      return v.toAst();
+    },
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    Msg(verb, object) {
+      return new Msg(verb.toAst(), object.toAst());
+    },
+    MsgQuote(_, msg) {
+      return msg.toAst();
+    },
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    Block(_o, exprs, _c) {
+      return new Block(exprs.toAst());
+    },
+    Exprs(first, _, rest) {
+      return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
+  },
+);
+---
+
+Test `Later` by implementing a ternary operator by defining a handler for the `?` message with one implementation for `()` and another for all other types (`ANY_TAG`) and using `Later` to quote the pair passed as object to let each handler eval the side that matches "true" or "false":
+
+--- TestLang7
+test("with alternatives some thing where left to be evaluated later", () => {
+  const { run } = lang7,
+    e = env()
+      .bindHandler(NIL_TAG, "?", (_s, o, e) => o.b.eval(e))
+      .bindHandler(INT_TAG, "?", (_s, o, e) => o.a.eval(e));
+
+  expect(run("() ? @ 2 : 3", e)).toBe(3n);
+  expect(run("1 ? @ 2 : 3", e)).toBe(2n);
+  expect(run("() ? @ 2 : 3 ? @ 4 : 5", e)).toBe(4n);
+  expect(run("() ? @ 2 : () ? @ 4 : 5", e)).toBe(5n);
+});
+---
+
+@s Env as a stack
+
+Redefine `Env` to allow `enter`ing nested frames:
+
+--- EnvForLang8
+Env = class Env {
+  constructor(parent = null) {
+    this.parent = parent;
+    this.bindings = {};
+    this.handlers = {};
+  }
+
+  enter() {
+    return new Env(this);
+  }
+
+  bind(key, value) {
+    this.bindings[key] = value;
+    return this;
+  }
+
+  lookup(key) {
+    return this.bindings[key] ?? NIL;
+  }
+
+  bindHandler(tag, verb, handler) {
+    this.handlers[tag] ??= {};
+    this.handlers[tag][verb] =
+      handler instanceof Function ? new NativeHandler(handler) : handler;
+    return this;
+  }
+
+  bindHandlers(tag, handlers) {
+    for (const verb in handlers) {
+      this.bindHandler(tag, verb, handlers[verb]);
+    }
+    return this;
+  }
+
+  lookupHandler(tag, verb) {
+    const v =
+      this.handlers[tag]?.[verb] ?? this.handlers[ANY_TAG]?.[verb] ?? null;
+
+    if (v) {
+      return v;
+    } else {
+      return this.parent ? this.parent.lookupHandler(tag, verb) : null;
+    }
+  }
+};
+---
+
+Redefine `dispatchMessage` to `enter` a nested frame when calling the handler.
+
+Change the interface of handler to be `.eval(env, subject, msg)`.
+
+--- DispatchMessageForLang8
+dispatchMessage = (subject, msg, e) => {
+  const handler = e.lookupHandler(getTag(subject), msg.verb);
+  if (handler === null) {
+    console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
+  }
+  return handler.eval(
+    e.enter().bind("it", subject).bind("that", msg.object),
+    subject,
+    msg,
+  );
+};
+---
+
+Define a `NativeHandler` class to wrap handlers implemented as JavaScript functions:
+
+--- NativeHandler
+class NativeHandler {
+  constructor(fn) {
+    this.fn = fn;
+  }
+
+  eval(e, subject, msg) {
+    return this.fn(subject, msg.object, e, msg);
+  }
+}
+---
+
+Test variable assignment can be implemented by creating a handler for the `is` message on the `Name` type which binds its value to the message object in the parent frame:
+
+--- TestLang8Is
+test("like the meaning of a name", () => {
+  const { run } = lang7,
+    e = env()
+      .bindHandler(INT_TAG, "+", (s, o) => s + o)
+      .bindHandler(NAME_TAG, "is", (s, o, e) => {
+        e.parent.bind(s.value, o);
+        return o;
+      });
+
+  expect(getTag(run("@foo", e))).toBe(NAME_TAG);
+  expect(run("@foo", e).value).toBe("foo");
+  expect(run("@foo is 42", e)).toBe(42n);
+  expect(run("{@foo is 42}", e)).toBe(42n);
+  expect(run("{@foo is 42, foo + 1}", e)).toBe(43n);
+});
+---
+
+Test handler definition by defining a handler for the `Send` type for the `does` message which binds the object of the `does` message as the handler for the message with verb from the subject and the type of the subject's subject:
+
+--- TestLang8Does
+test("or the meaning of a message", () => {
+  const { run } = lang7,
+    e = env()
+      .bindHandler(INT_TAG, "+", (s, o) => s + o)
+      .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
+        const tag = getTag(s.subject.eval(e)),
+          verb = s.msg.verb;
+        e.parent.bindHandler(tag, verb, o);
+        return o;
+      });
+
+  expect(run("{@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}", e)).toBe(5n);
+});
+---
+
+And that's all, check [github.com/marianoguerra/mclulang](https://github.com/marianoguerra/mclulang/) to learn more.

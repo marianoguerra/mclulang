@@ -1,6 +1,20 @@
 import * as ohm from "ohm-js";
 import { expect, test } from "bun:test";
 
+class Nil {
+  eval(_e) {
+    return this;
+  }
+}
+
+const NIL = new Nil();
+
+let Env = class Env {};
+
+function env() {
+  return new Env();
+}
+
 function mkLang(g, s) {
   const grammar = ohm.grammar(g),
     semantics = grammar.createSemantics();
@@ -25,22 +39,10 @@ function mkLang(g, s) {
   return { parse, run };
 }
 
-// ---
-
-class Nil {
-  eval(_e) {
-    return this;
-  }
-}
-
-const NIL = new Nil();
-
 const lang0 = mkLang(
   `McLulang {
-    Main = Scalar
-
-    Scalar = nil
-
+    Main = nil
+  
     nil = "(" ")"
   }`,
   {
@@ -57,20 +59,10 @@ test("in the beginning there was nothing", () => {
 
 // ---
 
-let Env = class Env {};
-
-function env() {
-  return new Env();
-}
-
-BigInt.prototype.eval = function (_e) {
-  return this;
-};
-
 const lang1 = mkLang(
   `McLulang {
     Main = Scalar
-
+  
     Scalar = int | nil
 
     int = digit+
@@ -85,6 +77,10 @@ const lang1 = mkLang(
     },
   },
 );
+
+BigInt.prototype.eval = function (_e) {
+  return this;
+};
 
 test("then the programmer made the Scalar and saw it was good", () => {
   const { run } = lang1;
@@ -107,7 +103,7 @@ class Pair {
 const lang2 = mkLang(
   `McLulang {
     Main = Value
-
+  
     Value = Pair | Scalar
 
     Pair = Scalar ":" Value
@@ -176,7 +172,7 @@ Env = class Env {
 const lang3 = mkLang(
   `McLulang {
     Main = Value
-
+  
     Value = Pair | Scalar
 
     Pair = Scalar ":" Value
@@ -235,14 +231,15 @@ class Block {
 const lang4 = mkLang(
   `McLulang {
     Main = Value
+  
+    Value = Pair | PairHead
 
-    Value = Pair | Block | Scalar
-
-    Pair = Scalar ":" Value
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar
 
     Block = "{" Exprs "}"
 
-    Exprs = Value ("," Value)*
+    Exprs = Value ("," Value )*
 
     Scalar = int | nil | name
 
@@ -306,13 +303,29 @@ class Send {
   }
 }
 
-let dispatchMessage = (subject, msg, e) => {
-  const handler = e.lookupHandler(subject.TAG, msg.verb);
-  if (handler === null) {
-    console.warn("verb", msg.verb, "not found for", subject.TAG, subject);
+const tagSym = Symbol("Tag");
+export function getTag(v) {
+  return v[tagSym];
+}
+export function setTag(Cls, tag) {
+  Cls.prototype[tagSym] = tag;
+}
+export function mkTag(name, Cls) {
+  const tag = Symbol(name);
+  if (Cls) {
+    setTag(Cls, tag);
   }
-  return handler(subject, msg.object, e, msg);
-};
+  return tag;
+}
+
+export const ANY_TAG = mkTag("Any"),
+  NIL_TAG = mkTag("Nil", Nil),
+  INT_TAG = mkTag("Int", BigInt),
+  PAIR_TAG = mkTag("Pair", Pair),
+  NAME_TAG = mkTag("Name", Name),
+  BLOCK_TAG = mkTag("Block", Block),
+  MSG_TAG = mkTag("Msg", Msg),
+  SEND_TAG = mkTag("Send", Send);
 
 Env = class Env {
   constructor() {
@@ -347,23 +360,13 @@ Env = class Env {
   }
 };
 
-const mkTag = Symbol,
-  ANY_TAG = mkTag("Nil"),
-  NIL_TAG = mkTag("Nil"),
-  INT_TAG = mkTag("Int"),
-  PAIR_TAG = mkTag("Pair"),
-  NAME_TAG = mkTag("Name"),
-  BLOCK_TAG = mkTag("Block"),
-  MSG_TAG = mkTag("Msg"),
-  SEND_TAG = mkTag("Send");
-
-Nil.prototype.TAG = NIL_TAG;
-BigInt.prototype.TAG = INT_TAG;
-Pair.prototype.TAG = PAIR_TAG;
-Name.prototype.TAG = NAME_TAG;
-Block.prototype.TAG = BLOCK_TAG;
-Msg.prototype.TAG = MSG_TAG;
-Send.prototype.TAG = SEND_TAG;
+let dispatchMessage = (subject, msg, e) => {
+  const handler = e.lookupHandler(getTag(subject), msg.verb);
+  if (handler === null) {
+    console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
+  }
+  return handler(subject, msg.object, e, msg);
+};
 
 const lang5 = mkLang(
   `McLulang {
@@ -372,13 +375,16 @@ const lang5 = mkLang(
     Send = Value Msg*
     Msg = verb Value
 
-    Value = Pair | Block | Scalar
+    Value = Pair | PairHead
 
-    Pair = Scalar ":" Value
+    ParSend = "(" Send ")"
+
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | ParSend
 
     Block = "{" Exprs "}"
 
-    Exprs = Value ("," Value)*
+    Exprs = Send ("," Send )*
 
     Scalar = int | nil | name
 
@@ -394,6 +400,9 @@ const lang5 = mkLang(
     verbPart = verbStart | digit
   }`,
   {
+    ParSend(_o, v, _c) {
+      return v.toAst();
+    },
     Send(v, msgs) {
       let r = v.toAst();
       for (const msg of msgs.children) {
@@ -436,7 +445,8 @@ test("to communicate it created the message", () => {
     });
 
   expect(run("1 + 2", e)).toBe(3n);
-  expect(run("10 * 2 + 3", e)).toBe(23n);
+  expect(run("10 + 2 * 3", e)).toBe(36n);
+  expect(run("10 + (2 * 3)", e)).toBe(16n);
 });
 
 // ---
@@ -448,17 +458,20 @@ const lang6 = mkLang(
     Send = Value Msg*
     Msg = verb Value
 
-    Value = Pair | Block | Scalar
+    Value = Pair | PairHead
 
-    Pair = Scalar ":" Value
+    ParSend = "(" Send ")"
+
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | ParSend
 
     Block = "{" Exprs "}"
 
-    Exprs = Value ("," Value)*
+    Exprs = Send ("," Send )*
 
     Scalar = int | nil | name | MsgQuote
 
-    MsgQuote = "\" Msg
+    MsgQuote = "^" Msg
 
     int = digit+
     nil = "(" ")"
@@ -472,6 +485,9 @@ const lang6 = mkLang(
     verbPart = verbStart | digit
   }`,
   {
+    ParSend(_o, v, _c) {
+      return v.toAst();
+    },
     Send(v, msgs) {
       let r = v.toAst();
       for (const msg of msgs.children) {
@@ -509,16 +525,8 @@ const lang6 = mkLang(
   },
 );
 
-test("with the message came the quote", () => {
+test("with the message came the quote, a quote could be forwarded to anyone", () => {
   const { run } = lang6,
-    m = run(" + 2");
-  expect(m.TAG).toBe(MSG_TAG);
-  expect(m.verb).toBe("+");
-  expect(m.object).toBe(2n);
-});
-
-test("a quote could be forwarded to anyone", () => {
-  const { run } = lang7,
     e = env()
       .bindHandler(INT_TAG, "+", (s, o) => s + o)
       .bindHandler(ANY_TAG, "send", (s, _o, e, m) =>
@@ -531,14 +539,14 @@ test("a quote could be forwarded to anyone", () => {
           new Pair(dispatchMessage(s.a, m, e), dispatchMessage(s.b, m, e)),
       );
 
-  expect(run("1 send  + 2", e)).toBe(3n);
+  expect(run("1 send ^ + 2", e)).toBe(3n);
   {
-    const v = run("1 : 2 send  + 2", e);
+    const v = run("1 : 2 send ^ + 2", e);
     expect(v.a).toBe(3n);
     expect(v.b).toBe(4n);
   }
   {
-    const v = run("1 : 2 : 3 send  + 2", e);
+    const v = run("1 : 2 : 3 send ^ + 2", e);
     expect(v.a).toBe(3n);
     expect(v.b.a).toBe(4n);
     expect(v.b.b).toBe(5n);
@@ -557,8 +565,6 @@ class Later {
   }
 }
 
-// XXX: changed Pair to allow all Value types except Pair itself
-// XXX: changed Exprs to be Send+ instead of Value
 const lang7 = mkLang(
   `McLulang {
     Main = Send
@@ -580,7 +586,7 @@ const lang7 = mkLang(
 
     Scalar = int | nil | name | MsgQuote
 
-    MsgQuote = "\" Msg
+    MsgQuote = "^" Msg
 
     int = digit+
     nil = "(" ")"
@@ -643,26 +649,13 @@ test("with alternatives some thing where left to be evaluated later", () => {
       .bindHandler(NIL_TAG, "?", (_s, o, e) => o.b.eval(e))
       .bindHandler(INT_TAG, "?", (_s, o, e) => o.a.eval(e));
 
-  expect(run("() ? 1 : 2", e)).toBe(2n);
-  expect(run("0 ? 1 : 2", e)).toBe(1n);
-  expect(run("() ? 2 : 3 ? 4 : 5", e)).toBe(4n);
-  expect(run("() ? 2 : () ? 4 : 5", e)).toBe(5n);
-
-  expect(run("() ? @ 1 : 2", e)).toBe(2n);
-  expect(run("0 ? @ 1 : 2", e)).toBe(1n);
+  expect(run("() ? @ 2 : 3", e)).toBe(3n);
+  expect(run("1 ? @ 2 : 3", e)).toBe(2n);
   expect(run("() ? @ 2 : 3 ? @ 4 : 5", e)).toBe(4n);
   expect(run("() ? @ 2 : () ? @ 4 : 5", e)).toBe(5n);
 });
 
-class NativeHandler {
-  constructor(fn) {
-    this.fn = fn;
-  }
-
-  eval(e, subject, msg) {
-    return this.fn(subject, msg.object, e, msg);
-  }
-}
+// ---
 
 Env = class Env {
   constructor(parent = null) {
@@ -711,9 +704,9 @@ Env = class Env {
 };
 
 dispatchMessage = (subject, msg, e) => {
-  const handler = e.lookupHandler(subject.TAG, msg.verb);
+  const handler = e.lookupHandler(getTag(subject), msg.verb);
   if (handler === null) {
-    console.warn("verb", msg.verb, "not found for", subject.TAG, subject);
+    console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
   }
   return handler.eval(
     e.enter().bind("it", subject).bind("that", msg.object),
@@ -721,6 +714,16 @@ dispatchMessage = (subject, msg, e) => {
     msg,
   );
 };
+
+class NativeHandler {
+  constructor(fn) {
+    this.fn = fn;
+  }
+
+  eval(e, subject, msg) {
+    return this.fn(subject, msg.object, e, msg);
+  }
+}
 
 test("like the meaning of a name", () => {
   const { run } = lang7,
@@ -731,7 +734,7 @@ test("like the meaning of a name", () => {
         return o;
       });
 
-  expect(run("@foo", e).TAG).toBe(NAME_TAG);
+  expect(getTag(run("@foo", e))).toBe(NAME_TAG);
   expect(run("@foo", e).value).toBe("foo");
   expect(run("@foo is 42", e)).toBe(42n);
   expect(run("{@foo is 42}", e)).toBe(42n);
@@ -743,13 +746,11 @@ test("or the meaning of a message", () => {
     e = env()
       .bindHandler(INT_TAG, "+", (s, o) => s + o)
       .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
-        const tag = s.subject.eval(e).TAG,
+        const tag = getTag(s.subject.eval(e)),
           verb = s.msg.verb;
         e.parent.bindHandler(tag, verb, o);
         return o;
       });
 
-  expect(run("{@(0 add 0) does @{it + that}, 1 add 3}", e)).toBe(4n);
+  expect(run("{@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}", e)).toBe(5n);
 });
-
-// ---

@@ -8,6 +8,8 @@ pkgs.mkShell {
 		pkgs.vscode-langservers-extracted
 		pkgs.nodePackages.eslint
 		pkgs.nodePackages.prettier
+		pkgs.Literate
+		pkgs.pandoc
 	];
 	shellHook = ''
 		export LC_ALL=en_US.UTF-8
