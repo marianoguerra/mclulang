@@ -4,6 +4,7 @@ import {
   run,
   env,
   INT_TAG,
+  STR_TAG,
   NIL_TAG,
   ANY_TAG,
   SEND_TAG,
@@ -15,6 +16,14 @@ const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}";
 function main(code = DEFAULT_CODE) {
   const e = env()
     .bindHandler(INT_TAG, "+", (s, o) => s + o)
+    .bindHandler(STR_TAG, "+", (s, o) => s + o)
+    .bindHandler(STR_TAG, "*", (s, o) => {
+      const r = new Array(o);
+      for (let i = 0n; i < o; i++) {
+        r[i] = s;
+      }
+      return r.join("");
+    })
     .bindHandler(NIL_TAG, "?", (_s, o, e) => o.b.eval(e))
     .bindHandler(ANY_TAG, "?", (_s, o, e) => o.a.eval(e))
     .bindHandler(SEND_TAG, "does", (s, o, e, m) => {

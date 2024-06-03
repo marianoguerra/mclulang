@@ -53,3 +53,10 @@
 >  {@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}
 5n
 ```
+
+Other examples:
+
+```sh
+>  'hi' * 5
+hihihihihi
+```

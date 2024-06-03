@@ -11,6 +11,9 @@ const NIL = new Nil();
 BigInt.prototype.eval = function (_e) {
   return this;
 };
+String.prototype.eval = function (_e) {
+  return this;
+};
 
 class Pair {
   constructor(a, b) {
@@ -98,6 +101,7 @@ class Later {
 export const ANY_TAG = mkTag("Any"),
   NIL_TAG = mkTag("Nil", Nil),
   INT_TAG = mkTag("Int", BigInt),
+  STR_TAG = mkTag("Str", String),
   PAIR_TAG = mkTag("Pair", Pair),
   NAME_TAG = mkTag("Name", Name),
   BLOCK_TAG = mkTag("Block", Block),
@@ -220,12 +224,14 @@ export const { parse, run } = mkLang(
 
     Exprs = Send ("," Send )*
 
-    Scalar = int | nil | name | MsgQuote
+    Scalar = int | str | nil | name | MsgQuote
 
     MsgQuote = "\" Msg
 
     int = digit+
     nil = "(" ")"
+    stringDelimiter = "'"
+    str = stringDelimiter (~stringDelimiter any)* stringDelimiter
 
     name = nameStart namePart*
     nameStart = letter | "_"
@@ -266,6 +272,9 @@ export const { parse, run } = mkLang(
     },
     int(_) {
       return BigInt(this.sourceString);
+    },
+    str(_1, s, _3) {
+      return s.sourceString;
     },
     name(_1, _2) {
       return new Name(this.sourceString);
