@@ -1,5 +1,18 @@
 # McLulang
 
+## Motivation
+
+> OOP to me means only messaging, local retention and protection and 
+> hiding of state-process, and extreme late-binding of all things.
+>
+> -- Alan Kay - [Dr. Alan Kay on the Meaning of “Object-Oriented Programming”](http://userpage.fu-berlin.de/~ram/pub/pub_jf47ht81Ht/doc_kay_oop_en)
+
+> Yes, that was the big revelation to me when I was in graduate school—when I finally understood that the half page of code on the bottom of page 13 of the Lisp 1.5 manual was Lisp in itself. These were “Maxwell’s Equations of Software!” This is the whole world of programming in a few lines that I can put my hand over. 
+>
+> -- Alan Kay [A Conversation with Alan Kay](https://queue.acm.org/detail.cfm?id=1039523)
+
+Which are Maxwell's equations of Object Oriented software?
+
 ## Concepts
 
 - NIL
