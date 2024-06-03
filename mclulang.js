@@ -1,302 +1,288 @@
-function tag(name) {
-  return Symbol(name);
+import * as ohm from "ohm-js";
+
+function mkLang(g, s) {
+  const grammar = ohm.grammar(g),
+    semantics = grammar.createSemantics();
+
+  semantics.addOperation("toAst", s);
+
+  function parse(code) {
+    const matchResult = grammar.match(code);
+    if (matchResult.failed()) {
+      console.warn("parse failed", matchResult.message);
+      return null;
+    }
+    const ast = semantics(matchResult).toAst();
+    return ast;
+  }
+
+  function run(code, e = env()) {
+    const ast = parse(code);
+    return ast ? ast.eval(e) : null;
+  }
+
+  return { parse, run };
 }
 
-export const evalSym = Symbol("eval"),
-  tagSym = tag("Tag"),
-  NameTag = tag("Name"),
-  QuoteTag = tag("Quote"),
-  BlockTag = tag("Block"),
-  NilTag = tag("Nil"),
-  PairTag = tag("Pair"),
-  SendTag = tag("Send"),
-  MsgTag = tag("Msg"),
-  AnyTag = tag("Any"),
-  IntTag = tag("Int"),
-  StrTag = tag("Str");
-
-export function evalu(v, env) {
-  return v[evalSym](env);
-}
-
-export class Base {
-  [evalSym](env) {
+class Nil {
+  eval(_e) {
     return this;
   }
-
-  eval(env) {
-    return this[evalSym](env);
-  }
 }
 
-export class Name extends Base {
-  [tagSym] = NameTag;
-  constructor(name) {
-    super();
-    this.name = name;
-  }
+const NIL = new Nil();
 
-  [evalSym](env) {
-    return env.lookup(this.name);
-  }
-}
+BigInt.prototype.eval = function (_e) {
+  return this;
+};
 
-export class Quote extends Base {
-  [tagSym] = QuoteTag;
-
-  constructor(value) {
-    super();
-    this.value = value;
-  }
-
-  [evalSym](_env) {
-    return this.value;
-  }
-}
-
-export class Pair extends Base {
-  [tagSym] = PairTag;
-
+class Pair {
   constructor(a, b) {
-    super();
     this.a = a;
     this.b = b;
   }
 
-  [evalSym](env) {
-    return new Pair(this.a[evalSym](env), this.b[evalSym](env));
+  eval(e) {
+    return new Pair(this.a.eval(e), this.b.eval(e));
   }
 }
 
-export class Env {
+class Name {
+  constructor(value) {
+    this.value = value;
+  }
+
+  eval(e) {
+    return e.lookup(this.value);
+  }
+}
+
+class Block {
+  constructor(items = []) {
+    this.items = items;
+  }
+
+  eval(e) {
+    let r = NIL;
+    for (const item of this.items) {
+      r = item.eval(e);
+    }
+
+    return r;
+  }
+}
+
+class Msg {
+  constructor(verb, object) {
+    this.verb = verb;
+    this.object = object;
+  }
+
+  eval(e) {
+    return new Msg(this.verb, this.object.eval(e));
+  }
+}
+
+class Send {
+  constructor(subject, msg) {
+    this.subject = subject;
+    this.msg = msg;
+  }
+
+  eval(e) {
+    return dispatchMessage(this.subject.eval(e), this.msg.eval(e), e);
+  }
+}
+
+const mkTag = Symbol,
+  ANY_TAG = mkTag("Nil"),
+  NIL_TAG = mkTag("Nil"),
+  INT_TAG = mkTag("Int"),
+  PAIR_TAG = mkTag("Pair"),
+  NAME_TAG = mkTag("Name"),
+  BLOCK_TAG = mkTag("Block"),
+  MSG_TAG = mkTag("Msg"),
+  SEND_TAG = mkTag("Send");
+
+Nil.prototype.TAG = NIL_TAG;
+BigInt.prototype.TAG = INT_TAG;
+Pair.prototype.TAG = PAIR_TAG;
+Name.prototype.TAG = NAME_TAG;
+Block.prototype.TAG = BLOCK_TAG;
+Msg.prototype.TAG = MSG_TAG;
+Send.prototype.TAG = SEND_TAG;
+
+class Later {
+  constructor(value) {
+    this.value = value;
+  }
+
+  eval(_e) {
+    return this.value;
+  }
+}
+
+class NativeHandler {
+  constructor(fn) {
+    this.fn = fn;
+  }
+
+  eval(e, subject, msg) {
+    return this.fn(subject, msg.object, e, msg);
+  }
+}
+
+class Env {
   constructor(parent = null) {
     this.parent = parent;
     this.bindings = {};
     this.handlers = {};
   }
 
-  bind(name, value) {
-    this.bindings[name] = value;
-    return this;
-  }
-
-  lookup(name) {
-    const v = this.bindings[name];
-    if (v !== undefined) {
-      return v;
-    } else if (this.parent !== null) {
-      return this.parent.lookup(name);
-    } else {
-      return null;
-    }
-  }
-
   enter() {
     return new Env(this);
   }
 
-  bindHandler(subjectTag, verb, objectTag, handler) {
-    this.handlers[subjectTag] ??= {};
-    this.handlers[subjectTag][objectTag] ??= {};
-    this.handlers[subjectTag][objectTag][verb] = handler;
+  bind(key, value) {
+    this.bindings[key] = value;
     return this;
   }
 
-  bindHandlers(subjectTag, objectTag, handlers) {
-    this.handlers[subjectTag] ??= {};
-    this.handlers[subjectTag][objectTag] ??= {};
-    Object.assign(this.handlers[subjectTag][objectTag], handlers);
+  lookup(key) {
+    return this.bindings[key] ?? NIL;
+  }
+
+  bindHandler(tag, verb, handler) {
+    this.handlers[tag] ??= {};
+    this.handlers[tag][verb] =
+      handler instanceof Function ? new NativeHandler(handler) : handler;
     return this;
   }
 
-  lookupHandler(subjectTag, verb, objectTag) {
-    // XXX: a handler for T verb Any has more presedence than a more specific one
-    // in parent env
+  bindHandlers(tag, handlers) {
+    for (const verb in handlers) {
+      this.bindHandler(tag, verb, handlers[verb]);
+    }
+    return this;
+  }
+
+  lookupHandler(tag, verb) {
     const v =
-      this.handlers[subjectTag]?.[objectTag]?.[verb] ??
-      this.handlers[subjectTag]?.[AnyTag]?.[verb] ??
-      this.handlers[AnyTag]?.[objectTag]?.[verb] ??
-      this.handlers[AnyTag]?.[AnyTag]?.[verb];
+      this.handlers[tag]?.[verb] ?? this.handlers[ANY_TAG]?.[verb] ?? null;
 
-    if (v !== undefined) {
+    if (v) {
       return v;
-    } else if (this.parent !== null) {
-      return this.parent.lookupHandler(subjectTag, verb, objectTag);
     } else {
-      return null;
+      return this.parent ? this.parent.lookupHandler(tag, verb) : null;
     }
   }
 }
 
-export class Msg extends Base {
-  [tagSym] = MsgTag;
-
-  constructor(verb, object) {
-    super();
-    this.verb = verb;
-    this.object = object;
-  }
-
-  [evalSym](env) {
-    return new Msg(this.verb, this.object[evalSym](env));
-  }
+function env() {
+  return new Env();
 }
 
-export class Send extends Base {
-  [tagSym] = SendTag;
-
-  constructor(subject, msg) {
-    super();
-    this.subject = subject;
-    this.msg = msg;
-  }
-
-  [evalSym](env) {
-    const subject = this.subject[evalSym](env),
-      msg = this.msg[evalSym](env);
-
-    return dispatchSend(subject, msg, env);
-  }
-}
-
-export function dispatchSend(subject, msg, env) {
-  const { verb, object } = msg,
-    handler = env.lookupHandler(getTag(subject), verb, getTag(object));
-
+let dispatchMessage = (subject, msg, e) => {
+  const handler = e.lookupHandler(subject.TAG, msg.verb);
   if (handler === null) {
-    console.warn("verb", verb, "not found for", subject, verb, object);
+    console.warn("verb", msg.verb, "not found for", subject.TAG, subject);
   }
+  return handler.eval(
+    e.enter().bind("it", subject).bind("that", msg.object),
+    subject,
+    msg,
+  );
+};
 
-  return handler[evalSym](env.enter().bind("it", subject).bind("that", object));
-}
+export const { parse, run } = mkLang(
+  `McLulang {
+    Main = Send
+  
+    Send = Value Msg*
+    Msg = verb Value
 
-export class NativeHandler extends Base {
-  constructor(name, fn) {
-    super();
-    this.name = name;
-    this.fn = fn;
-  }
+    Value = Pair | PairHead
 
-  [evalSym](env) {
-    return this.fn(env.lookup("it"), env.lookup("that"), env);
-  }
-}
+    Later = "@" Value
+    ParSend = "(" Send ")"
 
-class Nil extends Base {
-  [tagSym] = NilTag;
-}
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | Later | ParSend
 
-export const NIL = new Nil();
+    Block = "{" Exprs "}"
 
-export function isFalse(v) {
-  return v === NIL;
-}
+    Exprs = Send ("," Send )*
 
-export function isTrue(v) {
-  return v !== NIL;
-}
+    Scalar = int | nil | name | MsgQuote
 
-export class Block extends Base {
-  [tagSym] = BlockTag;
+    MsgQuote = "\" Msg
 
-  constructor(items) {
-    super();
-    this.items = items;
-  }
+    int = digit+
+    nil = "(" ")"
 
-  [evalSym](env) {
-    let r = NIL;
-    for (const item of this.items) {
-      r = item[evalSym](env);
-    }
-    return r;
-  }
-}
+    name = nameStart namePart*
+    nameStart = letter | "_"
+    namePart = nameStart | digit
 
-export function getTag(o) {
-  return o[tagSym];
-}
-
-export function setTag(o, t) {
-  o[tagSym] = t;
-}
-
-setTag(BigInt.prototype, IntTag);
-setTag(String.prototype, StrTag);
-
-Object.assign(BigInt.prototype, {
-  [evalSym](_env) {
-    return this;
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+  }`,
+  {
+    Later(_, v) {
+      return new Later(v.toAst());
+    },
+    ParSend(_o, v, _c) {
+      return v.toAst();
+    },
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    Msg(verb, object) {
+      return new Msg(verb.toAst(), object.toAst());
+    },
+    MsgQuote(_, msg) {
+      return msg.toAst();
+    },
+    Pair(a, _, b) {
+      return new Pair(a.toAst(), b.toAst());
+    },
+    Block(_o, exprs, _c) {
+      return new Block(exprs.toAst());
+    },
+    Exprs(first, _, rest) {
+      return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    nil(_o, _c) {
+      return NIL;
+    },
   },
-  toSExpr() {
-    return this;
-  },
-});
+);
 
-Object.assign(String.prototype, {
-  [evalSym](_env) {
-    return this;
-  },
-  toSExpr() {
-    return this;
-  },
-});
+function main() {
+  const e = env()
+    .bindHandler(INT_TAG, "+", (s, o) => s + o)
+    .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
+      const tag = s.subject.eval(e).TAG,
+        verb = s.msg.verb;
+      e.parent.bindHandler(tag, verb, o);
+      return o;
+    });
 
-export function rawHandlersToHandlers(o) {
-  const r = {};
-  for (const key in o) {
-    r[key] = new NativeHandler(key, o[key]);
-  }
-  return r;
+  console.log(run("{@(0 add 0) does @{it + that}, 1 add 3}", e));
 }
 
-export function name(v) {
-  return new Name(v);
-}
-export function quote(v) {
-  return new Quote(v);
-}
-export function env(v) {
-  return new Env(v);
-}
-export function msg(verb, object) {
-  return new Msg(verb, object);
-}
-export function send(subject, msg) {
-  return new Send(subject, msg);
-}
-export function sends(subject, ...msgs) {
-  let sub = subject;
-  for (const msg of msgs) {
-    sub = send(sub, msg);
-  }
-  return sub;
-}
-export function block(...items) {
-  return new Block(items);
-}
-export function nil() {
-  return NIL;
-}
-
-Name.prototype.toSExpr = function () {
-  return ["name", this.name];
-};
-Pair.prototype.toSExpr = function () {
-  return ["pair", this.a.toSExpr(), this.b.toSExpr()];
-};
-Msg.prototype.toSExpr = function () {
-  return ["msg", this.verb, this.object.toSExpr()];
-};
-Send.prototype.toSExpr = function () {
-  return ["send", this.subject.toSExpr(), this.msg.toSExpr()];
-};
-Nil.prototype.toSExpr = function () {
-  return "nil";
-};
-Block.prototype.toSExpr = function () {
-  return ["block", this.items.map((item) => item.toSExpr())];
-};
-Quote.prototype.toSExpr = function () {
-  return ["@", this.value.toSExpr()];
-};
+main();
