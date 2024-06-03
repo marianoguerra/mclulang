@@ -10,10 +10,7 @@ function mkLang(g, s) {
   function parse(code) {
     const matchResult = grammar.match(code);
     if (matchResult.failed()) {
-      console.warn(
-        "parse failed",
-        matchResult.message,
-      );
+      console.warn("parse failed", matchResult.message);
       return null;
     }
     const ast = semantics(matchResult).toAst();
@@ -346,9 +343,7 @@ Env = class Env {
   }
 
   lookupHandler(tag, verb) {
-    return this.handlers[tag]?.[verb] ??
-      this.handlers[ANY_TAG]?.[verb] ??
-      null;
+    return this.handlers[tag]?.[verb] ?? this.handlers[ANY_TAG]?.[verb] ?? null;
   }
 };
 
@@ -516,7 +511,7 @@ const lang6 = mkLang(
 
 test("with the message came the quote", () => {
   const { run } = lang6,
-    m = run("\ + 2");
+    m = run(" + 2");
   expect(m.TAG).toBe(MSG_TAG);
   expect(m.verb).toBe("+");
   expect(m.object).toBe(2n);
@@ -525,34 +520,25 @@ test("with the message came the quote", () => {
 test("a quote could be forwarded to anyone", () => {
   const { run } = lang7,
     e = env()
-      .bindHandler(
-        INT_TAG,
-        "+",
-        (s, o) => s + o,
-      )
-      .bindHandler(
-        ANY_TAG,
-        "send",
-        (s, _o, e, m) => dispatchMessage(s, m.object, e),
+      .bindHandler(INT_TAG, "+", (s, o) => s + o)
+      .bindHandler(ANY_TAG, "send", (s, _o, e, m) =>
+        dispatchMessage(s, m.object, e),
       )
       .bindHandler(
         PAIR_TAG,
         "send",
         (s, _o, e, m) =>
-          new Pair(
-            dispatchMessage(s.a, m, e),
-            dispatchMessage(s.b, m, e),
-          ),
+          new Pair(dispatchMessage(s.a, m, e), dispatchMessage(s.b, m, e)),
       );
 
-  expect(run("1 send \ + 2", e)).toBe(3n);
+  expect(run("1 send  + 2", e)).toBe(3n);
   {
-    const v = run("1 : 2 send \ + 2", e);
+    const v = run("1 : 2 send  + 2", e);
     expect(v.a).toBe(3n);
     expect(v.b).toBe(4n);
   }
   {
-    const v = run("1 : 2 : 3 send \ + 2", e);
+    const v = run("1 : 2 : 3 send  + 2", e);
     expect(v.a).toBe(3n);
     expect(v.b.a).toBe(4n);
     expect(v.b.b).toBe(5n);
@@ -700,9 +686,8 @@ Env = class Env {
 
   bindHandler(tag, verb, handler) {
     this.handlers[tag] ??= {};
-    this.handlers[tag][verb] = handler instanceof Function
-      ? new NativeHandler(handler)
-      : handler;
+    this.handlers[tag][verb] =
+      handler instanceof Function ? new NativeHandler(handler) : handler;
     return this;
   }
 
@@ -714,9 +699,8 @@ Env = class Env {
   }
 
   lookupHandler(tag, verb) {
-    const v = this.handlers[tag]?.[verb] ??
-      this.handlers[ANY_TAG]?.[verb] ??
-      null;
+    const v =
+      this.handlers[tag]?.[verb] ?? this.handlers[ANY_TAG]?.[verb] ?? null;
 
     if (v) {
       return v;

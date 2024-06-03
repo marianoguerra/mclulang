@@ -75,7 +75,7 @@ const anyHandlers = rawHandlersToHandlers({
   map(subject, msg, env) {
     return dispatchSend(subject, msg, env);
   },
-  "then"(subject, pair, env) {
+  then(subject, pair, env) {
     if (isTrue(subject)) {
       return evalu(pair.a, env);
     } else {
@@ -171,7 +171,7 @@ test("compile", () => {
   expect(run("2 + 3 * 4")).toBe(20n);
   expect(run("2 + (3 * 4)")).toBe(14n);
   expect(run("{10 + 2}")).toBe(12n);
-  expect(run("10 map \ + 2")).toBe(12n);
+  expect(run("10 map  + 2")).toBe(12n);
   {
     const v = run("10 : 11 : 12");
     expect(v.a).toBe(10n);
@@ -179,12 +179,12 @@ test("compile", () => {
     expect(v.b.b).toBe(12n);
   }
   {
-    const v = run("(10 : 11) map \ + 2");
+    const v = run("(10 : 11) map  + 2");
     expect(v.a).toBe(12n);
     expect(v.b).toBe(13n);
   }
   {
-    const v = run("(10 : 11 : 12) map \ + 2");
+    const v = run("(10 : 11 : 12) map  + 2");
     expect(v.a).toBe(12n);
     expect(v.b.a).toBe(13n);
     expect(v.b.b).toBe(14n);

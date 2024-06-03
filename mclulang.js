@@ -112,7 +112,8 @@ export class Env {
   lookupHandler(subjectTag, verb, objectTag) {
     // XXX: a handler for T verb Any has more presedence than a more specific one
     // in parent env
-    const v = this.handlers[subjectTag]?.[objectTag]?.[verb] ??
+    const v =
+      this.handlers[subjectTag]?.[objectTag]?.[verb] ??
       this.handlers[subjectTag]?.[AnyTag]?.[verb] ??
       this.handlers[AnyTag]?.[objectTag]?.[verb] ??
       this.handlers[AnyTag]?.[AnyTag]?.[verb];
@@ -166,9 +167,7 @@ export function dispatchSend(subject, msg, env) {
     console.warn("verb", verb, "not found for", subject, verb, object);
   }
 
-  return handler[evalSym](
-    env.enter().bind("it", subject).bind("that", object),
-  );
+  return handler[evalSym](env.enter().bind("it", subject).bind("that", object));
 }
 
 export class NativeHandler extends Base {
