@@ -70,23 +70,20 @@ class Send {
   }
 }
 
-const mkTag = Symbol,
-  ANY_TAG = mkTag("Any"),
-  NIL_TAG = mkTag("Nil"),
-  INT_TAG = mkTag("Int"),
-  PAIR_TAG = mkTag("Pair"),
-  NAME_TAG = mkTag("Name"),
-  BLOCK_TAG = mkTag("Block"),
-  MSG_TAG = mkTag("Msg"),
-  SEND_TAG = mkTag("Send");
-
-Nil.prototype.TAG = NIL_TAG;
-BigInt.prototype.TAG = INT_TAG;
-Pair.prototype.TAG = PAIR_TAG;
-Name.prototype.TAG = NAME_TAG;
-Block.prototype.TAG = BLOCK_TAG;
-Msg.prototype.TAG = MSG_TAG;
-Send.prototype.TAG = SEND_TAG;
+const tagSym = Symbol("Tag");
+function getTag(v) {
+  return v[tagSym];
+}
+function setTag(Cls, tag) {
+  Cls.prototype[tagSym] = tag;
+}
+function mkTag(name, Cls) {
+  const tag = Symbol(name);
+  if (Cls) {
+    setTag(Cls, tag);
+  }
+  return tag;
+}
 
 class Later {
   constructor(value) {
@@ -97,6 +94,16 @@ class Later {
     return this.value;
   }
 }
+
+const ANY_TAG = mkTag("Any"),
+  NIL_TAG = mkTag("Nil", Nil),
+  INT_TAG = mkTag("Int", BigInt),
+  PAIR_TAG = mkTag("Pair", Pair),
+  NAME_TAG = mkTag("Name", Name),
+  BLOCK_TAG = mkTag("Block", Block),
+  MSG_TAG = mkTag("Msg", Msg),
+  SEND_TAG = mkTag("Send", Send),
+  LATER_TAG = mkTag("Later", Later);
 
 class NativeHandler {
   constructor(fn) {
@@ -159,9 +166,9 @@ function env() {
 }
 
 let dispatchMessage = (subject, msg, e) => {
-  const handler = e.lookupHandler(subject.TAG, msg.verb);
+  const handler = e.lookupHandler(getTag(subject), msg.verb);
   if (handler === null) {
-    console.warn("verb", msg.verb, "not found for", subject.TAG, subject);
+    console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
   }
   return handler.eval(
     e.enter().bind("it", subject).bind("that", msg.object),
@@ -276,7 +283,7 @@ function main() {
   const e = env()
     .bindHandler(INT_TAG, "+", (s, o) => s + o)
     .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
-      const tag = s.subject.eval(e).TAG,
+      const tag = getTag(s.subject.eval(e)),
         verb = s.msg.verb;
       e.parent.bindHandler(tag, verb, o);
       return o;
