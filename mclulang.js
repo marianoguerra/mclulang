@@ -71,13 +71,13 @@ class Send {
 }
 
 const tagSym = Symbol("Tag");
-function getTag(v) {
+export function getTag(v) {
   return v[tagSym];
 }
-function setTag(Cls, tag) {
+export function setTag(Cls, tag) {
   Cls.prototype[tagSym] = tag;
 }
-function mkTag(name, Cls) {
+export function mkTag(name, Cls) {
   const tag = Symbol(name);
   if (Cls) {
     setTag(Cls, tag);
@@ -95,7 +95,7 @@ class Later {
   }
 }
 
-const ANY_TAG = mkTag("Any"),
+export const ANY_TAG = mkTag("Any"),
   NIL_TAG = mkTag("Nil", Nil),
   INT_TAG = mkTag("Int", BigInt),
   PAIR_TAG = mkTag("Pair", Pair),
@@ -161,7 +161,7 @@ class Env {
   }
 }
 
-function env() {
+export function env() {
   return new Env();
 }
 
@@ -278,18 +278,3 @@ export const { parse, run } = mkLang(
     },
   },
 );
-
-function main() {
-  const e = env()
-    .bindHandler(INT_TAG, "+", (s, o) => s + o)
-    .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
-      const tag = getTag(s.subject.eval(e)),
-        verb = s.msg.verb;
-      e.parent.bindHandler(tag, verb, o);
-      return o;
-    });
-
-  console.log(run("{@(0 add 0) does @{it + that}, 1 add 3}", e));
-}
-
-main();

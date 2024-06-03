@@ -32,5 +32,24 @@
     - `@a is 42`
   - message handlers are a later value bound to the Msg tag
     - `@(0 add 0) does @(it + that)`
+  - conditions can be expressed with a native handler and Later for short circut behavior
+    - `() ? @ 2 : 3` -> 3
+    - `1 ? @ 2 : 3` -> 2
 - Env: bindings and handlers
 
+## mcli
+
+```sh
+./mcli.js '() ? @ 2 : 3' '1 ? @ 2 : 3' '() ? @ 2 : 3 ? @ 4 : 5' '() ? @ 2 : () ? @ 4 : 5' '{@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}'
+
+>  () ? @ 2 : 3
+3n
+>  1 ? @ 2 : 3
+2n
+>  () ? @ 2 : 3 ? @ 4 : 5
+4n
+>  () ? @ 2 : () ? @ 4 : 5
+5n
+>  {@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}
+5n
+```
