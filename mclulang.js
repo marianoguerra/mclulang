@@ -1,29 +1,5 @@
 import * as ohm from "ohm-js";
 
-function mkLang(g, s) {
-  const grammar = ohm.grammar(g),
-    semantics = grammar.createSemantics();
-
-  semantics.addOperation("toAst", s);
-
-  function parse(code) {
-    const matchResult = grammar.match(code);
-    if (matchResult.failed()) {
-      console.warn("parse failed", matchResult.message);
-      return null;
-    }
-    const ast = semantics(matchResult).toAst();
-    return ast;
-  }
-
-  function run(code, e = env()) {
-    const ast = parse(code);
-    return ast ? ast.eval(e) : null;
-  }
-
-  return { parse, run };
-}
-
 class Nil {
   eval(_e) {
     return this;
@@ -193,6 +169,30 @@ let dispatchMessage = (subject, msg, e) => {
     msg,
   );
 };
+
+function mkLang(g, s) {
+  const grammar = ohm.grammar(g),
+    semantics = grammar.createSemantics();
+
+  semantics.addOperation("toAst", s);
+
+  function parse(code) {
+    const matchResult = grammar.match(code);
+    if (matchResult.failed()) {
+      console.warn("parse failed", matchResult.message);
+      return null;
+    }
+    const ast = semantics(matchResult).toAst();
+    return ast;
+  }
+
+  function run(code, e = env()) {
+    const ast = parse(code);
+    return ast ? ast.eval(e) : null;
+  }
+
+  return { parse, run };
+}
 
 export const { parse, run } = mkLang(
   `McLulang {
