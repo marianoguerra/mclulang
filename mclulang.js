@@ -50,7 +50,7 @@ export const NIL = new Nil(),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
   LATER_TAG = mkTag("Later", Later),
-  NULL_REPLY = (s, o, e, m) =>
+  NOREP = (s, o, e, m) =>
     console.warn("verb", m.verb, "not found for", getTag(s), s, o, e);
 export class Env {
   constructor(parent = null) {
@@ -77,9 +77,7 @@ export class Env {
     return this.replies[tag]?.[verb] ?? this.parent?.findReply(tag, verb);
   }
   findReplyOrAny(tag, verb) {
-    return (
-      this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? NULL_REPLY
-    );
+    return this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? NOREP;
   }
   eval(v) {
     return this.sendRawMsg(v, new Msg("eval", this));
