@@ -34,6 +34,10 @@ This is an attempt at answering that question based on the following:
   - `[]`
   - `[1]`
   - `[1, 2, 3]`
+- Map (JS Map)
+  - `#{}`
+  - `#{1: 'one'}`
+  - `#{1: 'one', 'two': 2}`
 - Block
   - `{1}`
   - `{1, 2, 3}`
@@ -55,8 +59,8 @@ This is an attempt at answering that question based on the following:
   - message handlers are a later value bound to the Msg tag
     - `@(0 add 0) does @(it + that)`
   - conditions can be expressed with a native handler and Later for short circut behavior
-    - `() ? @ 2 : 3` -> 3
-    - `1 ? @ 2 : 3` -> 2
+    - `() ? @ 2 : 3` -> `3`
+    - `1 ? @ 2 : 3` -> `2`
 - Env: bindings and handlers
 
 ## mcli
@@ -104,7 +108,7 @@ Other examples:
 >  #{}
 #{}
 >  #{1: 'one', 'two': 2}
-#{1 : 'one', 'two' : 2}
+#{1: 'one', 'two': 2}
 >  #{1: 'one', 'two': 2} . 1
 'one'
 ```

@@ -67,7 +67,7 @@ setToStr(Array, function () {
 });
 setToStr(Map, function () {
   return `#{${Array.from(this.entries())
-    .map(([k, v], _i, _) => `${toStr(k)} : ${toStr(v)}`)
+    .map(([k, v], _i, _) => `${toStr(k)}: ${toStr(v)}`)
     .join(", ")}}`;
 });
 setToStr(Block, function () {
