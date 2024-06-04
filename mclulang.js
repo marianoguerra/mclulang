@@ -1,4 +1,3 @@
-import * as ohm from "ohm-js";
 export class Nil {}
 export class Pair {
   constructor(a, b) {
@@ -73,10 +72,7 @@ export class Env {
     return this;
   }
   findReply(tag, verb) {
-    return (
-      this.replies[tag]?.[verb] ??
-      (this.parent && this.parent.findReply(tag, verb))
-    );
+    return this.replies[tag]?.[verb] ?? this.parent?.findReply(tag, verb);
   }
   findReplyOrAny(tag, verb) {
     return this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? null;
@@ -96,13 +92,13 @@ export class Env {
     const reply = this.findReplyOrAny(getTag(subject), msg.verb);
     if (reply === null) {
       console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
-    } else {
-      return reply instanceof Function
-        ? reply(subject, msg.object, this, msg)
-        : this.eval(reply);
     }
+    return reply instanceof Function
+      ? reply(subject, msg.object, this, msg)
+      : this.eval(reply);
   }
 }
+import * as ohm from "ohm-js";
 export const grammar = ohm.grammar(`McLulang {
     Main = Send
     Send = Value Msg*
