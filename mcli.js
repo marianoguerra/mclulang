@@ -13,7 +13,6 @@ import {
   BLOCK_TAG,
   MSG_TAG,
   LATER_TAG,
-  FN_TAG,
   NIL,
   Env,
   Nil,

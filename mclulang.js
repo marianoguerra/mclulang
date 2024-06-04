@@ -82,10 +82,10 @@ export class Env {
     const handler = this.lookupHandler(getTag(subject), msg.verb);
     if (handler === null) {
       console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
-    } else if (handler instanceof Function) {
-      return handler(subject, msg.object, this, msg);
     } else {
-      return this.eval(handler);
+      return handler instanceof Function
+        ? handler(subject, msg.object, this, msg)
+        : this.eval(handler);
     }
   }
 }
@@ -106,7 +106,6 @@ export const NIL = new Nil(),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
   LATER_TAG = mkTag("Later", Later),
-  FN_TAG = mkTag("Fn", Function),
   grammar = ohm.grammar(`McLulang {
     Main = Send
     Send = Value Msg*
@@ -126,12 +125,9 @@ export const NIL = new Nil(),
     ParSend = "(" Send ")"
     float = digit+ "." digit+
     int = digit+
-    str = stringDelimiter (~stringDelimiter any)* stringDelimiter
-    stringDelimiter = "'"
+    str = "'" (~"'" any)* "'"
     nil = "(" ")"
-    name = nameStart namePart*
-    nameStart = letter | "_"
-    namePart = nameStart | digit
+    name = (letter | "_") (letter | "_" | digit)*
     MsgQuote = "\\\\" Msg
   }`),
   semantics = grammar.createSemantics().addOperation("toAst", {
