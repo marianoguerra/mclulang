@@ -61,15 +61,15 @@ This is an attempt at answering that question based on the following:
 ./mcli.js '() ? @ 2 : 3' '1 ? @ 2 : 3' '() ? @ 2 : 3 ? @ 4 : 5' '() ? @ 2 : () ? @ 4 : 5' '{@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}'
 
 >  () ? @ 2 : 3
-3n
+3
 >  1 ? @ 2 : 3
-2n
+2
 >  () ? @ 2 : 3 ? @ 4 : 5
-4n
+4
 >  () ? @ 2 : () ? @ 4 : 5
-5n
+5
 >  {@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}
-5n
+5
 ```
 
 Other examples:
@@ -77,4 +77,10 @@ Other examples:
 ```sh
 >  'hi' * 5
 hihihihihi
+
+>  1 send \ + 2
+3
+
+>  1 : 2 : 3 send \ + 2
+3 : 4 : 5
 ```

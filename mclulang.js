@@ -1,11 +1,11 @@
 import * as ohm from "ohm-js";
 
-class Nil {
+export class Nil {
   eval(_e) {
     return this;
   }
 }
-const NIL = new Nil();
+export const NIL = new Nil();
 
 BigInt.prototype.eval = function (_e) {
   return this;
@@ -17,7 +17,7 @@ String.prototype.eval = function (_e) {
   return this;
 };
 
-class Pair {
+export class Pair {
   constructor(a, b) {
     this.a = a;
     this.b = b;
@@ -164,7 +164,7 @@ class Env {
 
 export const env = () => new Env();
 
-let dispatchMessage = (subject, msg, e) => {
+export function dispatchMessage(subject, msg, e) {
   const handler = e.lookupHandler(getTag(subject), msg.verb);
   if (handler === null) {
     console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
@@ -174,7 +174,7 @@ let dispatchMessage = (subject, msg, e) => {
     subject,
     msg,
   );
-};
+}
 
 function mkLang(g, s) {
   const grammar = ohm.grammar(g),
@@ -221,7 +221,7 @@ export const { parse, run } = mkLang(
 
     Scalar = float | int | str | nil | name | MsgQuote
 
-    MsgQuote = "\" Msg
+    MsgQuote = "\\\\" Msg
 
     int = digit+
     float = digit+ "." digit+

@@ -471,7 +471,7 @@ const lang6 = mkLang(
 
     Scalar = int | nil | name | MsgQuote
 
-    MsgQuote = "^" Msg
+    MsgQuote = "\\\\" Msg
 
     int = digit+
     nil = "(" ")"
@@ -539,14 +539,14 @@ test("with the message came the quote, a quote could be forwarded to anyone", ()
           new Pair(dispatchMessage(s.a, m, e), dispatchMessage(s.b, m, e)),
       );
 
-  expect(run("1 send ^ + 2", e)).toBe(3n);
+  expect(run("1 send \\ + 2", e)).toBe(3n);
   {
-    const v = run("1 : 2 send ^ + 2", e);
+    const v = run("1 : 2 send \\ + 2", e);
     expect(v.a).toBe(3n);
     expect(v.b).toBe(4n);
   }
   {
-    const v = run("1 : 2 : 3 send ^ + 2", e);
+    const v = run("1 : 2 : 3 send \\ + 2", e);
     expect(v.a).toBe(3n);
     expect(v.b.a).toBe(4n);
     expect(v.b.b).toBe(5n);
@@ -586,7 +586,7 @@ const lang7 = mkLang(
 
     Scalar = int | nil | name | MsgQuote
 
-    MsgQuote = "^" Msg
+    MsgQuote = "\\\\" Msg
 
     int = digit+
     nil = "(" ")"

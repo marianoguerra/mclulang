@@ -1,5 +1,4 @@
 #!/usr/bin/env bun
-
 import {
   run,
   env,
@@ -8,10 +7,21 @@ import {
   NIL_TAG,
   ANY_TAG,
   SEND_TAG,
+  PAIR_TAG,
+  Nil,
+  Pair,
   getTag,
+  dispatchMessage,
 } from "./mclulang.js";
 
 const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}";
+
+Nil.prototype.toString = function () {
+  return "()";
+};
+Pair.prototype.toString = function () {
+  return `${this.a.toString()} : ${this.b.toString()}`;
+};
 
 function main(code = DEFAULT_CODE) {
   const e = env()
@@ -26,6 +36,15 @@ function main(code = DEFAULT_CODE) {
     })
     .bindHandler(NIL_TAG, "?", (_s, o, e) => o.b.eval(e))
     .bindHandler(ANY_TAG, "?", (_s, o, e) => o.a.eval(e))
+    .bindHandler(ANY_TAG, "send", (s, _o, e, m) =>
+      dispatchMessage(s, m.object, e),
+    )
+    .bindHandler(
+      PAIR_TAG,
+      "send",
+      (s, _o, e, m) =>
+        new Pair(dispatchMessage(s.a, m, e), dispatchMessage(s.b, m, e)),
+    )
     .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
       const tag = getTag(s.subject.eval(e)),
         verb = s.msg.verb;
@@ -34,7 +53,7 @@ function main(code = DEFAULT_CODE) {
     });
 
   console.log("> ", code);
-  console.log(run(code, e));
+  console.log(run(code, e).toString());
 }
 
 for (const line of Bun.argv.slice(2)) {
