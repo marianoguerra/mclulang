@@ -2,3 +2,12 @@ p {
   text-indent: 0 !important;
   padding-bottom: 1em;
 }
+
+code {
+  font-size: 1em;
+  color: darkblue;
+}
+
+.codeblock_name {
+  display: none;
+}

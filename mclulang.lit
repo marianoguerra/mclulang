@@ -7,16 +7,36 @@
 
 @s Introduction
 
+This is an attempt at introducing the ideas of [mclulang](https://github.com/marianoguerra/mclulang) as [Literate Programming](https://en.wikipedia.org/wiki/Literate_programming).
+
 You can grow this language by appending each code snippet to the end
-of a file called `mclulang.test.js`
-and running `bun test --watch mclulang.test.js` after you add the first snippet.
+of a file called `mclulang.lit.test.js`
+and running `bun test --watch mclulang.lit.test.js` after you add the first snippet.
 
 
-The end result is here [mclulang.test.js](https://github.com/marianoguerra/mclulang/blob/main/mclulang.test.js)
+The end result is here [mclulang.lit.test.js](https://github.com/marianoguerra/mclulang/blob/main/mclulang.lit.test.js)
 
 
-The "collapsed" implementations is here [mclulang.js](https://github.com/marianoguerra/mclulang/blob/main/mclulang.js)
+The "collapsed" and more complete implementations is here [mclulang.js](https://github.com/marianoguerra/mclulang/blob/main/mclulang.js)
+
+@s Motivation
+
+> Yes, that was the big revelation to me when I was in graduate school—when I finally understood that the half page of code on the bottom of page 13 of the Lisp 1.5 manual was Lisp in itself. These were **“Maxwell’s Equations of Software!”** This is the whole world of programming in a few lines that I can put my hand over. 
+>
+> -- [A Conversation with Alan Kay](https://queue.acm.org/detail.cfm?id=1039523)
+
+**Which are Maxwell's equations of Object Oriented software?**
+
+This is an attempt at answering that question based on the following:
+
+> OOP to me means **only messaging**, local retention and protection and 
+> hiding of state-process, and **extreme late-binding of all things**.
+>
+> -- [Dr. Alan Kay on the Meaning of “Object-Oriented Programming”](http://userpage.fu-berlin.de/~ram/pub/pub_jf47ht81Ht/doc_kay_oop_en)
+
 @s Setup
+
+We are going to use [ohmjs](https://ohmjs.org/) for the parser and [bun](https://bun.sh/docs/test/writing) to run the tests.
 
 --- Includes
 import * as ohm from "ohm-js";
@@ -35,7 +55,7 @@ class Nil {
 const NIL = new Nil();
 ---
 
-Need a basic env to eval
+We need a basic environment to eval nothing
 
 --- Basic Env
 let Env = class Env {};
@@ -45,7 +65,7 @@ function env() {
 }
 ---
 
-utility function to create languages since we are going to be evolving it
+Since we are going to be [growing a language](https://www.youtube.com/watch?v=lw6TaiXzHAE) let's define an utility function to create them
 
 --- mkLang
 function mkLang(g, s) {
@@ -73,7 +93,7 @@ function mkLang(g, s) {
 }
 ---
 
-The first version allows only nil `()`
+The first version of our language only allows nil has the following syntax: `()`
 
 --- lang0
 const lang0 = mkLang(
@@ -99,7 +119,9 @@ test("in the beginning there was nothing", () => {
 });
 ---
 
-@s Scalar
+@s Let there be scalars
+
+Let's add support for integers which map to JavaScript `BigInt`
 
 --- lang1
 const lang1 = mkLang(
@@ -122,7 +144,7 @@ const lang1 = mkLang(
 );
 ---
 
-Monkey patch BigInt to have eval, we could use a symbol but for code clarity we monkey patch:
+Every type in our language needs an `eval(env)` method, we are going to monkey patch it for code clarity, we could use a symbol instead to avoid poluting the prototype
 
 --- monkey patch BigInt
 BigInt.prototype.eval = function (_e) {
@@ -130,7 +152,7 @@ BigInt.prototype.eval = function (_e) {
 };
 ---
 
-Test that it works:
+Let's test that it works:
 
 --- test lang1
 test("then the programmer made the Scalar and saw it was good", () => {
@@ -139,7 +161,9 @@ test("then the programmer made the Scalar and saw it was good", () => {
 });
 ---
 
-@s Pairs
+@s Let there be pairs to separate the head from the tail
+
+First let define the `Pair` type
 
 --- Pair
 class Pair {
@@ -184,7 +208,7 @@ const lang2 = mkLang(
 );
 ---
 
-Test that it works, notice how we can used chained pairs to create a cons list:
+Test that it works, notice how we can used chained pairs to create a "cons lists":
 
 --- test lang2
 test("but it saw the Scalar was alone, so it made the Pair", () => {
@@ -204,7 +228,7 @@ test("but it saw the Scalar was alone, so it made the Pair", () => {
 });
 ---
 
-@s Names
+@s With pairs came the need for names
 
 --- Name
 class Name {
@@ -274,7 +298,7 @@ const lang3 = mkLang(
 );
 ---
 
-And test that unbound names return `NIL` and bound ones return its value:
+Let's test that unbound names return `NIL` and bound ones return its value:
 
 --- test lang3
 test("with more than one thing it needed the Name", () => {
@@ -365,7 +389,9 @@ test("the Name allowed more than pairs, the Block was created", () => {
 });
 ---
 
-@s Msg
+@s Subjects verbs and objects: Messages and Sends
+
+If values are subjects then messages have verbs and objects
 
 --- Msg
 class Msg {
@@ -379,6 +405,8 @@ class Msg {
   }
 }
 ---
+
+A message can be sent to a subject:
 
 @s Send
 
@@ -395,7 +423,7 @@ class Send {
 }
 ---
 
-@s Dispatching messages
+@s Dispatching messages by tag
 
 Need to attach tags to different types to decide which handler to use for a message send:
 
@@ -567,7 +595,7 @@ test("to communicate it created the message", () => {
 });
 ---
 
-@s Message quotes and map
+@s To hold a message and forward it later we need to quote it
 
 To get a message as a value we have to quote it with `^`:
 
@@ -679,7 +707,7 @@ test("with the message came the quote, a quote could be forwarded to anyone", ()
 });
 ---
 
-@s Later evaluation
+@s To decide between alternatives we need to evaluate just one, but Later
 
 Introduce `Later` which wraps a value and on `eval` it returns the value:
 
@@ -777,7 +805,9 @@ const lang7 = mkLang(
 );
 ---
 
-Test `Later` by implementing a ternary operator by defining a handler for the `?` message with one implementation for `()` and another for all other types (`ANY_TAG`) and using `Later` to quote the pair passed as object to let each handler eval the side that matches "true" or "false":
+Test `Later` by implementing a "ternary operator" by defining a handler for the `?` message with one implementation for `()` and another for all other types (`ANY_TAG`) and using `Later` to quote the pair passed as object to let each handler eval the side that matches "true" or "false":
+
+This means that the only "falsy" value in mclulag is `()`.
 
 --- test lang7
 test("with alternatives some thing where left to be evaluated later", () => {
@@ -793,7 +823,7 @@ test("with alternatives some thing where left to be evaluated later", () => {
 });
 ---
 
-@s Env as a stack
+@s Messages evaluation is contextual
 
 Redefine `Env` to allow `enter`ing nested frames:
 
@@ -877,7 +907,7 @@ class NativeHandler {
 }
 ---
 
-Test variable assignment can be implemented by creating a handler for the `is` message on the `Name` type which binds its value to the message object in the parent frame:
+Test that variable assignment can be implemented by creating a handler for the `is` message on the `Name` type which binds its value to the message object in the parent frame:
 
 --- test lang8 is
 test("like the meaning of a name", () => {
