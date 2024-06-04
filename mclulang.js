@@ -5,7 +5,6 @@ class Nil {
     return this;
   }
 }
-
 const NIL = new Nil();
 
 BigInt.prototype.eval = function (_e) {
@@ -23,7 +22,6 @@ class Pair {
     this.a = a;
     this.b = b;
   }
-
   eval(e) {
     return new Pair(this.a.eval(e), this.b.eval(e));
   }
@@ -33,7 +31,6 @@ class Name {
   constructor(value) {
     this.value = value;
   }
-
   eval(e) {
     return e.lookup(this.value);
   }
@@ -43,13 +40,11 @@ class Block {
   constructor(items = []) {
     this.items = items;
   }
-
   eval(e) {
     let r = NIL;
     for (const item of this.items) {
       r = item.eval(e);
     }
-
     return r;
   }
 }
@@ -59,7 +54,6 @@ class Msg {
     this.verb = verb;
     this.object = object;
   }
-
   eval(e) {
     return new Msg(this.verb, this.object.eval(e));
   }
@@ -70,16 +64,13 @@ class Send {
     this.subject = subject;
     this.msg = msg;
   }
-
   eval(e) {
     return dispatchMessage(this.subject.eval(e), this.msg.eval(e), e);
   }
 }
 
 const tagSym = Symbol("Tag");
-export function getTag(v) {
-  return v[tagSym];
-}
+export const getTag = (v) => v[tagSym];
 export function setTag(Cls, tag) {
   Cls.prototype[tagSym] = tag;
 }
@@ -95,7 +86,6 @@ class Later {
   constructor(value) {
     this.value = value;
   }
-
   eval(_e) {
     return this.value;
   }
@@ -117,7 +107,6 @@ class NativeHandler {
   constructor(fn) {
     this.fn = fn;
   }
-
   eval(e, subject, msg) {
     return this.fn(subject, msg.object, e, msg);
   }
@@ -173,9 +162,7 @@ class Env {
   }
 }
 
-export function env() {
-  return new Env();
-}
+export const env = () => new Env();
 
 let dispatchMessage = (subject, msg, e) => {
   const handler = e.lookupHandler(getTag(subject), msg.verb);
