@@ -91,8 +91,8 @@ export class Env {
       .sendRawMsg(subj, msg);
   }
   sendRawMsg(s, m) {
-    const r = this.findReplyOrAny(getTag(s), m.verb);
-    return r instanceof Function ? r(s, m.obj, this, m) : this.eval(r);
+    const rep = this.findReplyOrAny(getTag(s), m.verb);
+    return rep instanceof Function ? rep(s, m.obj, this, m) : this.eval(rep);
   }
 }
 import * as ohm from "ohm-js";
