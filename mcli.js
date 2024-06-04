@@ -2,6 +2,7 @@
 /*globals Bun*/
 import {
   run,
+  tagSym,
   NAME_TAG,
   INT_TAG,
   FLOAT_TAG,
@@ -76,6 +77,9 @@ setToStr(Block, function () {
 setToStr(String, function () {
   return "'" + this + "'";
 });
+setToStr(Symbol, function () {
+  return `#Tag "${this.description})"`;
+});
 
 function setDefToStr(Cls) {
   setToStr(Cls, Cls.prototype.toString);
@@ -148,6 +152,15 @@ function main(code = DEFAULT_CODE) {
         log("eval later!", toStr(s));
         return s.value;
       })
+      .bindReply(STR_TAG, "as-tag", (s, _o) => Symbol(s))
+      .bindReply(ANY_TAG, "apply-tag", (s, o) => {
+        if (typeof o === "symbol") {
+          s[tagSym] = o;
+        } else {
+          console.warn("apply-tag: invalid tag", o);
+        }
+        return s;
+      })
       .bindReply(INT_TAG, "+", (s, o) => s + o)
       .bindReply(STR_TAG, "+", (s, o) => s + o)
       .bindReply(STR_TAG, "*", (s, o) => {
@@ -178,7 +191,7 @@ function main(code = DEFAULT_CODE) {
         return o;
       })
       .bindReply(SEND_TAG, "does", (s, o, e) => {
-        const tag = getTag(s.subj),
+        const tag = getTag(e.eval(s.subj)),
           verb = s.msg.verb;
         e.parent.bindReply(tag, verb, o);
         return o;

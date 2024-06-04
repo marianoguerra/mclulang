@@ -33,7 +33,7 @@ export class Later {
   }
 }
 export const NIL = new Nil(),
-  tagSym = Symbol("Tag"),
+  tagSym = Symbol("TagSym"),
   getTag = (v) => v[tagSym],
   setTag = (Cls, tag) => ((Cls.prototype[tagSym] = tag), tag),
   mkTag = (name, Cls) => setTag(Cls, Symbol(name)),
@@ -50,6 +50,7 @@ export const NIL = new Nil(),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
   LATER_TAG = mkTag("Later", Later),
+  TAG_TAG = mkTag("Tag", Symbol),
   NOREP = (s, o, e, m) =>
     console.warn("verb", m.verb, "not found for", getTag(s), s, o, e);
 export class Env {
