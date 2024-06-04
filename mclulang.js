@@ -47,7 +47,7 @@ export class Env {
     return this;
   }
   lookup(key) {
-    return this.bindings[key] ?? NIL;
+    return this.bindings[key] ?? (this.parent ? this.parent.lookup(key) : NIL);
   }
   bindHandler(tag, verb, handler) {
     this.handlers[tag] ??= {};

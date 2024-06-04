@@ -103,8 +103,9 @@ function main(code = DEFAULT_CODE) {
         return s;
       })
       .bindHandler(NAME_TAG, "eval", (s, _o, e, _m) => {
-        log("eval name!", s.value);
-        return e.lookup(s.value);
+        const v = e.lookup(s.value);
+        log("eval name!", s.value, "->", toStr(v));
+        return v;
       })
       .bindHandler(PAIR_TAG, "eval", (s, _o, e, _m) => {
         log("eval pair!", toStr(s));
