@@ -1,7 +1,6 @@
 #!/usr/bin/env bun
 import {
   run,
-  env,
   NAME_TAG,
   INT_TAG,
   FLOAT_TAG,
@@ -16,6 +15,7 @@ import {
   LATER_TAG,
   FN_TAG,
   NIL,
+  Env,
   Nil,
   Pair,
   Name,
@@ -82,7 +82,7 @@ function main(code = DEFAULT_CODE) {
     nlog = () => {},
     log = nlog,
     _log = clog,
-    e = env()
+    e = new Env()
       .bindHandler(ANY_TAG, "eval", (s, _o, e, _m) => {
         log("eval any!", toStr(s));
         return s;
@@ -129,7 +129,7 @@ function main(code = DEFAULT_CODE) {
       })
       .bindHandler(SEND_TAG, "eval", (s, _o, e, _m) => {
         log("eval send!", toStr(s));
-        return e.dispatchMessage(s.subject, s.msg);
+        return e.sendMessage(s.subject, s.msg);
       })
       .bindHandler(LATER_TAG, "eval", (s, _o, e, _m) => {
         log("eval later!", toStr(s));
@@ -146,18 +146,15 @@ function main(code = DEFAULT_CODE) {
       })
       .bindHandler(NIL_TAG, "?", (_s, o, e) => e.eval(o.b))
       .bindHandler(ANY_TAG, "?", (_s, o, e) => e.eval(o.a))
-      .bindHandler(ANY_TAG, "send", (s, _o, e, m) =>
-        e.dispatchMessage(s, m.object),
-      )
+      .bindHandler(ANY_TAG, "send", (s, _o, e, m) => e.sendMessage(s, m.object))
       .bindHandler(
         PAIR_TAG,
         "send",
-        (s, _o, e, m) =>
-          new Pair(e.dispatchMessage(s.a, m), e.dispatchMessage(s.b, m)),
+        (s, _o, e, m) => new Pair(e.sendMessage(s.a, m), e.sendMessage(s.b, m)),
       )
       .bindHandler(ARRAY_TAG, "send", (s, _o, e, m) =>
         // NOTE: if forwards send and not the message itself so its recursive
-        s.map((v, _i, _) => e.dispatchMessage(v, m)),
+        s.map((v, _i, _) => e.sendMessage(v, m)),
       )
       .bindHandler(NAME_TAG, "is", (s, o, e, _m) => {
         log("bind name!", s.value, o);
