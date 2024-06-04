@@ -243,7 +243,7 @@ export const { parse, run } = mkLang(
     namePart = nameStart | digit
 
     verb = verbStart verbPart*
-    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "!" | "?" | "." | letter
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "<" | ">" | "!" | "?" | "." | letter
     verbPart = verbStart | digit
   }`,
   {
