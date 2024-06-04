@@ -1,20 +1,14 @@
 import * as ohm from "ohm-js";
 
 export const evalSym = Symbol("eval");
-
-export class Nil {
-  [evalSym](_e) {
-    return this;
-  }
+export function evalu(v, e) {
+  return v[evalSym](e);
 }
-export const NIL = new Nil();
-
 export const setEval = (Cls, fn) => (Cls.prototype[evalSym] = fn),
   setEvalId = (Cls) =>
     setEval(Cls, function (_e) {
       return this;
     });
-
 setEvalId(BigInt);
 setEvalId(Number);
 setEvalId(String);
@@ -22,9 +16,12 @@ setEval(Array, function (e) {
   return this.map((v, _i, t) => evalu(v, e));
 });
 
-export function evalu(v, e) {
-  return v[evalSym](e);
+export class Nil {
+  [evalSym](_e) {
+    return this;
+  }
 }
+export const NIL = new Nil();
 
 export class Pair {
   constructor(a, b) {
@@ -185,7 +182,6 @@ class Env {
     );
   }
 }
-
 export const env = () => new Env();
 
 function mkLang(g, s) {
@@ -200,8 +196,7 @@ function mkLang(g, s) {
       console.warn("parse failed", matchResult.message);
       return null;
     }
-    const ast = semantics(matchResult).toAst();
-    return ast;
+    return semantics(matchResult).toAst();
   }
 
   function run(code, e = env()) {
