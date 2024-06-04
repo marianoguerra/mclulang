@@ -33,6 +33,23 @@ export class Later {
     this.value = value;
   }
 }
+export const NIL = new Nil(),
+  tagSym = Symbol("Tag"),
+  getTag = (v) => v[tagSym],
+  setTag = (Cls, tag) => ((Cls.prototype[tagSym] = tag), tag),
+  mkTag = (name, Cls) => setTag(Cls, Symbol(name)),
+  ANY_TAG = mkTag("Any", class {}),
+  NIL_TAG = mkTag("Nil", Nil),
+  INT_TAG = mkTag("Int", BigInt),
+  FLOAT_TAG = mkTag("Float", Number),
+  STR_TAG = mkTag("Str", String),
+  PAIR_TAG = mkTag("Pair", Pair),
+  NAME_TAG = mkTag("Name", Name),
+  BLOCK_TAG = mkTag("Block", Block),
+  ARRAY_TAG = mkTag("Array", Array),
+  MSG_TAG = mkTag("Msg", Msg),
+  SEND_TAG = mkTag("Send", Send),
+  LATER_TAG = mkTag("Later", Later);
 export class Env {
   constructor(parent = null) {
     this.parent = parent;
@@ -89,24 +106,7 @@ export class Env {
     }
   }
 }
-export const NIL = new Nil(),
-  tagSym = Symbol("Tag"),
-  getTag = (v) => v[tagSym],
-  setTag = (Cls, tag) => ((Cls.prototype[tagSym] = tag), tag),
-  mkTag = (name, Cls) => setTag(Cls, Symbol(name)),
-  ANY_TAG = mkTag("Any", class {}),
-  NIL_TAG = mkTag("Nil", Nil),
-  INT_TAG = mkTag("Int", BigInt),
-  FLOAT_TAG = mkTag("Float", Number),
-  STR_TAG = mkTag("Str", String),
-  PAIR_TAG = mkTag("Pair", Pair),
-  NAME_TAG = mkTag("Name", Name),
-  BLOCK_TAG = mkTag("Block", Block),
-  ARRAY_TAG = mkTag("Array", Array),
-  MSG_TAG = mkTag("Msg", Msg),
-  SEND_TAG = mkTag("Send", Send),
-  LATER_TAG = mkTag("Later", Later),
-  grammar = ohm.grammar(`McLulang {
+export const grammar = ohm.grammar(`McLulang {
     Main = Send
     Send = Value Msg*
     Msg = verb Value

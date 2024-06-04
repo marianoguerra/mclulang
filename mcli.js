@@ -1,4 +1,5 @@
 #!/usr/bin/env bun
+/*globals Bun*/
 import {
   run,
   NAME_TAG,
@@ -77,28 +78,26 @@ setDefToStr(BigInt);
 setDefToStr(Number);
 
 function main(code = DEFAULT_CODE) {
-  const clog = console.log.bind(console),
-    nlog = () => {},
-    log = nlog,
-    _log = clog,
+  const log = () => {},
+    //log = console.log.bind(console),
     e = new Env()
-      .bindHandler(ANY_TAG, "eval", (s, _o, e, _m) => {
+      .bindHandler(ANY_TAG, "eval", (s, _o, _e, _m) => {
         log("eval any!", toStr(s));
         return s;
       })
-      .bindHandler(INT_TAG, "eval", (s, _o, e, _m) => {
+      .bindHandler(INT_TAG, "eval", (s, _o, _e, _m) => {
         log("eval int!", s);
         return s;
       })
-      .bindHandler(FLOAT_TAG, "eval", (s, _o, e, _m) => {
+      .bindHandler(FLOAT_TAG, "eval", (s, _o, _e, _m) => {
         log("eval float!", s);
         return s;
       })
-      .bindHandler(STR_TAG, "eval", (s, _o, e, _m) => {
+      .bindHandler(STR_TAG, "eval", (s, _o, _e, _m) => {
         log("eval str!", s);
         return s;
       })
-      .bindHandler(NIL_TAG, "eval", (s, _o, e, _m) => {
+      .bindHandler(NIL_TAG, "eval", (s, _o, _e, _m) => {
         log("eval nil!");
         return s;
       })
@@ -121,7 +120,7 @@ function main(code = DEFAULT_CODE) {
       })
       .bindHandler(ARRAY_TAG, "eval", (s, _o, e, _m) => {
         log("eval array!", toStr(s));
-        return s.map((v, _i, t) => e.eval(v));
+        return s.map((v, _i, _) => e.eval(v));
       })
       .bindHandler(MSG_TAG, "eval", (s, _o, e, _m) => {
         log("eval msg!", toStr(s));
@@ -131,7 +130,7 @@ function main(code = DEFAULT_CODE) {
         log("eval send!", toStr(s));
         return e.sendMessage(s.subject, s.msg);
       })
-      .bindHandler(LATER_TAG, "eval", (s, _o, e, _m) => {
+      .bindHandler(LATER_TAG, "eval", (s, _o, _e, _m) => {
         log("eval later!", toStr(s));
         return s.value;
       })
@@ -161,7 +160,7 @@ function main(code = DEFAULT_CODE) {
         e.parent.bind(s.value, o);
         return o;
       })
-      .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
+      .bindHandler(SEND_TAG, "does", (s, o, e, _m) => {
         const tag = getTag(s.subject),
           verb = s.msg.verb;
         e.parent.bindHandler(tag, verb, o);
