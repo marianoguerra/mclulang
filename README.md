@@ -30,6 +30,10 @@ This is an attempt at answering that question based on the following:
     - same as `1 : (2 : 3)`
 - Name (variable)
   - `foo`
+- Array (JS Array)
+  - `[]`
+  - `[1]`
+  - `[1, 2, 3]`
 - Block
   - `{1}`
   - `{1, 2, 3}`
