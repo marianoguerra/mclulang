@@ -16,14 +16,14 @@ export class Block {
   }
 }
 export class Msg {
-  constructor(verb, object) {
+  constructor(verb, obj) {
     this.verb = verb;
-    this.object = object;
+    this.obj = obj;
   }
 }
 export class Send {
-  constructor(subject, msg) {
-    this.subject = subject;
+  constructor(subj, msg) {
+    this.subj = subj;
     this.msg = msg;
   }
 }
@@ -49,7 +49,9 @@ export const NIL = new Nil(),
   MAP_TAG = mkTag("Map", Map),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
-  LATER_TAG = mkTag("Later", Later);
+  LATER_TAG = mkTag("Later", Later),
+  NULL_REPLY = (s, o, e, m) =>
+    console.warn("verb", m.verb, "not found for", getTag(s), s, o, e);
 export class Env {
   constructor(parent = null) {
     this.parent = parent;
@@ -75,27 +77,24 @@ export class Env {
     return this.replies[tag]?.[verb] ?? this.parent?.findReply(tag, verb);
   }
   findReplyOrAny(tag, verb) {
-    return this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? null;
+    return (
+      this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? NULL_REPLY
+    );
   }
   eval(v) {
-    return this.sendRawMessage(v, new Msg("eval", this));
+    return this.sendRawMsg(v, new Msg("eval", this));
   }
-  sendMessage(s, m) {
-    const subject = this.eval(s),
+  sendMsg(s, m) {
+    const subj = this.eval(s),
       msg = this.eval(m);
     return this.enter()
-      .bind("it", subject)
-      .bind("that", msg.object)
-      .sendRawMessage(subject, msg);
+      .bind("it", subj)
+      .bind("that", msg.obj)
+      .sendRawMsg(subj, msg);
   }
-  sendRawMessage(subject, msg) {
-    const reply = this.findReplyOrAny(getTag(subject), msg.verb);
-    if (reply === null) {
-      console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
-    }
-    return reply instanceof Function
-      ? reply(subject, msg.object, this, msg)
-      : this.eval(reply);
+  sendRawMsg(s, m) {
+    const r = this.findReplyOrAny(getTag(s), m.verb);
+    return r instanceof Function ? r(s, m.obj, this, m) : this.eval(r);
   }
 }
 import * as ohm from "ohm-js";
@@ -136,7 +135,7 @@ export const grammar = ohm.grammar(`McLulang {
       }
       return r;
     },
-    Msg: (verb, object) => new Msg(verb.toAst(), object.toAst()),
+    Msg: (verb, obj) => new Msg(verb.toAst(), obj.toAst()),
     MsgQuote: (_, msg) => msg.toAst(),
     Pair: (a, _, b) => new Pair(a.toAst(), b.toAst()),
     Block: (_o, exprs, _c) => new Block(exprs.toAst()),

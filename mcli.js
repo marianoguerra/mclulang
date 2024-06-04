@@ -51,10 +51,10 @@ setToStr(Later, function () {
   return `@ ${toStrWrapSend(this.value)}`;
 });
 setToStr(Msg, function () {
-  return `\\ ${this.verb} ${toStr(this.object)}`;
+  return `\\ ${this.verb} ${toStr(this.obj)}`;
 });
 setToStr(Send, function () {
-  return `${toStr(this.subject)} ${this.msg.verb} ${toStr(this.msg.object)}`;
+  return `${toStr(this.subj)} ${this.msg.verb} ${toStr(this.msg.obj)}`;
 });
 setToStr(Nil, function () {
   return "()";
@@ -138,11 +138,11 @@ function main(code = DEFAULT_CODE) {
       })
       .bindReply(MSG_TAG, "eval", (s, _o, e) => {
         log("eval msg!", toStr(s));
-        return new Msg(s.verb, e.eval(s.object));
+        return new Msg(s.verb, e.eval(s.obj));
       })
       .bindReply(SEND_TAG, "eval", (s, _o, e) => {
         log("eval send!", toStr(s));
-        return e.sendMessage(s.subject, s.msg);
+        return e.sendMsg(s.subj, s.msg);
       })
       .bindReply(LATER_TAG, "eval", (s) => {
         log("eval later!", toStr(s));
@@ -162,15 +162,15 @@ function main(code = DEFAULT_CODE) {
       })
       .bindReply(NIL_TAG, "?", (_s, o, e) => e.eval(o.b))
       .bindReply(ANY_TAG, "?", (_s, o, e) => e.eval(o.a))
-      .bindReply(ANY_TAG, "send", (s, _o, e, m) => e.sendMessage(s, m.object))
+      .bindReply(ANY_TAG, "send", (s, _o, e, m) => e.sendMsg(s, m.obj))
       .bindReply(
         PAIR_TAG,
         "send",
-        (s, _o, e, m) => new Pair(e.sendMessage(s.a, m), e.sendMessage(s.b, m)),
+        (s, _o, e, m) => new Pair(e.sendMsg(s.a, m), e.sendMsg(s.b, m)),
       )
       .bindReply(ARRAY_TAG, "send", (s, _o, e, m) =>
         // NOTE: if forwards send and not the message itself so its recursive
-        s.map((v, _i, _) => e.sendMessage(v, m)),
+        s.map((v, _i, _) => e.sendMsg(v, m)),
       )
       .bindReply(NAME_TAG, "is", (s, o, e) => {
         log("bind name!", s.value, o);
@@ -178,7 +178,7 @@ function main(code = DEFAULT_CODE) {
         return o;
       })
       .bindReply(SEND_TAG, "does", (s, o, e) => {
-        const tag = getTag(s.subject),
+        const tag = getTag(s.subj),
           verb = s.msg.verb;
         e.parent.bindReply(tag, verb, o);
         return o;
