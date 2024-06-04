@@ -1,29 +1,35 @@
 import * as ohm from "ohm-js";
 
+export const evalSym = Symbol("eval");
+
 export class Nil {
-  eval(_e) {
+  [evalSym](_e) {
     return this;
   }
 }
 export const NIL = new Nil();
 
-BigInt.prototype.eval = function (_e) {
-  return this;
-};
-Number.prototype.eval = function (_e) {
-  return this;
-};
-String.prototype.eval = function (_e) {
-  return this;
-};
+export const setEval = (Cls, fn) => (Cls.prototype[evalSym] = fn),
+  setEvalId = (Cls) =>
+    setEval(Cls, function (_e) {
+      return this;
+    });
+
+setEvalId(BigInt);
+setEvalId(Number);
+setEvalId(String);
+
+export function evalu(v, e) {
+  return v[evalSym](e);
+}
 
 export class Pair {
   constructor(a, b) {
     this.a = a;
     this.b = b;
   }
-  eval(e) {
-    return new Pair(this.a.eval(e), this.b.eval(e));
+  [evalSym](e) {
+    return new Pair(evalu(this.a, e), evalu(this.b, e));
   }
 }
 
@@ -31,7 +37,7 @@ class Name {
   constructor(value) {
     this.value = value;
   }
-  eval(e) {
+  [evalSym](e) {
     return e.lookup(this.value);
   }
 }
@@ -40,10 +46,10 @@ class Block {
   constructor(items = []) {
     this.items = items;
   }
-  eval(e) {
+  [evalSym](e) {
     let r = NIL;
     for (const item of this.items) {
-      r = item.eval(e);
+      r = evalu(item, e);
     }
     return r;
   }
@@ -54,8 +60,8 @@ class Msg {
     this.verb = verb;
     this.object = object;
   }
-  eval(e) {
-    return new Msg(this.verb, this.object.eval(e));
+  [evalSym](e) {
+    return new Msg(this.verb, evalu(this.object, e));
   }
 }
 
@@ -64,7 +70,7 @@ class Send {
     this.subject = subject;
     this.msg = msg;
   }
-  eval(e) {
+  [evalSym](e) {
     return e.dispatchMessage(this.subject, this.msg);
   }
 }
@@ -86,7 +92,7 @@ class Later {
   constructor(value) {
     this.value = value;
   }
-  eval(_e) {
+  [evalSym](_e) {
     return this.value;
   }
 }
@@ -107,7 +113,7 @@ class NativeHandler {
   constructor(fn) {
     this.fn = fn;
   }
-  eval(e, subject, msg) {
+  [evalSym](e, subject, msg) {
     return this.fn(subject, msg.object, e, msg);
   }
 }
@@ -162,13 +168,13 @@ class Env {
   }
 
   dispatchMessage(s, m) {
-    const subject = s.eval(this),
-      msg = m.eval(this),
+    const subject = evalu(s, this),
+      msg = evalu(m, this),
       handler = this.lookupHandler(getTag(subject), msg.verb);
     if (handler === null) {
       console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
     }
-    return handler.eval(
+    return handler[evalSym](
       this.enter().bind("it", subject).bind("that", msg.object),
       subject,
       msg,
@@ -196,7 +202,7 @@ function mkLang(g, s) {
 
   function run(code, e = env()) {
     const ast = parse(code);
-    return ast ? ast.eval(e) : null;
+    return ast ? evalu(ast, e) : null;
   }
 
   return { parse, run };
