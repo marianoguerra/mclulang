@@ -54,36 +54,32 @@ export const NIL = new Nil(),
 export class Env {
   constructor(parent = null) {
     this.parent = parent;
-    this.bindings = {};
-    this.handlers = {};
+    this.names = {};
+    this.replies = {};
   }
   enter() {
     return new Env(this);
   }
   bind(key, value) {
-    this.bindings[key] = value;
+    this.names[key] = value;
     return this;
   }
-  lookup(key) {
-    return this.bindings[key] ?? (this.parent ? this.parent.lookup(key) : NIL);
+  find(key) {
+    return this.names[key] ?? (this.parent ? this.parent.find(key) : NIL);
   }
-  bindHandler(tag, verb, handler) {
-    this.handlers[tag] ??= {};
-    this.handlers[tag][verb] = handler;
+  bindReply(tag, verb, handler) {
+    this.replies[tag] ??= {};
+    this.replies[tag][verb] = handler;
     return this;
   }
-  lookupHandlerStrict(tag, verb) {
+  findReply(tag, verb) {
     return (
-      this.handlers[tag]?.[verb] ??
-      (this.parent && this.parent.lookupHandlerStrict(tag, verb))
+      this.replies[tag]?.[verb] ??
+      (this.parent && this.parent.findReply(tag, verb))
     );
   }
-  lookupHandler(tag, verb) {
-    return (
-      this.lookupHandlerStrict(tag, verb) ??
-      this.lookupHandlerStrict(ANY_TAG, verb) ??
-      null
-    );
+  findReplyOrAny(tag, verb) {
+    return this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? null;
   }
   eval(v) {
     return this.sendRawMessage(v, new Msg("eval", this));
@@ -97,13 +93,13 @@ export class Env {
       .sendRawMessage(subject, msg);
   }
   sendRawMessage(subject, msg) {
-    const handler = this.lookupHandler(getTag(subject), msg.verb);
-    if (handler === null) {
+    const reply = this.findReplyOrAny(getTag(subject), msg.verb);
+    if (reply === null) {
       console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
     } else {
-      return handler instanceof Function
-        ? handler(subject, msg.object, this, msg)
-        : this.eval(handler);
+      return reply instanceof Function
+        ? reply(subject, msg.object, this, msg)
+        : this.eval(reply);
     }
   }
 }
