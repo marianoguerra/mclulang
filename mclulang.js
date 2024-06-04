@@ -1,9 +1,6 @@
 import * as ohm from "ohm-js";
 
 export const evalSym = Symbol("eval");
-export function evalu(v, e) {
-  return v[evalSym](e);
-}
 export const setEval = (Cls, fn) => (Cls.prototype[evalSym] = fn),
   setEvalId = (Cls) =>
     setEval(Cls, function (_e) {
@@ -13,7 +10,7 @@ setEvalId(BigInt);
 setEvalId(Number);
 setEvalId(String);
 setEval(Array, function (e) {
-  return this.map((v, _i, t) => evalu(v, e));
+  return this.map((v, _i, t) => e.eval(v));
 });
 
 export class Nil {
@@ -29,7 +26,7 @@ export class Pair {
     this.b = b;
   }
   [evalSym](e) {
-    return new Pair(evalu(this.a, e), evalu(this.b, e));
+    return new Pair(e.eval(this.a), e.eval(this.b));
   }
 }
 
@@ -49,7 +46,7 @@ class Block {
   [evalSym](e) {
     let r = NIL;
     for (const item of this.items) {
-      r = evalu(item, e);
+      r = e.eval(item);
     }
     return r;
   }
@@ -61,7 +58,7 @@ class Msg {
     this.object = object;
   }
   [evalSym](e) {
-    return new Msg(this.verb, evalu(this.object, e));
+    return new Msg(this.verb, e.eval(this.object));
   }
 }
 
@@ -168,9 +165,12 @@ class Env {
     );
   }
 
+  eval(v) {
+    return v[evalSym](this);
+  }
   dispatchMessage(s, m) {
-    const subject = evalu(s, this),
-      msg = evalu(m, this),
+    const subject = this.eval(s),
+      msg = this.eval(m),
       handler = this.lookupHandler(getTag(subject), msg.verb);
     if (handler === null) {
       console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
@@ -201,7 +201,7 @@ function mkLang(g, s) {
 
   function run(code, e = env()) {
     const ast = parse(code);
-    return ast ? evalu(ast, e) : null;
+    return ast ? e.eval(ast) : null;
   }
 
   return { parse, run };
