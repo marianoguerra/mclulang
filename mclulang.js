@@ -1,23 +1,6 @@
 import * as ohm from "ohm-js";
 
-export const evalSym = Symbol("eval");
-export const setEval = (Cls, fn) => (Cls.prototype[evalSym] = fn),
-  setEvalId = (Cls) =>
-    setEval(Cls, function (_e) {
-      return this;
-    });
-setEvalId(BigInt);
-setEvalId(Number);
-setEvalId(String);
-setEval(Array, function (e) {
-  return this.map((v, _i, t) => e.eval(v));
-});
-
-export class Nil {
-  [evalSym](_e) {
-    return this;
-  }
-}
+export class Nil {}
 export const NIL = new Nil();
 
 export class Pair {
@@ -25,50 +8,37 @@ export class Pair {
     this.a = a;
     this.b = b;
   }
-  [evalSym](e) {
-    return new Pair(e.eval(this.a), e.eval(this.b));
-  }
 }
 
-class Name {
+export class Name {
   constructor(value) {
     this.value = value;
   }
-  [evalSym](e) {
-    return e.lookup(this.value);
-  }
 }
 
-class Block {
+export class Block {
   constructor(items = []) {
     this.items = items;
   }
-  [evalSym](e) {
-    let r = NIL;
-    for (const item of this.items) {
-      r = e.eval(item);
-    }
-    return r;
-  }
 }
 
-class Msg {
+export class Msg {
   constructor(verb, object) {
     this.verb = verb;
     this.object = object;
   }
-  [evalSym](e) {
-    return new Msg(this.verb, e.eval(this.object));
-  }
 }
 
-class Send {
+export class Send {
   constructor(subject, msg) {
     this.subject = subject;
     this.msg = msg;
   }
-  [evalSym](e) {
-    return e.dispatchMessage(this.subject, this.msg);
+}
+
+export class Later {
+  constructor(value) {
+    this.value = value;
   }
 }
 
@@ -85,15 +55,6 @@ export function mkTag(name, Cls) {
   return tag;
 }
 
-class Later {
-  constructor(value) {
-    this.value = value;
-  }
-  [evalSym](_e) {
-    return this.value;
-  }
-}
-
 export const ANY_TAG = mkTag("Any"),
   NIL_TAG = mkTag("Nil", Nil),
   INT_TAG = mkTag("Int", BigInt),
@@ -105,16 +66,8 @@ export const ANY_TAG = mkTag("Any"),
   ARRAY_TAG = mkTag("Array", Array),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
-  LATER_TAG = mkTag("Later", Later);
-
-class NativeHandler {
-  constructor(fn) {
-    this.fn = fn;
-  }
-  [evalSym](e, subject, msg) {
-    return this.fn(subject, msg.object, e, msg);
-  }
-}
+  LATER_TAG = mkTag("Later", Later),
+  FN_TAG = mkTag("Fn", Function);
 
 class Env {
   constructor(parent = null) {
@@ -138,8 +91,7 @@ class Env {
 
   bindHandler(tag, verb, handler) {
     this.handlers[tag] ??= {};
-    this.handlers[tag][verb] =
-      handler instanceof Function ? new NativeHandler(handler) : handler;
+    this.handlers[tag][verb] = handler;
     return this;
   }
 
@@ -166,20 +118,25 @@ class Env {
   }
 
   eval(v) {
-    return v[evalSym](this);
+    return this.dispatchRawMessage(v, new Msg("eval", this));
   }
   dispatchMessage(s, m) {
     const subject = this.eval(s),
-      msg = this.eval(m),
-      handler = this.lookupHandler(getTag(subject), msg.verb);
+      msg = this.eval(m);
+    return this.enter()
+      .bind("it", subject)
+      .bind("that", msg.object)
+      .dispatchRawMessage(subject, msg);
+  }
+  dispatchRawMessage(subject, msg) {
+    const handler = this.lookupHandler(getTag(subject), msg.verb);
     if (handler === null) {
       console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
+    } else if (handler instanceof Function) {
+      return handler(subject, msg.object, this, msg);
+    } else {
+      return this.eval(handler);
     }
-    return handler[evalSym](
-      this.enter().bind("it", subject).bind("that", msg.object),
-      subject,
-      msg,
-    );
   }
 }
 export const env = () => new Env();
