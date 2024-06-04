@@ -1,4 +1,4 @@
-# McLulang
+# McLulang: The message is the language
 
 ## Motivation
 
