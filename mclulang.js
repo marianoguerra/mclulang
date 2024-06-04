@@ -11,6 +11,9 @@ const NIL = new Nil();
 BigInt.prototype.eval = function (_e) {
   return this;
 };
+Number.prototype.eval = function (_e) {
+  return this;
+};
 String.prototype.eval = function (_e) {
   return this;
 };
@@ -101,6 +104,7 @@ class Later {
 export const ANY_TAG = mkTag("Any"),
   NIL_TAG = mkTag("Nil", Nil),
   INT_TAG = mkTag("Int", BigInt),
+  FLOAT_TAG = mkTag("Float", Number),
   STR_TAG = mkTag("Str", String),
   PAIR_TAG = mkTag("Pair", Pair),
   NAME_TAG = mkTag("Name", Name),
@@ -224,11 +228,12 @@ export const { parse, run } = mkLang(
 
     Exprs = Send ("," Send )*
 
-    Scalar = int | str | nil | name | MsgQuote
+    Scalar = float | int | str | nil | name | MsgQuote
 
     MsgQuote = "\" Msg
 
     int = digit+
+    float = digit+ "." digit+
     nil = "(" ")"
     stringDelimiter = "'"
     str = stringDelimiter (~stringDelimiter any)* stringDelimiter
@@ -269,6 +274,9 @@ export const { parse, run } = mkLang(
     },
     Exprs(first, _, rest) {
       return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
+    },
+    float(_a, _d, _b) {
+      return parseFloat(this.sourceString);
     },
     int(_) {
       return BigInt(this.sourceString);
