@@ -11,7 +11,6 @@ import {
   Nil,
   Pair,
   getTag,
-  dispatchMessage,
 } from "./mclulang.js";
 
 const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}";
@@ -37,13 +36,13 @@ function main(code = DEFAULT_CODE) {
     .bindHandler(NIL_TAG, "?", (_s, o, e) => o.b.eval(e))
     .bindHandler(ANY_TAG, "?", (_s, o, e) => o.a.eval(e))
     .bindHandler(ANY_TAG, "send", (s, _o, e, m) =>
-      dispatchMessage(s, m.object, e),
+      e.dispatchMessage(s, m.object),
     )
     .bindHandler(
       PAIR_TAG,
       "send",
       (s, _o, e, m) =>
-        new Pair(dispatchMessage(s.a, m, e), dispatchMessage(s.b, m, e)),
+        new Pair(e.dispatchMessage(s.a, m), e.dispatchMessage(s.b, m)),
     )
     .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
       const tag = getTag(s.subject.eval(e)),

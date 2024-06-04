@@ -65,7 +65,7 @@ class Send {
     this.msg = msg;
   }
   eval(e) {
-    return dispatchMessage(this.subject.eval(e), this.msg.eval(e), e);
+    return e.dispatchMessage(this.subject, this.msg);
   }
 }
 
@@ -160,21 +160,23 @@ class Env {
       null
     );
   }
+
+  dispatchMessage(s, m) {
+    const subject = s.eval(this),
+      msg = m.eval(this),
+      handler = this.lookupHandler(getTag(subject), msg.verb);
+    if (handler === null) {
+      console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
+    }
+    return handler.eval(
+      this.enter().bind("it", subject).bind("that", msg.object),
+      subject,
+      msg,
+    );
+  }
 }
 
 export const env = () => new Env();
-
-export function dispatchMessage(subject, msg, e) {
-  const handler = e.lookupHandler(getTag(subject), msg.verb);
-  if (handler === null) {
-    console.warn("verb", msg.verb, "not found for", getTag(subject), subject);
-  }
-  return handler.eval(
-    e.enter().bind("it", subject).bind("that", msg.object),
-    subject,
-    msg,
-  );
-}
 
 function mkLang(g, s) {
   const grammar = ohm.grammar(g),
