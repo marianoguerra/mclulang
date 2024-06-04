@@ -47,6 +47,7 @@ export const NIL = new Nil(),
   NAME_TAG = mkTag("Name", Name),
   BLOCK_TAG = mkTag("Block", Block),
   ARRAY_TAG = mkTag("Array", Array),
+  MAP_TAG = mkTag("Map", Map),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
   LATER_TAG = mkTag("Later", Later);
@@ -115,11 +116,14 @@ export const grammar = ohm.grammar(`McLulang {
     verbPart = verbStart | digit
     Value = Pair | PairHead
     Pair = PairHead ":" Value
-    PairHead = Block | Array | Scalar | Later | ParSend
+    PairHead = Block | Array | Map | Scalar | Later | ParSend
     Block = "{" Exprs "}"
     Array = "[" "]" -- empty
       | "[" Exprs "]" -- items
     Exprs = Send ("," Send )*
+    Map = "#" "{" "}" -- empty
+      | "#" "{" Pairs "}" -- items
+    Pairs = Pair ("," Pair)*
     Scalar = float | int | str | nil | name | MsgQuote
     Later = "@" Value
     ParSend = "(" Send ")"
@@ -147,6 +151,11 @@ export const grammar = ohm.grammar(`McLulang {
     Array_items: (_o, exprs, _c) => exprs.toAst(),
     Array_empty: (_o, _c) => [],
     Exprs: (first, _, rest) =>
+      [first.toAst()].concat(rest.children.map((v) => v.toAst())),
+    Map_items: (_h, _o, exprs, _c) =>
+      new Map(exprs.toAst().map((p, _i, _) => [p.a, p.b])),
+    Map_empty: (_h, _o, _c) => new Map(),
+    Pairs: (first, _, rest) =>
       [first.toAst()].concat(rest.children.map((v) => v.toAst())),
     float(_a, _d, _b) {
       return parseFloat(this.sourceString);

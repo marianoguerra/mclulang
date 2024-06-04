@@ -11,6 +11,7 @@ import {
   SEND_TAG,
   PAIR_TAG,
   ARRAY_TAG,
+  MAP_TAG,
   BLOCK_TAG,
   MSG_TAG,
   LATER_TAG,
@@ -63,6 +64,11 @@ setToStr(Pair, function () {
 });
 setToStr(Array, function () {
   return `[${this.map((v, _i, _) => toStr(v)).join(", ")}]`;
+});
+setToStr(Map, function () {
+  return `#{${Array.from(this.entries())
+    .map(([k, v], _i, _) => `${toStr(k)} : ${toStr(v)}`)
+    .join(", ")}}`;
 });
 setToStr(Block, function () {
   return `{${this.items.map((v, _i, _) => toStr(v)).join(", ")}}`;
@@ -122,6 +128,14 @@ function main(code = DEFAULT_CODE) {
         log("eval array!", toStr(s));
         return s.map((v, _i, _) => e.eval(v));
       })
+      .bindHandler(MAP_TAG, "eval", (s, _o, e, _m) => {
+        log("eval map!", toStr(s));
+        const r = new Map();
+        for (const [k, v] of s.entries()) {
+          r.set(e.eval(k), e.eval(v));
+        }
+        return r;
+      })
       .bindHandler(MSG_TAG, "eval", (s, _o, e, _m) => {
         log("eval msg!", toStr(s));
         return new Msg(s.verb, e.eval(s.object));
@@ -142,6 +156,9 @@ function main(code = DEFAULT_CODE) {
           r[i] = s;
         }
         return r.join("");
+      })
+      .bindHandler(MAP_TAG, ".", (s, o, _e, _m) => {
+        return s.get(o) ?? NIL;
       })
       .bindHandler(NIL_TAG, "?", (_s, o, e) => e.eval(o.b))
       .bindHandler(ANY_TAG, "?", (_s, o, e) => e.eval(o.a))
