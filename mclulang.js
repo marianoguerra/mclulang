@@ -157,15 +157,19 @@ class Env {
     return this;
   }
 
-  lookupHandler(tag, verb) {
-    const v =
-      this.handlers[tag]?.[verb] ?? this.handlers[ANY_TAG]?.[verb] ?? null;
+  lookupHandlerStrict(tag, verb) {
+    return (
+      this.handlers[tag]?.[verb] ??
+      (this.parent && this.parent.lookupHandlerStrict(tag, verb))
+    );
+  }
 
-    if (v) {
-      return v;
-    } else {
-      return this.parent ? this.parent.lookupHandler(tag, verb) : null;
-    }
+  lookupHandler(tag, verb) {
+    return (
+      this.lookupHandlerStrict(tag, verb) ??
+      this.lookupHandlerStrict(ANY_TAG, verb) ??
+      null
+    );
   }
 }
 
