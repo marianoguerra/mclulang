@@ -8,20 +8,41 @@ import {
   ANY_TAG,
   SEND_TAG,
   PAIR_TAG,
+  ARRAY_TAG,
   Nil,
   Pair,
   getTag,
   evalu,
 } from "./mclulang.js";
 
-const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}";
+const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}",
+  toStrSym = Symbol("toString");
 
-Nil.prototype.toString = function () {
+function setToStr(Cls, fn) {
+  Cls.prototype[toStrSym] = fn;
+}
+function toStr(v) {
+  return v[toStrSym]();
+}
+
+setToStr(Nil, function () {
   return "()";
-};
-Pair.prototype.toString = function () {
-  return `${this.a.toString()} : ${this.b.toString()}`;
-};
+});
+setToStr(Pair, function () {
+  return `${toStr(this.a)} : ${toStr(this.b)}`;
+});
+setToStr(Array, function () {
+  return `[${this.map((v, _i, _) => toStr(v)).join(", ")}]`;
+});
+setToStr(String, function () {
+  return "'" + this + "'";
+});
+
+function setDefToStr(Cls) {
+  setToStr(Cls, Cls.prototype.toString);
+}
+setDefToStr(BigInt);
+setDefToStr(Number);
 
 function main(code = DEFAULT_CODE) {
   const e = env()
@@ -45,6 +66,10 @@ function main(code = DEFAULT_CODE) {
       (s, _o, e, m) =>
         new Pair(e.dispatchMessage(s.a, m), e.dispatchMessage(s.b, m)),
     )
+    .bindHandler(ARRAY_TAG, "send", (s, _o, e, m) =>
+      // NOTE: if forwards send and not the message itself so its recursive
+      s.map((v, _i, _) => e.dispatchMessage(v, m)),
+    )
     .bindHandler(SEND_TAG, "does", (s, o, e, m) => {
       const tag = getTag(evalu(s.subject, e)),
         verb = s.msg.verb;
@@ -53,7 +78,7 @@ function main(code = DEFAULT_CODE) {
     });
 
   console.log("> ", code);
-  console.log(run(code, e).toString());
+  console.log(toStr(run(code, e)));
 }
 
 for (const line of Bun.argv.slice(2)) {

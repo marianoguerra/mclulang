@@ -74,13 +74,28 @@ This is an attempt at answering that question based on the following:
 
 Other examples:
 
-```sh
+```js
+>  ()
+()
+
 >  'hi' * 5
-hihihihihi
+'hihihihihi'
 
 >  1 send \ + 2
 3
 
 >  1 : 2 : 3 send \ + 2
 3 : 4 : 5
+
+>  []
+[]
+
+>  [10]
+[10]
+
+>  [1, 1.2, 'hi', (), {42}, 1 + 2]
+[1, 1.2, 'hi', (), 42, 3]
+
+>  [1, 2 : 3, [4]] send \ + 1
+[2, 3 : 4, [5]]
 ```

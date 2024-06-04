@@ -18,6 +18,9 @@ export const setEval = (Cls, fn) => (Cls.prototype[evalSym] = fn),
 setEvalId(BigInt);
 setEvalId(Number);
 setEvalId(String);
+setEval(Array, function (e) {
+  return this.map((v, _i, t) => evalu(v, e));
+});
 
 export function evalu(v, e) {
   return v[evalSym](e);
@@ -105,6 +108,7 @@ export const ANY_TAG = mkTag("Any"),
   PAIR_TAG = mkTag("Pair", Pair),
   NAME_TAG = mkTag("Name", Name),
   BLOCK_TAG = mkTag("Block", Block),
+  ARRAY_TAG = mkTag("Array", Array),
   MSG_TAG = mkTag("Msg", Msg),
   SEND_TAG = mkTag("Send", Send),
   LATER_TAG = mkTag("Later", Later);
@@ -221,9 +225,11 @@ export const { parse, run } = mkLang(
     ParSend = "(" Send ")"
 
     Pair = PairHead ":" Value
-    PairHead = Block | Scalar | Later | ParSend
+    PairHead = Block | Array | Scalar | Later | ParSend
 
     Block = "{" Exprs "}"
+    Array = "[" "]" -- empty
+      | "[" Exprs "]" -- items
 
     Exprs = Send ("," Send )*
 
@@ -270,6 +276,12 @@ export const { parse, run } = mkLang(
     },
     Block(_o, exprs, _c) {
       return new Block(exprs.toAst());
+    },
+    Array_items(_o, exprs, _c) {
+      return exprs.toAst();
+    },
+    Array_empty(_o, _c) {
+      return [];
     },
     Exprs(first, _, rest) {
       return [first.toAst()].concat(rest.children.map((v) => v.toAst()));
