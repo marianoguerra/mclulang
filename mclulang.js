@@ -38,21 +38,8 @@ export const NIL = new Nil(),
   setTag = (Cls, tag) => ((Cls.prototype[tagSym] = tag), tag),
   mkTag = (name, Cls) => setTag(Cls, Symbol(name)),
   ANY_TAG = mkTag("Any", class {}),
-  NIL_TAG = mkTag("Nil", Nil),
-  INT_TAG = mkTag("Int", BigInt),
-  FLOAT_TAG = mkTag("Float", Number),
-  STR_TAG = mkTag("Str", String),
-  PAIR_TAG = mkTag("Pair", Pair),
-  NAME_TAG = mkTag("Name", Name),
-  BLOCK_TAG = mkTag("Block", Block),
-  ARRAY_TAG = mkTag("Array", Array),
-  MAP_TAG = mkTag("Map", Map),
-  MSG_TAG = mkTag("Msg", Msg),
-  SEND_TAG = mkTag("Send", Send),
-  LATER_TAG = mkTag("Later", Later),
-  TAG_TAG = mkTag("Tag", Symbol),
-  NOREP = (s, o, e, m) =>
-    console.warn("verb", m.verb, "not found for", getTag(s), s, o, e);
+  NOREP = (s, o, _e, m) =>
+    console.warn("verb", m.verb, "not found for", getTag(s), s, o);
 export class Env {
   constructor(parent = null) {
     this.parent = parent;
@@ -81,21 +68,26 @@ export class Env {
     return this.findReply(tag, verb) ?? this.findReply(ANY_TAG, verb) ?? NOREP;
   }
   eval(v) {
-    return this.sendRawMsg(v, new Msg("eval", this));
+    return this.sendMsg(v, new Msg("eval", this));
   }
   sendMsg(s, m) {
-    const subj = this.eval(s),
-      msg = this.eval(m);
-    return this.enter()
-      .bind("it", subj)
-      .bind("that", msg.obj)
-      .sendRawMsg(subj, msg);
-  }
-  sendRawMsg(s, m) {
     const rep = this.findReplyOrAny(getTag(s), m.verb);
     return rep instanceof Function ? rep(s, m.obj, this, m) : this.eval(rep);
   }
 }
+export const NIL_TAG = mkTag("Nil", Nil),
+  INT_TAG = mkTag("Int", BigInt),
+  FLOAT_TAG = mkTag("Float", Number),
+  STR_TAG = mkTag("Str", String),
+  PAIR_TAG = mkTag("Pair", Pair),
+  NAME_TAG = mkTag("Name", Name),
+  BLOCK_TAG = mkTag("Block", Block),
+  ARRAY_TAG = mkTag("Array", Array),
+  MAP_TAG = mkTag("Map", Map),
+  MSG_TAG = mkTag("Msg", Msg),
+  SEND_TAG = mkTag("Send", Send),
+  LATER_TAG = mkTag("Later", Later),
+  TAG_TAG = mkTag("Tag", Symbol);
 import * as ohm from "ohm-js";
 export const grammar = ohm.grammar(`McLulang {
     Main = Send

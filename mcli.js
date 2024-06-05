@@ -107,7 +107,7 @@ function main(code = DEFAULT_CODE) {
           return s;
         },
         "?": (_s, o, e) => e.eval(o.a),
-        send: (s, _o, e, m) => e.sendRawMsg(s, m.obj),
+        send: (s, _o, e, m) => e.sendMsg(s, m.obj),
         "apply-tag": (s, o) => {
           if (typeof o === "symbol") {
             s[tagSym] = o;
@@ -169,8 +169,7 @@ function main(code = DEFAULT_CODE) {
           log("eval pair!", toStr(s));
           return new Pair(e.eval(s.a), e.eval(s.b));
         },
-        send: (s, _o, e, m) =>
-          new Pair(e.sendRawMsg(s.a, m), e.sendRawMsg(s.b, m)),
+        send: (s, _o, e, m) => new Pair(e.sendMsg(s.a, m), e.sendMsg(s.b, m)),
       },
       [BLOCK_TAG]: {
         eval: (s, _o, e) => {
@@ -189,7 +188,7 @@ function main(code = DEFAULT_CODE) {
         },
         send: (s, _o, e, m) =>
           // NOTE: if forwards send and not the message itself so its recursive
-          s.map((v, _i, _) => e.sendRawMsg(v, m)),
+          s.map((v, _i, _) => e.sendMsg(v, m)),
       },
       [MAP_TAG]: {
         eval: (s, _o, e) => {
@@ -213,7 +212,13 @@ function main(code = DEFAULT_CODE) {
       [SEND_TAG]: {
         eval: (s, _o, e) => {
           log("eval send!", toStr(s));
-          return e.sendMsg(s.subj, s.msg);
+          const subj = e.eval(s.subj),
+            msg = e.eval(s.msg);
+          return e
+            .enter()
+            .bind("it", subj)
+            .bind("that", msg.obj)
+            .sendMsg(subj, msg);
         },
         does: (s, o, e) => {
           const tag = getTag(e.eval(s.subj)),
