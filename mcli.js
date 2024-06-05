@@ -1,32 +1,36 @@
 #!/usr/bin/env bun
 /*globals Bun*/
 import {
-  run,
-  tagSym,
-  NAME_TAG,
-  INT_TAG,
-  FLOAT_TAG,
-  STR_TAG,
-  NIL_TAG,
   ANY_TAG,
-  SEND_TAG,
-  PAIR_TAG,
   ARRAY_TAG,
-  MAP_TAG,
-  BLOCK_TAG,
-  MSG_TAG,
-  LATER_TAG,
-  NIL,
-  Env,
-  Nil,
-  Pair,
-  Name,
   Block,
-  Msg,
-  Send,
-  Later,
+  BLOCK_TAG,
+  Env,
+  FLOAT_TAG,
   getTag,
+  INT_TAG,
+  Later,
+  LATER_TAG,
+  MAP_TAG,
+  Msg,
+  MSG_TAG,
+  Name,
+  NAME_TAG,
+  NIL,
+  Nil,
+  NIL_TAG,
+  Pair,
+  PAIR_TAG,
+  run,
+  Send,
+  SEND_TAG,
+  STR_TAG,
+  tagSym,
 } from "./mclulang.js";
+
+Function.prototype.handleMsg = function (e, s, m) {
+  return this(s, m.obj, e, m);
+};
 
 const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}",
   toStrSym = Symbol("toString");
@@ -67,12 +71,14 @@ setToStr(Array, function () {
   return `[${this.map((v, _i, _) => toStr(v)).join(", ")}]`;
 });
 setToStr(Map, function () {
-  return `#{${Array.from(this.entries())
-    .map(([k, v], _i, _) => `${toStr(k)}: ${toStr(v)}`)
-    .join(", ")}}`;
+  return `#{${
+    Array.from(this.entries())
+      .map(([k, v], _i, _) => `${toStr(k)}: ${toStr(v)}`)
+      .join(", ")
+  }}`;
 });
 setToStr(Block, function () {
-  return `{${this.items.map((v, _i, _) => toStr(v)).join(", ")}}`;
+  return `{${this.value.map((v, _i, _) => toStr(v)).join(", ")}}`;
 });
 setToStr(String, function () {
   return "'" + this + "'";
@@ -175,7 +181,7 @@ function main(code = DEFAULT_CODE) {
         eval: (s, _o, e) => {
           log("eval block!", toStr(s));
           let r = NIL;
-          for (const item of s.items) {
+          for (const item of s.value) {
             r = e.eval(item);
           }
           return r;
@@ -217,6 +223,7 @@ function main(code = DEFAULT_CODE) {
           return e
             .enter()
             .bind("it", subj)
+            .bind("msg", msg)
             .bind("that", msg.obj)
             .sendMsg(subj, msg);
         },

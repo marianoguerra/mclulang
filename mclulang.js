@@ -1,37 +1,39 @@
-export class Nil {}
-export class Pair {
+export class Base {
+  handleMsg(e, _s, _m) {
+    return e.eval(this);
+  }
+}
+export class BaseValue extends Base {
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+}
+export class Nil extends Base {}
+export class Pair extends Base {
   constructor(a, b) {
+    super();
     this.a = a;
     this.b = b;
   }
 }
-export class Name {
-  constructor(value) {
-    this.value = value;
-  }
-}
-export class Block {
-  constructor(items = []) {
-    this.items = items;
-  }
-}
-export class Msg {
+export class Name extends BaseValue {}
+export class Block extends BaseValue {}
+export class Msg extends Base {
   constructor(verb, obj) {
+    super();
     this.verb = verb;
     this.obj = obj;
   }
 }
-export class Send {
+export class Send extends Base {
   constructor(subj, msg) {
+    super();
     this.subj = subj;
     this.msg = msg;
   }
 }
-export class Later {
-  constructor(value) {
-    this.value = value;
-  }
-}
+export class Later extends BaseValue {}
 export const NIL = new Nil(),
   tagSym = Symbol("TagSym"),
   getTag = (v) => v[tagSym],
@@ -71,8 +73,7 @@ export class Env {
     return this.sendMsg(v, new Msg("eval", this));
   }
   sendMsg(s, m) {
-    const rep = this.findReplyOrAny(getTag(s), m.verb);
-    return rep instanceof Function ? rep(s, m.obj, this, m) : this.eval(rep);
+    return this.findReplyOrAny(getTag(s), m.verb).handleMsg(this, s, m);
   }
 }
 export const NIL_TAG = mkTag("Nil", Nil),
