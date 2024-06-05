@@ -110,7 +110,7 @@ export const grammar = ohm.grammar(`McLulang {
     Scalar = float | int | str | nil | name | MsgQuote
     float = digit+ "." digit+
     int = digit+
-    str = "'" (~"'" any)* "'"
+    str = "\\\"" (~"\\\"" any)* "\\\""
     Array = "[" "]" -- empty
       | "[" Exprs "]" -- items
     Map = "#" "{" "}" -- empty
