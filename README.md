@@ -7,7 +7,7 @@
 > -- [Alan Kay at OOPSLA 1997: The Computer Revolution has not Happened Yet](https://tinlizzie.org/IA/index.php/Alan_Kay_at_OOPSLA_1997:_The_Computer_Revolution_has_not_Happened_Yet)
 
 
-> Yes, that was the big revelation to me when I was in graduate school—when I finally understood that the half page of code on the bottom of page 13 of the Lisp 1.5 manual was Lisp in itself. These were “Maxwell’s Equations of Software!” This is the whole world of programming in a few lines that I can put my hand over. 
+> Yes, that was the big revelation to me when I was in graduate school—when I finally understood that the half page of code on the bottom of page 13 of the Lisp 1.5 manual was Lisp in itself. These were **“Maxwell’s Equations of Software!”** This is the whole world of programming in a few lines that I can put my hand over. 
 >
 > -- [A Conversation with Alan Kay](https://queue.acm.org/detail.cfm?id=1039523)
 
@@ -15,8 +15,8 @@ Which are Maxwell's equations of Object Oriented software?
 
 This is an attempt at answering that question based on the following:
 
-> OOP to me means only messaging, local retention and protection and 
-> hiding of state-process, and extreme late-binding of all things.
+> **OOP to me means only messaging**, local retention and protection and 
+> hiding of state-process, **and extreme late-binding of all things**.
 >
 > -- [Dr. Alan Kay on the Meaning of “Object-Oriented Programming”](http://userpage.fu-berlin.de/~ram/pub/pub_jf47ht81Ht/doc_kay_oop_en)
 
@@ -116,4 +116,7 @@ Other examples:
 #{1: 'one', 'two': 2}
 >  #{1: 'one', 'two': 2} . 1
 'one'
+
+> {@MyType is ('MyType' as-tag ()), @m is #{}, m apply-tag MyType, @(m say-hello 'bob') does @('hello ' + that + '!'), m say-hello 'Joe'}
+'hello Joe!'
 ```
