@@ -87,115 +87,147 @@ function setDefToStr(Cls) {
 setDefToStr(BigInt);
 setDefToStr(Number);
 
+function bindReplies(replies, e = new Env()) {
+  for (const tag of Object.getOwnPropertySymbols(replies)) {
+    const byTag = replies[tag];
+    for (const verb in byTag) {
+      e.bindReply(tag, verb, byTag[verb]);
+    }
+  }
+  return e;
+}
+
 function main(code = DEFAULT_CODE) {
   const log = () => {},
     //log = console.log.bind(console),
-    e = new Env()
-      .bindReply(ANY_TAG, "eval", (s) => {
-        log("eval any!", toStr(s));
-        return s;
-      })
-      .bindReply(INT_TAG, "eval", (s) => {
-        log("eval int!", s);
-        return s;
-      })
-      .bindReply(FLOAT_TAG, "eval", (s) => {
-        log("eval float!", s);
-        return s;
-      })
-      .bindReply(STR_TAG, "eval", (s) => {
-        log("eval str!", s);
-        return s;
-      })
-      .bindReply(NIL_TAG, "eval", (s) => {
-        log("eval nil!");
-        return s;
-      })
-      .bindReply(NAME_TAG, "eval", (s, _o, e) => {
-        const v = e.find(s.value);
-        log("eval name!", s.value, "->", toStr(v));
-        return v;
-      })
-      .bindReply(PAIR_TAG, "eval", (s, _o, e) => {
-        log("eval pair!", toStr(s));
-        return new Pair(e.eval(s.a), e.eval(s.b));
-      })
-      .bindReply(BLOCK_TAG, "eval", (s, _o, e) => {
-        log("eval block!", toStr(s));
-        let r = NIL;
-        for (const item of s.items) {
-          r = e.eval(item);
-        }
-        return r;
-      })
-      .bindReply(ARRAY_TAG, "eval", (s, _o, e) => {
-        log("eval array!", toStr(s));
-        return s.map((v, _i, _) => e.eval(v));
-      })
-      .bindReply(MAP_TAG, "eval", (s, _o, e) => {
-        log("eval map!", toStr(s));
-        const r = new Map();
-        for (const [k, v] of s.entries()) {
-          r.set(e.eval(k), e.eval(v));
-        }
-        return r;
-      })
-      .bindReply(MSG_TAG, "eval", (s, _o, e) => {
-        log("eval msg!", toStr(s));
-        return new Msg(s.verb, e.eval(s.obj));
-      })
-      .bindReply(SEND_TAG, "eval", (s, _o, e) => {
-        log("eval send!", toStr(s));
-        return e.sendMsg(s.subj, s.msg);
-      })
-      .bindReply(LATER_TAG, "eval", (s) => {
-        log("eval later!", toStr(s));
-        return s.value;
-      })
-      .bindReply(STR_TAG, "as-tag", (s, _o) => Symbol(s))
-      .bindReply(ANY_TAG, "apply-tag", (s, o) => {
-        if (typeof o === "symbol") {
-          s[tagSym] = o;
-        } else {
-          console.warn("apply-tag: invalid tag", o);
-        }
-        return s;
-      })
-      .bindReply(INT_TAG, "+", (s, o) => s + o)
-      .bindReply(STR_TAG, "+", (s, o) => s + o)
-      .bindReply(STR_TAG, "*", (s, o) => {
-        const r = new Array(o);
-        for (let i = 0n; i < o; i++) {
-          r[i] = s;
-        }
-        return r.join("");
-      })
-      .bindReply(MAP_TAG, ".", (s, o) => {
-        return s.get(o) ?? NIL;
-      })
-      .bindReply(NIL_TAG, "?", (_s, o, e) => e.eval(o.b))
-      .bindReply(ANY_TAG, "?", (_s, o, e) => e.eval(o.a))
-      .bindReply(ANY_TAG, "send", (s, _o, e, m) => e.sendMsg(s, m.obj))
-      .bindReply(
-        PAIR_TAG,
-        "send",
-        (s, _o, e, m) => new Pair(e.sendMsg(s.a, m), e.sendMsg(s.b, m)),
-      )
-      .bindReply(ARRAY_TAG, "send", (s, _o, e, m) =>
-        // NOTE: if forwards send and not the message itself so its recursive
-        s.map((v, _i, _) => e.sendMsg(v, m)),
-      )
-      .bindReply(NAME_TAG, "is", (s, o, e) => {
-        log("bind name!", s.value, o);
-        e.parent.bind(s.value, o);
-        return o;
-      })
-      .bindReply(SEND_TAG, "does", (s, o, e) => {
-        const tag = getTag(e.eval(s.subj)),
-          verb = s.msg.verb;
-        e.parent.bindReply(tag, verb, o);
-        return o;
-      });
+    e = bindReplies({
+      [ANY_TAG]: {
+        eval: (s) => {
+          log("eval any!", toStr(s));
+          return s;
+        },
+        "?": (_s, o, e) => e.eval(o.a),
+        send: (s, _o, e, m) => e.sendMsg(s, m.obj),
+        "apply-tag": (s, o) => {
+          if (typeof o === "symbol") {
+            s[tagSym] = o;
+          } else {
+            console.warn("apply-tag: invalid tag", o);
+          }
+          return s;
+        },
+      },
+      [NIL_TAG]: {
+        eval: (s) => {
+          log("eval nil!");
+          return s;
+        },
+        "?": (_s, o, e) => e.eval(o.b),
+      },
+      [INT_TAG]: {
+        eval: (s) => {
+          log("eval int!", s);
+          return s;
+        },
+        "+": (s, o) => s + o,
+      },
+      [FLOAT_TAG]: {
+        eval: (s) => {
+          log("eval float!", s);
+          return s;
+        },
+      },
+      [STR_TAG]: {
+        eval: (s) => {
+          log("eval str!", s);
+          return s;
+        },
+        "as-tag": (s, _o) => Symbol(s),
+        "+": (s, o) => s + o,
+        "*": (s, o) => {
+          const r = new Array(o);
+          for (let i = 0n; i < o; i++) {
+            r[i] = s;
+          }
+          return r.join("");
+        },
+      },
+      [NAME_TAG]: {
+        eval: (s, _o, e) => {
+          const v = e.find(s.value);
+          log("eval name!", s.value, "->", toStr(v));
+          return v;
+        },
+        is: (s, o, e) => {
+          log("bind name!", s.value, o);
+          e.parent.bind(s.value, o);
+          return o;
+        },
+      },
+      [PAIR_TAG]: {
+        eval: (s, _o, e) => {
+          log("eval pair!", toStr(s));
+          return new Pair(e.eval(s.a), e.eval(s.b));
+        },
+        send: (s, _o, e, m) => new Pair(e.sendMsg(s.a, m), e.sendMsg(s.b, m)),
+      },
+      [BLOCK_TAG]: {
+        eval: (s, _o, e) => {
+          log("eval block!", toStr(s));
+          let r = NIL;
+          for (const item of s.items) {
+            r = e.eval(item);
+          }
+          return r;
+        },
+      },
+      [ARRAY_TAG]: {
+        eval: (s, _o, e) => {
+          log("eval array!", toStr(s));
+          return s.map((v, _i, _) => e.eval(v));
+        },
+        send: (s, _o, e, m) =>
+          // NOTE: if forwards send and not the message itself so its recursive
+          s.map((v, _i, _) => e.sendMsg(v, m)),
+      },
+      [MAP_TAG]: {
+        eval: (s, _o, e) => {
+          log("eval map!", toStr(s));
+          const r = new Map();
+          for (const [k, v] of s.entries()) {
+            r.set(e.eval(k), e.eval(v));
+          }
+          return r;
+        },
+        ".": (s, o) => {
+          return s.get(o) ?? NIL;
+        },
+      },
+      [MSG_TAG]: {
+        eval: (s, _o, e) => {
+          log("eval msg!", toStr(s));
+          return new Msg(s.verb, e.eval(s.obj));
+        },
+      },
+      [SEND_TAG]: {
+        eval: (s, _o, e) => {
+          log("eval send!", toStr(s));
+          return e.sendMsg(s.subj, s.msg);
+        },
+        does: (s, o, e) => {
+          const tag = getTag(e.eval(s.subj)),
+            verb = s.msg.verb;
+          e.parent.bindReply(tag, verb, o);
+          return o;
+        },
+      },
+      [LATER_TAG]: {
+        eval: (s) => {
+          log("eval later!", toStr(s));
+          return s.value;
+        },
+      },
+    });
 
   console.log("> ", code);
   console.log(toStr(run(code, e)));
