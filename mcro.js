@@ -3,20 +3,20 @@
 import {
   ANY_TAG,
   ARRAY_TAG,
-  BLOCK_TAG,
   Block,
-  LATER_TAG,
+  BLOCK_TAG,
   Later,
+  LATER_TAG,
   MAP_TAG,
   Msg,
   Pair,
   PAIR_TAG,
   run,
-  SEND_TAG,
   Send,
+  SEND_TAG,
   TAG_TAG,
 } from "./mclulang.js";
-import { toStr, TO_STR, bindReplies } from "./mcommon.js";
+import { bindReplies, TO_STR, toStr } from "./mcommon.js";
 
 const DEFAULT_CODE = "{(0 add 0) does {it + that}, 1 add 3}";
 
@@ -28,11 +28,8 @@ function main(code = DEFAULT_CODE) {
   const e = bindReplies(TO_STR);
   bindReplies(
     {
-      [TAG_TAG]: {
-        eval: (s) => s,
-      },
       [ANY_TAG]: {
-        eval: (s, _o, _e) => s,
+        eval: (s) => s,
       },
       [PAIR_TAG]: {
         eval: (s, _o, e) => {
@@ -71,11 +68,6 @@ function main(code = DEFAULT_CODE) {
               new Msg(s.msg.verb, e.eval(s.msg.obj)),
             );
           }
-        },
-      },
-      [LATER_TAG]: {
-        eval: (s, _o, e) => {
-          return new Later(e.eval(s.value));
         },
       },
     },
