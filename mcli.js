@@ -4,7 +4,6 @@ import {
   ANY_TAG,
   ARRAY_TAG,
   BLOCK_TAG,
-  Env,
   FLOAT_TAG,
   getTag,
   INT_TAG,
@@ -23,34 +22,18 @@ import {
   TAG_TAG,
   tagSym,
 } from "./mclulang.js";
-
-Function.prototype.handleMsg = function (e, s, m) {
-  return this(s, m.obj, e, m);
-};
+import { toStr, TO_STR, bindReplies } from "./mcommon.js";
 
 const DEFAULT_CODE = "{@(0 add 0) does @{it + that}, 1 add 3}";
-
-function bindReplies(replies, e = new Env()) {
-  for (const tag of Object.getOwnPropertySymbols(replies)) {
-    const byTag = replies[tag];
-    for (const verb in byTag) {
-      e.bindReply(tag, verb, byTag[verb]);
-    }
-  }
-  return e;
-}
-
-function toStr(v, e) {
-  return e.sendMsg(v, new Msg("toStr", NIL));
-}
-
 function main(code = DEFAULT_CODE) {
   const log = () => {},
     //log = console.log.bind(console),
-    e = bindReplies({
+    e = bindReplies(TO_STR);
+
+  bindReplies(
+    {
       [TAG_TAG]: {
         eval: (s) => s,
-        toStr: (s) => s.toString(),
       },
       [ANY_TAG]: {
         eval: (s, _o, e) => {
@@ -67,7 +50,6 @@ function main(code = DEFAULT_CODE) {
           }
           return s;
         },
-        toStr: (s) => "UNK.toStr(" + s + ")",
       },
       [NIL_TAG]: {
         eval: (s) => {
@@ -75,7 +57,6 @@ function main(code = DEFAULT_CODE) {
           return s;
         },
         "?": (_s, o, e) => e.eval(o.b),
-        toStr: (_s) => "()",
       },
       [INT_TAG]: {
         eval: (s) => {
@@ -83,14 +64,12 @@ function main(code = DEFAULT_CODE) {
           return s;
         },
         "+": (s, o) => s + o,
-        toStr: (s) => s.toString(),
       },
       [FLOAT_TAG]: {
         eval: (s) => {
           log("eval float!", s);
           return s;
         },
-        toStr: (s) => s.toString(),
       },
       [STR_TAG]: {
         eval: (s) => {
@@ -106,7 +85,6 @@ function main(code = DEFAULT_CODE) {
           }
           return r.join("");
         },
-        toStr: (s) => JSON.stringify(s),
       },
       [NAME_TAG]: {
         eval: (s, _o, e) => {
@@ -119,7 +97,6 @@ function main(code = DEFAULT_CODE) {
           e.parent.bind(s.value, o);
           return o;
         },
-        toStr: (s) => s.value,
       },
       [PAIR_TAG]: {
         eval: (s, _o, e) => {
@@ -127,7 +104,6 @@ function main(code = DEFAULT_CODE) {
           return new Pair(e.eval(s.a), e.eval(s.b));
         },
         send: (s, _o, e, m) => new Pair(e.sendMsg(s.a, m), e.sendMsg(s.b, m)),
-        toStr: (s, _o, e, m) => `${e.sendMsg(s.a, m)} : ${e.sendMsg(s.b, m)}`,
       },
       [BLOCK_TAG]: {
         eval: (s, _o, e) => {
@@ -138,8 +114,6 @@ function main(code = DEFAULT_CODE) {
           }
           return r;
         },
-        toStr: (s, _o, e, m) =>
-          `{${s.value.map((v, _i, _) => e.sendMsg(v, m)).join(", ")}}`,
       },
       [ARRAY_TAG]: {
         eval: (s, _o, e) => {
@@ -149,8 +123,6 @@ function main(code = DEFAULT_CODE) {
         send: (s, _o, e, m) =>
           // NOTE: if forwards send and not the message itself so its recursive
           s.map((v, _i, _) => e.sendMsg(v, m)),
-        toStr: (s, _o, e, m) =>
-          `[${s.map((v, _i, _) => e.sendMsg(v, m)).join(", ")}]`,
       },
       [MAP_TAG]: {
         eval: (s, _o, e) => {
@@ -164,17 +136,12 @@ function main(code = DEFAULT_CODE) {
         ".": (s, o) => {
           return s.get(o) ?? NIL;
         },
-        toStr: (s, _o, e, m) =>
-          `#{${Array.from(s.entries())
-            .map(([k, v], _i, _) => `${e.sendMsg(k, m)}: ${e.sendMsg(v, m)}`)
-            .join(", ")}}`,
       },
       [MSG_TAG]: {
         eval: (s, _o, e) => {
           log("eval msg!", toStr(s, e));
           return new Msg(s.verb, e.eval(s.obj));
         },
-        toStr: (s, _o, e, m) => `\\ ${s.verb} ${e.sendMsg(s.obj, m)}`,
       },
       [SEND_TAG]: {
         eval: (s, _o, e) => {
@@ -194,20 +161,16 @@ function main(code = DEFAULT_CODE) {
           e.parent.bindReply(tag, verb, o);
           return o;
         },
-        toStr: (s, _o, e, m) =>
-          `${e.sendMsg(s.subj, m)} ${s.msg.verb} ${e.sendMsg(s.msg.obj, m)}`,
       },
       [LATER_TAG]: {
         eval: (s, _o, e) => {
           log("eval later!", toStr(s, e));
           return s.value;
         },
-        toStr: (s, _o, e, m) =>
-          getTag(s.value) === SEND_TAG
-            ? `@(${e.sendMsg(s.value, m)})`
-            : `@${e.sendMsg(s.value, m)}`,
       },
-    });
+    },
+    e,
+  );
 
   console.log("> ", code);
   console.log(toStr(run(code, e), e));
