@@ -2,6 +2,14 @@
 /* eslint-disable no-unused-vars */
 import { expect, test } from "bun:test";
 
+/*
+The most basic operation that distinguishes a programming language from a calculator
+is its ability to give names to values and look them up later.
+
+In programming languages bindings are stored in Frames in a call stack, let's try
+a simple example in JavaScript:
+*/
+
 {
   let a = 10;
   let b = 20;
@@ -12,7 +20,16 @@ import { expect, test } from "bun:test";
     expect(a).toBe(10);
     expect(b).toBe(20);
   });
+}
 
+/*
+Let's start with a simple Frame object that holds bindings in a `Map` and has two operations:
+
+- bind: store a value associated to a name
+- find: return the value associated with a name or `undefined` if not found
+*/
+
+{
   class Frame {
     constructor() {
       this.binds = new Map();
@@ -35,6 +52,11 @@ import { expect, test } from "bun:test";
   });
 }
 
+/*
+The smallest region that can hold bindings is the scope, in languages like
+JavaScript binding lookup starts in the current scope and keeps going to outer scopes
+*/
+
 {
   let a = 10;
   let b = 20;
@@ -48,7 +70,15 @@ import { expect, test } from "bun:test";
       expect(b).toBe(30);
     });
   }
+}
 
+/*
+To replicate this our new implementation of `Frame` has an attribute `up`, `find`
+starts in the current scope and if it doesn't find it there it continues in the scope referenced
+by `up` until the binding is found or `up` is `null`
+*/
+
+{
   class Frame {
     constructor(up = null) {
       this.up = up;
@@ -81,109 +111,53 @@ import { expect, test } from "bun:test";
   });
 }
 
-{
-  test("prelude", () => {
-    expect(parseInt("42", 10)).toBe(42);
-  });
-
-  class Frame {
-    constructor(left = null, up = null) {
-      this.left = left;
-      this.up = up;
-      this.binds = new Map();
-    }
-
-    bind(name, value) {
-      this.binds.set(name, value);
-      return this;
-    }
-
-    find(name, dval = null) {
-      const v = this.binds.get(name);
-      if (v === undefined) {
-        if (this.up === null) {
-          if (this.left === null) {
-            return dval;
-          } else {
-            return this.left.find(name, dval);
-          }
-        } else {
-          return this.up.find(name, dval);
-        }
-      } else {
-        return v;
-      }
-    }
-
-    down() {
-      return new Frame(this.left, this);
-    }
-
-    right() {
-      return new Frame(this, null);
-    }
-  }
-
-  test("prelude implementation", () => {
-    const env = new Frame().bind("parseInt", parseInt).right();
-    expect(env.find("parseInt")("42", 10)).toBe(42);
-  });
-}
+/*
+But binding lookup stops for a second reason other than `up` being `null`,
+let's see it with an example:
+*/
 
 {
-  let a = 10;
-  let b = 20;
-
   function f1() {
+    let a = 10;
     let b = 30;
-    return [f2(), f3()];
+    f2();
   }
 
   function f2() {
-    console.log("f2", a, b);
-    // 10 20
-    return [a, b];
-  }
-
-  function f3() {
-    {
-      let b = 40;
-      console.log("f3", a, b);
-      // 10 40
-      return [a, b];
-    }
+    console.log(a, b);
   }
 
   test("call frames", () => {
-    expect(f1()).toEqual([
-      [10, 20],
-      [10, 40],
-    ]);
+    expect(f1).toThrow();
   });
+}
 
+/*
+`a` and `b` aren't available in `f2` even if it was called from `f1` where they
+were defined, this is because binding lookup stops at call Frames.
+
+We can implement this by adding a marker attribute `upLimit` that makes the
+lookup stop:
+*/
+
+{
   class Frame {
-    constructor(left = null, up = null) {
+    constructor(up = null) {
       this.up = up;
-      this.left = left;
       this.upLimit = false;
-      this.leftLimit = false;
       this.binds = new Map();
     }
     bind(name, value) {
       this.binds.set(name, value);
       return this;
     }
-    find(name, dval = null) {
+    find(name) {
       const v = this.binds.get(name);
       if (v === undefined) {
         if (this.upLimit || this.up === null) {
-          if (this.leftLimit || this.left === null) {
-            return dval;
-          } else {
-            return this.left.find(name, dval);
-          }
+          return v;
         } else {
-          return this.up.find(name, dval);
+          return this.up.find(name);
         }
       } else {
         return v;
@@ -207,103 +181,252 @@ import { expect, test } from "bun:test";
 
   test("call frames implementations", () => {
     const env = new Frame()
-        .bind("a", 10)
-        .bind("b", 20)
-        .right()
-        .setUpLimit()
-        .bind("b", 30),
-      envF2 = env.down().setUpLimit(),
-      envF3 = env.down().setUpLimit().bind("b", 40);
+      .bind("a", 10)
+      .bind("b", 20)
+      .down()
+      .setUpLimit()
+      .bind("b", 30);
 
-    expect(envF2.find("a")).toBe(10);
-    expect(envF2.find("b")).toBe(20);
-
-    expect(envF3.find("a")).toBe(10);
-    expect(envF3.find("b")).toBe(40);
+    expect(env.find("a")).toBe(undefined);
+    expect(env.find("b")).toBe(30);
   });
+}
 
+/*
+But even when binding lookup stop at the call frame boundary there are two
+simple examples that lookup continues "somewhere":
+*/
+
+{
+  let a = 10;
+
+  function f() {
+    return a;
+  }
+
+  test("prelude", () => {
+    expect(f()).toBe(10);
+    expect(parseInt("42", 10)).toBe(42);
+  });
+}
+
+/*
+The first one is that after stopping at the call frame it "continues" the lookup
+with bindings available at the top level/module scope.
+
+The second (`parseInt`) is one of the values bound in the "prelude" of the language,
+bindings that are available everywhere without the need to include them, in JavaScript
+you can call it the `window` object, in other languages is described as a set of
+bindings that are automatically imported on every module.
+
+If the "look **up**" stops at the call frame then after reaching that point it has
+to go somewhere else, module and "prelude" bindings are bound "before", in many
+cultures the past is to the left, so let's continue there.
+
+Let's add a `left` attribute to our `Frame` class and make it work in a similar
+way to `up`, start the lookup in the current `Frame` and continue `up` until `upLimit`,
+then continue `left` until `leftLimit` or `left` is `null`.
+*/
+
+class Frame {
+  constructor(left = null, up = null) {
+    this.up = up;
+    this.left = left;
+    this.upLimit = false;
+    this.leftLimit = false;
+    this.binds = new Map();
+  }
+  bind(name, value) {
+    this.binds.set(name, value);
+    return this;
+  }
+  find(name) {
+    const v = this.binds.get(name);
+    if (v === undefined) {
+      if (this.upLimit || this.up === null) {
+        if (this.leftLimit || this.left === null) {
+          return v;
+        } else {
+          return this.left.find(name);
+        }
+      } else {
+        return this.up.find(name);
+      }
+    } else {
+      return v;
+    }
+  }
+  down() {
+    return new Frame(this.left, this);
+  }
+  right() {
+    return new Frame(this, null);
+  }
+  setUpLimit() {
+    this.upLimit = true;
+    return this;
+  }
+  setLeftLimit() {
+    this.leftLimit = true;
+    return this;
+  }
+}
+
+{
+  test("prelude implementation", () => {
+    const env = new Frame()
+      .bind("parseInt", parseInt)
+      .right()
+      .bind("a", 10)
+      .right()
+      .down()
+      .setUpLimit();
+
+    expect(env.find("parseInt")("42", 10)).toBe(42);
+    expect(env.find("a")).toBe(10);
+  });
+}
+
+/*
+Another thing in some programming languages that is about looking up bindings
+is "message dispatch" in object oriented languages, let's see some examples.
+
+If we define an empty class `A` in JavaScript it "inherits by default" the
+methods from the `Object` class:
+*/
+
+{
   class A {}
 
   test("Object default inheritance", () => {
     expect(new A().toString()).toBe("[object Object]");
   });
+}
 
+/*
+We can emulate the lookup of `toString` with the `Frame` class we have:
+*/
+
+{
   test("Object default inheritance implementation", () => {
     const a = new Frame().bind("toString", () => "[object Object]").right();
     expect(a.find("toString")()).toBe("[object Object]");
   });
-
-  class B {
-    toString() {
-      return "B!";
-    }
-  }
-
-  test("method", () => {
-    expect(new B().toString()).toBe("B!");
-  });
-
-  test("method implementation", () => {
-    const b = new Frame()
-      .bind("toString", () => "[object Object]")
-      .right()
-      .bind("toString", () => "B!");
-    expect(b.find("toString")()).toBe("B!");
-  });
-
-  class C extends B {
-    toString() {
-      return "C!";
-    }
-  }
-
-  test("method override", () => {
-    expect(new C().toString()).toBe("C!");
-  });
-
-  test("method override implementation", () => {
-    const c = new Frame()
-      .bind("toString", () => "[object Object]")
-      .right()
-      .bind("toString", () => "B!")
-      .down()
-      .bind("toString", () => "C!");
-    expect(c.find("toString")()).toBe("C!");
-  });
-
-  class D extends C {
-    constructor(count) {
-      super();
-      this.count = count;
-    }
-  }
-
-  test("instance attributes", () => {
-    const d1 = new D(10);
-    const d2 = new D(20);
-    expect(d1.toString()).toBe("C!");
-    expect(d1.count).toBe(10);
-    expect(d2.toString()).toBe("C!");
-    expect(d2.count).toBe(20);
-  });
-
-  test("method override implementation", () => {
-    const D = new Frame()
-      .bind("toString", () => "[object Object]")
-      .right()
-      .bind("toString", () => "B!")
-      .down()
-      .bind("toString", () => "C!")
-      .down();
-    const d1 = D.down().bind("count", 10);
-    const d2 = D.down().bind("count", 20);
-
-    expect(d1.find("toString")()).toBe("C!");
-    expect(d1.find("count")).toBe(10);
-    expect(d2.find("toString")()).toBe("C!");
-    expect(d2.find("count")).toBe(20);
-  });
 }
+
+/*
+We can define a class `B` that defines its own `toString` method:
+*/
+
+class B {
+  toString() {
+    return "B!";
+  }
+}
+
+test("method", () => {
+  expect(new B().toString()).toBe("B!");
+});
+
+/*
+We can again emulate it with the `Frame` class:
+*/
+
+test("method implementation", () => {
+  const b = new Frame()
+    .bind("toString", () => "[object Object]")
+    .right()
+    .bind("toString", () => "B!");
+  expect(b.find("toString")()).toBe("B!");
+});
+
+/*
+A more complicated `prototype` chain
+*/
+
+class C extends B {
+  toString() {
+    return "C!";
+  }
+}
+
+test("method override", () => {
+  expect(new C().toString()).toBe("C!");
+});
+
+test("method override implementation", () => {
+  const c = new Frame()
+    .bind("toString", () => "[object Object]")
+    .right()
+    .bind("toString", () => "B!")
+    .down()
+    .bind("toString", () => "C!");
+  expect(c.find("toString")()).toBe("C!");
+});
+
+/*
+A class can have instance attributes, each instance binds it's own attributes
+but looks up methods in the prototype chain:
+*/
+
+class D extends C {
+  constructor(count) {
+    super();
+    this.count = count;
+  }
+}
+
+test("instance attributes", () => {
+  const d1 = new D(10);
+  const d2 = new D(20);
+  expect(d1.toString()).toBe("C!");
+  expect(d1.count).toBe(10);
+  expect(d2.toString()).toBe("C!");
+  expect(d2.count).toBe(20);
+});
+
+/*
+We can emulate this by having the prototype chain "to the left" and the instance
+attributes in its own scope.
+*/
+
+test("method override implementation", () => {
+  const D = new Frame()
+    .bind("toString", () => "[object Object]")
+    .right()
+    .bind("toString", () => "B!")
+    .down()
+    .bind("toString", () => "C!")
+    .down();
+  const d1 = D.down().bind("count", 10);
+  const d2 = D.down().bind("count", 20);
+
+  expect(d1.find("toString")()).toBe("C!");
+  expect(d1.find("count")).toBe(10);
+  expect(d2.find("toString")()).toBe("C!");
+  expect(d2.find("count")).toBe(20);
+});
+
+/*
+We could get and set attributes from super classes by nesting frames "down"
+*/
+
+/*
+But manipulating the frame directly doesn't look like a programming language,
+if we wanted to create a really simple language on top we should be able to
+at least bind and lookup names and do some operations on those values, like
+arithmetic operations.
+
+This is the point where most would create a small lisp or forth interpreter, but
+the initial motivation of this was to find a small object oriented language that
+could be grown and expressed from a small set of primitives.
+
+We are going to start with numbers, specifically integers, we are going to use
+JavaScript `BigInt`s for them.
+
+To express a variable we can define a `Name` class that holds the name of the
+variable to lookup as a `value` attribte:
+*/
 
 {
   class Name {
@@ -316,6 +439,16 @@ import { expect, test } from "bun:test";
     }
   }
 
+  /*
+  The OOP way to eval a `Name` would be to send it a message, like `eval`,
+  for that we need a `Msg` class to hold the `eval` as the `verb` and following
+  the vocabulary of message, name and verb, the message is sent to the subject and
+  holds an `object`, in case of `eval` the object is the current scope:
+
+  > Some verbs (called transitive verbs) take direct objects; some also take indirect objects. A direct object names the person or thing directly affected by the action of an active sentence. An indirect object names the entity indirectly affected
+  > -- https://en.wikipedia.org/wiki/Traditional_grammar
+  */
+
   class Msg {
     constructor(verb, obj) {
       this.verb = verb;
@@ -326,6 +459,13 @@ import { expect, test } from "bun:test";
       return "Msg";
     }
   }
+
+  /*
+  Let's redefine Frame with just to extra methods:
+
+  - eval(v): sends the message `eval` to `v` and return the result
+  - send(s, m): sends the message `m` to the subject `s`
+  */
 
   class Frame {
     constructor(left = null, up = null) {
@@ -339,17 +479,17 @@ import { expect, test } from "bun:test";
       this.binds.set(name, value);
       return this;
     }
-    find(name, dval = null) {
+    find(name) {
       const v = this.binds.get(name);
       if (v === undefined) {
         if (this.upLimit || this.up === null) {
           if (this.leftLimit || this.left === null) {
-            return dval;
+            return v;
           } else {
-            return this.left.find(name, dval);
+            return this.left.find(name);
           }
         } else {
-          return this.up.find(name, dval);
+          return this.up.find(name);
         }
       } else {
         return v;
@@ -377,18 +517,36 @@ import { expect, test } from "bun:test";
     }
   }
 
-  // test("method override implementation", () => {
-  //   const a = new Name("a");
-  //   const env = new Frame().bind("a", 42);
-  //   expect(env.eval(a)).toBe(42);
-  // });
+  /*
+  The implementation of `send` gets the type of the subject, looks up the type in
+  the environment, the result should be a `Frame` instance with the "prototype" of
+  the type and then it does a lookup for the `Msg` vern in the prototype and
+  calls the handler passing the subject, the message and the environment as arguments.
+  */
+
+  /*
+  We can try it by:
+  - Creating an instance of `Name` for the name "a"
+  - Creating a `Frame` that works as the prototype of `Name` that holds a binding
+    for `eval` that when called does a lookup for the variable name in the environment
+  - Creating a `Frame` for the call stack, binding "a" to `42`, `nameEnv` to the type of `Name` (returned by `a.getType()`)
+  - Evaluating `a` in `env` and checking that it returns `42`
+  */
 
   test("Name resolution with eval message", () => {
     const a = new Name("a");
     const nameEnv = new Frame().bind("eval", (s, _m, e) => e.find(s.value));
-    const env = new Frame().bind("a", 42).bind("Name", nameEnv);
+    const env = new Frame().bind("a", 42).bind(a.getType(), nameEnv);
     expect(env.eval(a)).toBe(42);
   });
+
+  /*
+  With this we have a language that supports bindings but still no 
+  "first class message sends".
+
+  Let's fix this by defining a `Send` class that holds a subject and a message as
+  attributes:
+  */
 
   class Send {
     constructor(subj, msg) {
@@ -401,8 +559,38 @@ import { expect, test } from "bun:test";
     }
   }
 
+  /*
+  Since we are going to be using `BigInt`s as our language Ints we are going
+  to monkey patch `BigInt` prototype with the `getType` methods so we can
+  lookup handlers for `Int`s in our language:
+  */
+
   BigInt.prototype.getType = () => "Int";
 
+  /*
+  Note: in the real implementation we use `Symbol`s to avoid monkey patching.
+  */
+
+  /*
+  We can now implement message sends in our language by defining eval for:
+  - Name: does a lookup for the name in the environment
+  - BigInt: returns itself
+  - Msg: returns a new Msg instance where the verb is the same but `obj` es evaluated
+  - Send: evaluates subject and message, enters a call frame, binds `it` to the
+          subject, `msg` to the message and `that` for the message's `obj`ect and
+          sends the evaluated `msg` to the evaluated `subj`ect
+
+    - Note that I use `it` instead of `this` to differenciate from `this` and `self`
+      in other OOP languages.
+
+    To have some message to send we also define a handler for the `+` message in Ints
+    which does a lookup for `it` and adds it to the value bound to `that`. There's
+    an alternative implementation commented that uses `s` and `m.obj` that contain
+    the same values.
+
+    Finally we test it by building an object that represent the expression `10 + a`
+    and check that it results in `42n` since `a` was bounds to `32n` in the environment.
+  */
   test("Msg Send eval", () => {
     const a = new Name("a");
     const nameEnv = new Frame().bind("eval", (s, _m, e) => e.find(s.value));

@@ -89,7 +89,7 @@ export const NIL_TAG = mkTag("Nil", Nil),
   ARRAY_TAG = mkTag("Array", Array),
   MAP_TAG = mkTag("Map", Map),
   TAG_TAG = mkTag("Tag", Symbol);
-import * as ohm from "ohm-js";
+import * as ohm from "./node_modules/ohm-js/index.mjs";
 export const grammar = ohm.grammar(`McLulang {
     Main = Send
     nil = "(" ")"
