@@ -73,9 +73,11 @@ JavaScript binding lookup starts in the current scope and keeps going to outer s
 }
 
 /*
-To replicate this our new implementation of `Frame` has an attribute `up`, `find`
-starts in the current scope and if it doesn't find it there it continues in the scope referenced
-by `up` until the binding is found or `up` is `null`
+To replicate this our new implementation of `Frame` has an attribute `up`.
+`find` starts in the current scope and if it doesn't find it there it continues 
+in the scope referenced by `up` until the binding is found or `up` is `null`.
+
+The method `down` enters a new `Frame` with the current one being its `up`.
 */
 
 {
@@ -166,15 +168,8 @@ lookup stop:
     down() {
       return new Frame(this.left, this);
     }
-    right() {
-      return new Frame(this, null);
-    }
     setUpLimit() {
       this.upLimit = true;
-      return this;
-    }
-    setLeftLimit() {
-      this.leftLimit = true;
       return this;
     }
   }
@@ -193,8 +188,8 @@ lookup stop:
 }
 
 /*
-But even when binding lookup stop at the call frame boundary there are two
-simple examples that lookup continues "somewhere":
+But even when binding lookup stops at the call frame boundary there are two
+simple examples showing that the lookup continues "somewhere":
 */
 
 {
@@ -204,28 +199,31 @@ simple examples that lookup continues "somewhere":
     return a;
   }
 
-  test("prelude", () => {
+  test("top level and prelude bindings", () => {
     expect(f()).toBe(10);
     expect(parseInt("42", 10)).toBe(42);
   });
 }
 
 /*
-The first one is that after stopping at the call frame it "continues" the lookup
+In the first case after stopping at the call frame it "continues" the lookup
 with bindings available at the top level/module scope.
 
-The second (`parseInt`) is one of the values bound in the "prelude" of the language,
-bindings that are available everywhere without the need to include them, in JavaScript
-you can call it the `window` object, in other languages is described as a set of
-bindings that are automatically imported on every module.
+It the second case it finds a value that is not bound in our program (`parseInt`).
+
+This is one of the bindings that are available everywhere without the need to include them,
+in JavaScript you can call it the `window` object, in other languages it is described as a set of bindings that are automatically imported on every module or prelude for short.
 
 If the "look **up**" stops at the call frame then after reaching that point it has
-to go somewhere else, module and "prelude" bindings are bound "before", in many
-cultures the past is to the left, so let's continue there.
+to go somewhere else, module and "prelude" bindings are bound "before" the bindings in the call stack. In many cultures the past is to the left, so let's continue there.
 
 Let's add a `left` attribute to our `Frame` class and make it work in a similar
 way to `up`, start the lookup in the current `Frame` and continue `up` until `upLimit`,
-then continue `left` until `leftLimit` or `left` is `null`.
+then continue `left` until `leftLimit` or until `left` is `null`.
+
+The `right` method is similar to the `down` method but it returns a new `Frame` instance that has the current frame as its left and up set to `null`.
+
+We redefine `down` to return a new `Frame` instance where `left` is the same as the `left` of the current frame and `up` is the current frame itself.
 */
 
 class Frame {
@@ -288,8 +286,8 @@ class Frame {
 }
 
 /*
-Another thing in some programming languages that is about looking up bindings
-is "message dispatch" in object oriented languages, let's see some examples.
+Another thing in object oriented languages that is about looking up bindings
+is "message dispatch", let's see some examples.
 
 If we define an empty class `A` in JavaScript it "inherits by default" the
 methods from the `Object` class:
@@ -408,24 +406,19 @@ test("method override implementation", () => {
 });
 
 /*
-We could get and set attributes from super classes by nesting frames "down"
-*/
-
-/*
 But manipulating the frame directly doesn't look like a programming language,
 if we wanted to create a really simple language on top we should be able to
 at least bind and lookup names and do some operations on those values, like
 arithmetic operations.
 
-This is the point where most would create a small lisp or forth interpreter, but
-the initial motivation of this was to find a small object oriented language that
+This is the point where most articles would create a small lisp or forth interpreter, but
+the initial motivation for thos one was to find a small object oriented language that
 could be grown and expressed from a small set of primitives.
 
-We are going to start with numbers, specifically integers, we are going to use
-JavaScript `BigInt`s for them.
+We are going to start with numbers, specifically integers, let's use JavaScript `BigInt`s for that.
 
 To express a variable we can define a `Name` class that holds the name of the
-variable to lookup as a `value` attribte:
+variable to lookup as its `value` attribte:
 */
 
 {
@@ -440,8 +433,8 @@ variable to lookup as a `value` attribte:
   }
 
   /*
-  The OOP way to eval a `Name` would be to send it a message, like `eval`,
-  for that we need a `Msg` class to hold the `eval` as the `verb` and following
+  The OOP way to eval a `Name` would be to send it a message, like `eval`.
+  For that we need a `Msg` class that hold the `eval` as the `verb` and following
   the vocabulary of message, name and verb, the message is sent to the subject and
   holds an `object`, in case of `eval` the object is the current scope:
 
@@ -475,6 +468,14 @@ variable to lookup as a `value` attribte:
       this.leftLimit = false;
       this.binds = new Map();
     }
+
+    eval(v) {
+      return this.send(v, new Msg("eval", this));
+    }
+    send(s, m) {
+      return this.find(s.getType()).find(m.verb).call(null, s, m, this);
+    }
+
     bind(name, value) {
       this.binds.set(name, value);
       return this;
@@ -509,23 +510,18 @@ variable to lookup as a `value` attribte:
       this.leftLimit = true;
       return this;
     }
-    eval(v) {
-      return this.send(v, new Msg("eval", this));
-    }
-    send(s, m) {
-      return this.find(s.getType()).find(m.verb).call(null, s, m, this);
-    }
   }
 
   /*
   The implementation of `send` gets the type of the subject, looks up the type in
   the environment, the result should be a `Frame` instance with the "prototype" of
-  the type and then it does a lookup for the `Msg` vern in the prototype and
+  the type and then it does a lookup for the `Msg` verb in the prototype and
   calls the handler passing the subject, the message and the environment as arguments.
   */
 
   /*
   We can try it by:
+
   - Creating an instance of `Name` for the name "a"
   - Creating a `Frame` that works as the prototype of `Name` that holds a binding
     for `eval` that when called does a lookup for the variable name in the environment
@@ -561,7 +557,7 @@ variable to lookup as a `value` attribte:
 
   /*
   Since we are going to be using `BigInt`s as our language Ints we are going
-  to monkey patch `BigInt` prototype with the `getType` methods so we can
+  to monkey patch `BigInt`'s prototype with the `getType` methods so we can
   lookup handlers for `Int`s in our language:
   */
 
@@ -573,22 +569,24 @@ variable to lookup as a `value` attribte:
 
   /*
   We can now implement message sends in our language by defining eval for:
+
   - Name: does a lookup for the name in the environment
   - BigInt: returns itself
-  - Msg: returns a new Msg instance where the verb is the same but `obj` es evaluated
-  - Send: evaluates subject and message, enters a call frame, binds `it` to the
-          subject, `msg` to the message and `that` for the message's `obj`ect and
-          sends the evaluated `msg` to the evaluated `subj`ect
+  - Msg: returns a new Msg instance where the verb is the same but `obj` is evaluated
+  - Send:
+    - evaluates subject and message
+    - enters a call frame
+    - binds `it` to the subject
+      - I use `it` instead of `this` to differenciate from `this` and `self` in other OOP languages
+    - binds ,`msg` to the message
+    - binds `that` for the message's `obj`ect and
+    - sends the evaluated `msg` to the evaluated `subj`ect
 
-    - Note that I use `it` instead of `this` to differenciate from `this` and `self`
-      in other OOP languages.
-
-    To have some message to send we also define a handler for the `+` message in Ints
+    To have some message to send we also define a handler for the `+` message for Ints
     which does a lookup for `it` and adds it to the value bound to `that`. There's
-    an alternative implementation commented that uses `s` and `m.obj` that contain
-    the same values.
+    an alternative implementation commented that directly uses `s` and `m.obj` that contain the same values.
 
-    Finally we test it by building an object that represent the expression `10 + a`
+    Finally we test it by building an object that represents the expression `10 + a`
     and check that it results in `42n` since `a` was bounds to `32n` in the environment.
   */
   test("Msg Send eval", () => {
