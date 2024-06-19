@@ -1041,33 +1041,6 @@ test("Msg Send reply definition", () => {
   );
 });
 
-Frame.prototype.log = function () {
-  console.log("--------------------------------");
-  for (const [k, v] of this.binds) {
-    if (v instanceof Frame) {
-      console.log("++++++++++++++++++++++++++++++++");
-      console.log("FRAME AT", k);
-      v.log();
-      console.log("++++++++++++++++++++++++++++++++");
-    } else {
-      console.log(k, "\t\t", "" + v);
-    }
-  }
-  if (this.up) {
-    console.log("UP");
-    this.up.log();
-  } else if (this.left) {
-    console.log("LEFT");
-    this.left.log();
-  }
-};
-Msg.prototype.toString = function () {
-  return `\\ ${this.verb} ${this.obj.toString()}`;
-};
-Send.prototype.toString = function () {
-  return `${this.subj.toString()} ${this.verb} ${this.obj.toString()}`;
-};
-
 test("walk and map", () => {
   function send(s, m, e) {
     return e.eval(new Send(s, m));
