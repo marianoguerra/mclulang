@@ -1,3 +1,4 @@
+/* eslint-disable no-useless-escape */
 /* eslint-disable no-inner-declarations */
 /* eslint-disable no-unused-vars */
 import { expect, test } from "bun:test";
@@ -646,7 +647,7 @@ function mkLang(g, s) {
 }
 
 class Base {
-  call(s, m, e) {
+  call(_, s, m, e) {
     return e.eval(this);
   }
 }
@@ -923,4 +924,126 @@ test("lazy conditional", () => {
   expect(run2("() ? 1 : 2", env)).toBe(2n);
   expect(run2("() ? 1 : () ? 2 : 3", env)).toBe(3n);
   expect(run2("0 ? @ 1 : (1 * 2)", env)).toBe(1n);
+});
+
+class Block extends Base {
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+}
+
+const TYPE_BLOCK = mkType("Block", Block),
+  TYPE_FLOAT = mkType("Float", Number),
+  TYPE_STR = mkType("Str", String);
+
+const { run: run3 } = mkLang(
+  `Lang {
+    Main = Send
+    nil = "(" ")"
+    Pair = PairHead ":" Value
+    PairHead = Block | Scalar | Later | ParSend
+    name = (letter | "_") (letter | "_" | digit)*
+    Block = "{" Exprs "}"
+    Exprs = Send ("," Send )*
+    Msg = verb Value
+    MsgQuote = "\\\\" Msg
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "<" | ">" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+    Send = Value Msg*
+    ParSend = "(" Send ")"
+    Later = "@" Value
+    Value = Pair | PairHead
+    Scalar = float | int | str | nil | name | MsgQuote
+    float = digit+ "." digit+
+    int = digit+
+    str = "\\\"" (~"\\\"" any)* "\\\""
+  }`,
+  {
+    nil: (_o, _c) => NIL,
+    Pair: (a, _, b) => new Pair(a.toAst(), b.toAst()),
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    Block: (_o, exprs, _c) => new Block(exprs.toAst()),
+    Exprs: (first, _, rest) =>
+      [first.toAst()].concat(rest.children.map((v) => v.toAst())),
+    Msg: (verb, obj) => new Msg(verb.toAst(), obj.toAst()),
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    MsgQuote: (_, msg) => msg.toAst(),
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    ParSend: (_o, v, _c) => v.toAst(),
+    Later: (_, v) => new Later(v.toAst()),
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+    float(_a, _d, _b) {
+      return parseFloat(this.sourceString);
+    },
+    str: (_1, s, _3) => s.sourceString,
+  },
+);
+
+test("Msg Send reply definition", () => {
+  const env = mkEnv1()
+    .bind(TYPE_LATER, mkProto({ eval: (s, _m, e) => s.value }))
+    .bind(
+      TYPE_BLOCK,
+      mkProto({
+        eval: (s, _m, e) => {
+          let r = NIL;
+          for (const item of s.value) {
+            r = e.eval(item);
+          }
+          return r;
+        },
+      }),
+    )
+    .bind(
+      TYPE_INT,
+      mkProto({
+        eval: (s, _m, e) => s,
+        "+": (_s, _m, e) => e.find("it") + e.find("that"),
+      }),
+    )
+    .bind(
+      TYPE_SEND,
+      mkProto({
+        eval(s, _m, e) {
+          const subj = e.eval(s.subj),
+            msg = e.eval(s.msg);
+          return e
+            .down()
+            .setUpLimit()
+            .bind("it", subj)
+            .bind("msg", msg)
+            .bind("that", msg.obj)
+            .send(subj, msg);
+        },
+        replies(s, m, e) {
+          const target = s.subj,
+            targetType = getType(target),
+            msgVerb = s.msg.verb,
+            impl = m.obj,
+            proto = e.find(targetType);
+
+          proto.bind(msgVerb, impl);
+          return NIL;
+        },
+      }),
+    )
+    .right();
+
+  expect(run3("{@(0 add+1 0) replies @(it + that + 1), 1 add+1 2}", env)).toBe(
+    4n,
+  );
 });
