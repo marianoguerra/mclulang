@@ -624,7 +624,16 @@ variable to lookup as its `value` attribte:
   });
 }
 
+/*
+Let's write a parser for our language to make it easier to test, we are going
+to use https://ohmjs.org/
+*/
+
 import * as ohm from "./node_modules/ohm-js/index.mjs";
+
+/*
+Since we are going to be [Growing a Language](https://www.youtube.com/watch?v=lw6TaiXzHAE) let's create an utility function to define new languages:
+*/
 
 function mkLang(g, s) {
   const grammar = ohm.grammar(g),
@@ -645,11 +654,21 @@ function mkLang(g, s) {
   return { run, parse };
 }
 
+/*
+We are going to define our base types again to use Symbols instead of monkey patching.
+
+Also to add a base class that allows any type to be used as a reply handler for a message by implementing the `call` method:
+*/
+
 class Base {
   call(_, s, m, e) {
     return e.eval(this);
   }
 }
+
+/*
+Name, Msg and Send are almost the same as before:
+*/
 
 class Name extends Base {
   constructor(value) {
@@ -674,6 +693,15 @@ class Send extends Base {
   }
 }
 
+/*
+But now instead of implementing `getType` as a method they are going to have
+a unique Symbol used to lookup the prototype when looking for a message handler.
+
+`typeSym` is the symbol we are going to use to get and set the type for each class,
+also 3 utility functions to get, set and make a type, which creates the type sets it
+on a class and returns it:
+*/
+
 const typeSym = Symbol("TypeSym"),
   getType = (v) => v[typeSym],
   setType = (Cls, type) => ((Cls.prototype[typeSym] = type), type),
@@ -683,6 +711,11 @@ const TYPE_NAME = mkType("Name", Name),
   TYPE_MSG = mkType("Msg", Msg),
   TYPE_SEND = mkType("Send", Send),
   TYPE_INT = mkType("Int", BigInt);
+
+/*
+Redefine `Frame` for the last time to use `getType` to get the type associated
+with a value:
+*/
 
 class Frame {
   constructor(left = null, up = null) {
@@ -736,6 +769,10 @@ class Frame {
   }
 }
 
+/*
+We have everything in place to create the first version of our language:
+*/
+
 const { run: run1 } = mkLang(
   `Lang {
     Main = Send
@@ -764,6 +801,10 @@ const { run: run1 } = mkLang(
   },
 );
 
+/*
+Let's create another utility function to make type prototype definitions more readable:
+*/
+
 function mkProto(obj) {
   const frame = new Frame();
 
@@ -773,6 +814,11 @@ function mkProto(obj) {
 
   return frame;
 }
+
+/*
+And yet another utility function that creates a basic environment with `eval` handlers for Name, BitInt, Msg and Send that will be reused from now on to test
+our languages:
+*/
 
 function mkEnv1() {
   return new Frame()
@@ -806,13 +852,32 @@ function mkEnv1() {
     );
 }
 
+/*
+Let's test some basic expressions in our first language:
+*/
+
 test("Msg Send eval with parser", () => {
   const env = mkEnv1().right().bind("a", 32n);
+  expect(run1("10 + 4", env)).toBe(14n);
+  expect(run1("10 + a", env)).toBe(42n);
   expect(run1("10 + a + 4", env)).toBe(46n);
 });
 
+/*
+After arithmetic operations the next feature that sets a language appart from
+an advanced calculator are conditional expressions, to support them we need some
+new types, one to express `false` and also the lack of a value, it's usually called
+null, nil or Unit, in our language it will be called Nil and it's syntax will be `()`:
+*/
+
 class Nil extends Base {}
 const NIL = new Nil();
+
+/*
+For conditionals we need a way to express two branches and pick one of them, for
+that and as lisp as taught us, for many other things we are going to create the `Pair` type that has two fields, not car/cdr, not first/rest, not head/tail but a and b:
+*/
+
 class Pair extends Base {
   constructor(a, b) {
     super();
@@ -821,12 +886,28 @@ class Pair extends Base {
   }
 }
 
+/*
+The final ingredient for conditionals is the `Later` type, which I will describe... later ;)
+*/
+
 class Later extends Base {
   constructor(value) {
     super();
     this.value = value;
   }
 }
+
+/*
+Let's not forget to create the Symbols for the new types:
+*/
+
+const TYPE_NIL = mkType("Nil", Nil),
+  TYPE_PAIR = mkType("Pair", Pair),
+  TYPE_LATER = mkType("Later", Later);
+
+/*
+The second version of our language adds support for the new types:
+*/
 
 const { run: run2 } = mkLang(
   `Lang {
@@ -866,9 +947,11 @@ const { run: run2 } = mkLang(
   },
 );
 
-const TYPE_NIL = mkType("Nil", Nil),
-  TYPE_PAIR = mkType("Pair", Pair),
-  TYPE_LATER = mkType("Later", Later);
+/*
+The simplest implementation for conditionals in a language with no side effects and
+free CPU time is as a message reply handler on Nil that picks the second item
+of the Pair passed as message's object and an implementation for the rest of the types that picks the Pair's first item:
+*/
 
 test("eager conditional", () => {
   const env = mkEnv1()
@@ -891,6 +974,13 @@ test("eager conditional", () => {
   expect(run2("() ? 1 : () ? 2 : 3", env)).toBe(3n);
   expect(() => run2("0 ? 1 : (1 * 2)", env)).toThrow();
 });
+
+/*
+But from the last test case, which throws because there's no reply handler for `*` registered for Ints, we can tell that this implementation evaluates both sides of
+the pair, something we don't want.
+
+Let's fix this by implementing `eval` for `Later` which wraps any other value and returns the wrapped value unevaluated on eval:
+*/
 
 test("lazy conditional", () => {
   const env = mkEnv1()
@@ -915,6 +1005,21 @@ test("lazy conditional", () => {
   expect(run2("0 ? @ 1 : (1 * 2)", env)).toBe(1n);
 });
 
+/*
+With later we can "delay" the evaluation of the pair until we know which branch we
+want to take.
+
+Notice that the implementations of `?` for Nil and Int now evaluate the branch they take.
+*/
+
+/*
+The next feature we probably want is the ability to define reply handlers in our
+language instead of "native" JavaScript functions, to test this we need to be able
+to have more than one expression in our language, we could do it with pairs but
+let's create a `Block` type which contains a sequence of expressions and when
+evaluated it evaluates each in turn and returns the result of the last one:
+*/
+
 class Block extends Base {
   constructor(value) {
     super();
@@ -922,9 +1027,18 @@ class Block extends Base {
   }
 }
 
+/*
+Let's add the type for Block and to avoid repeating a lot of code for small changes
+let's also introduce Float and Str to our language by adding type tags to them and
+adding them to the parser:
+*/
+
+// FIXME: we have to do this to be able to attach a symbol at runtime further down
+class Str extends String {}
+
 const TYPE_BLOCK = mkType("Block", Block),
   TYPE_FLOAT = mkType("Float", Number),
-  TYPE_STR = mkType("Str", String);
+  TYPE_STR = mkType("Str", Str);
 
 const { run: run3 } = mkLang(
   `Lang {
@@ -973,12 +1087,16 @@ const { run: run3 } = mkLang(
     float(_a, _d, _b) {
       return parseFloat(this.sourceString);
     },
-    str: (_1, s, _3) => s.sourceString,
+    str: (_1, s, _3) => new Str(s.sourceString),
   },
 );
 
-test("Msg Send reply definition", () => {
-  const env = mkEnv1()
+/*
+With block support let's implement "message reply definition", since we are going to be using it in subsequent tests let's define a function to create the environment required for reply definitions:
+*/
+
+function mkEnv2() {
+  return mkEnv1()
     .bind(TYPE_LATER, mkProto({ eval: (s, _m, e) => s.value }))
     .bind(
       TYPE_BLOCK,
@@ -1007,23 +1125,56 @@ test("Msg Send reply definition", () => {
             .send(subj, msg);
         },
         replies(s, m, e) {
-          const target = s.subj,
+          const target = e.up.eval(s.subj),
             targetType = getType(target),
             msgVerb = s.msg.verb,
             impl = m.obj,
-            proto = e.find(targetType);
+            proto = e.up.find(targetType);
 
           proto.bind(msgVerb, impl);
           return NIL;
         },
       }),
-    )
-    .right();
+    );
+}
+
+/*
+And now test it
+*/
+
+test("Msg Send reply definition", () => {
+  const env = mkEnv2().right();
 
   expect(run3("{@(0 add+1 0) replies @(it + that + 1), 1 add+1 2}", env)).toBe(
     4n,
   );
 });
+
+/*
+The way to support reply definitions is by adding a handler for the `reply` message
+on the Send type, without Later there's no way to send a message to a Send but with
+it we can "quote" a send and send a message to it.
+
+`replies` implementation takes the Send's subject, gets its type, finds the current prototype for it in the environment andd binds a handler for the Send's verb using replies' object.
+
+A little convoluted, let's try again, this is the shape of an expression to define a reply to a message: `SampleSend replies ReplyImplementation`.
+
+SampleSend is a Send expression, which we get by using Later on a Send to avoid its evaluation, it's an example of the kind of expression that we want to handle.
+
+As a reminder Send has the shape `Subject Verb Object`.
+We take SampleSend's subject to get the type associated with the new reply.
+From SampleSend we also get the verb that we want to reply to.
+Finally ReplyImplementation is used as the handler for the message, which you
+have to quote if it's not a constant value to delay its evaluation when the message is sent.
+*/
+
+/*
+We still don't have iteration, there are many ways to implement it but here's
+a fun set of "primitives" i've been playing with: walk and map.
+
+- map forwards the quoted message to the subject's items
+- walk also forwards a quoted message but it forwards the walk message itself, not the quoted one, this makes it recursive.
+*/
 
 test("walk and map", () => {
   function esend(s, m, e) {
@@ -1064,3 +1215,110 @@ test("walk and map", () => {
   expect(p2.b.a).toBe(4n);
   expect(p2.b.b).toBe(5n);
 });
+
+/*
+You may be asking "but what about user defined types?", well glad you asked because
+I was planning on explaining that just about now.
+
+We first need to bring the Symbol type to our language:
+*/
+
+const TYPE_SYM = mkType("Symbol", Symbol);
+
+/*
+Then we need a way to create new Symbols, instead of adding syntax for it we
+are going to add a reply to the `as-type` message for strings.
+
+And an `apply` handler to the Symbol type to apply itself as the type to the message object.
+
+And... that it.
+*/
+
+test("custom type definition", () => {
+  const env = mkEnv2()
+    .bind(TYPE_NIL, mkProto({ eval: (s) => s }))
+    .bind(
+      TYPE_PAIR,
+      mkProto({
+        eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)),
+      }),
+    )
+    .bind(
+      TYPE_STR,
+      mkProto({
+        eval: (s) => s,
+        "as-type"(s, _m, e) {
+          const type = Symbol(s);
+          e.left.bind(
+            type,
+            new Frame().bind("eval", (s) => s),
+          );
+          return type;
+        },
+        "+": (s, m) => new Str(s + ("" + m.obj)),
+        "say-hello": (s) => new Str(`Hello, ${s}!`),
+      }),
+    )
+    .bind(
+      TYPE_NAME,
+      mkProto({
+        eval: (s, _m, e) => e.find(s.value),
+        is(s, m, e) {
+          e.up.bind(s.value, m.obj);
+          return m.obj;
+        },
+      }),
+    )
+    .bind(
+      TYPE_SYM,
+      mkProto({
+        eval: (s) => s,
+        "apply-to"(s, m) {
+          m.obj[typeSym] = s;
+          return s;
+        },
+      }),
+    )
+    .right();
+
+  const pair = run3(
+    `{
+    @MyType is ("my-type" as-type ()),
+    @name is "Joe",
+     MyType apply-to name,
+     @(name say-hello ()) replies @("Well, hello " + it),
+     (name say-hello ()) : ("Mike" say-hello ())
+   }`,
+    env,
+  );
+  // coerse to String from Str to test
+  expect("" + pair.a).toBe("Well, hello Joe");
+  expect("" + pair.b).toBe("Hello, Mike!");
+});
+
+/*
+Let's go line y line:
+
+`@MyType is ("my-type" as-type ())`
+
+Define a new type with label "my-type" and bind ig to the name `MyType`.
+
+Notice that until now we had no way to bind new values in the environment, we defined
+a handler for `is` in the `Name` type that binds the object in the environment for the current name. Since each message handler enters its own call frame we bind it in the parent frame.
+
+`@name is "Joe"`
+
+Bind the String "joe" to the name `name`.
+
+`MyType apply-to name`
+
+Apply the type bound in `MyType` to the value bound in `name`.
+
+`@(name say-hello ()) replies @("Well, hello " + it)`
+
+Define a reply for the `say-hello` message for the type in `name` (notice that `replies` evaluates the subject in the current environment before getting the type so the type is not `Name` but our new type.
+
+`(name say-hello ()) : ("Mike" say-hello ())`
+
+Return a pair with `a` being the result of `say-hello` in our type and `b` the same message but on a String.
+*/
