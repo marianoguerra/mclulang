@@ -14,20 +14,18 @@ a simple example in JavaScript:
 {
   let a = 10;
   let b = 20;
-  console.log(a, b);
-  // 10 20
 
-  test("top level bindings", () => {
+  test("single scope bindings", () => {
     expect(a).toBe(10);
     expect(b).toBe(20);
   });
 }
 
 /*
-Let's start with a simple Frame object that holds bindings in a `Map` and has two operations:
+Let's start with a simple `Frame` class that holds bindings in a `Map` and has two operations:
 
-- bind: store a value associated to a name
-- find: return the value associated with a name or `undefined` if not found
+- `bind`: store a value associated to a name
+- `find`: return the value associated with a name or `undefined` if not found
 */
 
 {
@@ -46,7 +44,7 @@ Let's start with a simple Frame object that holds bindings in a `Map` and has tw
     }
   }
 
-  test("top level bindings implementation", () => {
+  test("single scope bindings implementation", () => {
     const env = new Frame().bind("a", 10).bind("b", 20);
     expect(env.find("a")).toBe(10);
     expect(env.find("b")).toBe(20);
@@ -55,16 +53,15 @@ Let's start with a simple Frame object that holds bindings in a `Map` and has tw
 
 /*
 The smallest region that can hold bindings is the scope, in languages like
-JavaScript binding lookup starts in the current scope and keeps going to outer scopes
+JavaScript binding lookup starts in the current scope and continues in outer scopes
 */
 
 {
   let a = 10;
   let b = 20;
+
   {
     let b = 30;
-    console.log(a, b);
-    // 10 30
 
     test("nested scopes", () => {
       expect(a).toBe(10);
@@ -75,7 +72,8 @@ JavaScript binding lookup starts in the current scope and keeps going to outer s
 
 /*
 To replicate this our new implementation of `Frame` has an attribute `up`.
-`find` starts in the current scope and if it doesn't find it there it continues 
+
+`find` starts in the current scope and if the binding is not found it continues
 in the scope referenced by `up` until the binding is found or `up` is `null`.
 
 The method `down` enters a new `Frame` with the current one being its `up`.
@@ -127,7 +125,7 @@ let's see it with an example:
   }
 
   function f2() {
-    console.log(a, b);
+    return a + b;
   }
 
   test("call frames", () => {
@@ -150,10 +148,12 @@ lookup stop:
       this.upLimit = false;
       this.binds = new Map();
     }
+
     bind(name, value) {
       this.binds.set(name, value);
       return this;
     }
+
     find(name) {
       const v = this.binds.get(name);
       if (v === undefined) {
@@ -166,16 +166,18 @@ lookup stop:
         return v;
       }
     }
+
     down() {
       return new Frame(this.left, this);
     }
+
     setUpLimit() {
       this.upLimit = true;
       return this;
     }
   }
 
-  test("call frames implementations", () => {
+  test("call frames implementation", () => {
     const env = new Frame()
       .bind("a", 10)
       .bind("b", 20)
@@ -190,7 +192,7 @@ lookup stop:
 
 /*
 But even when binding lookup stops at the call frame boundary there are two
-simple examples showing that the lookup continues "somewhere":
+simple examples showing that the lookup continues "somewhere else":
 */
 
 {
@@ -208,21 +210,20 @@ simple examples showing that the lookup continues "somewhere":
 
 /*
 In the first case after stopping at the call frame it "continues" the lookup
-with bindings available at the top level/module scope.
+with bindings available at the top level (module) scope.
 
-It the second case it finds a value that is not bound in our program (`parseInt`).
+It the second case it finds a value that is not bound in our program: `parseInt`.
 
 This is one of the bindings that are available everywhere without the need to include them,
-in JavaScript you can call it the `window` object, in other languages it is described as a set of bindings that are automatically imported on every module or prelude for short.
+in JavaScript you may call it the `window` object, in other languages it is described as a set of bindings that are automatically imported on every module or prelude for short.
 
 If the "look **up**" stops at the call frame then after reaching that point it has
 to go somewhere else, module and "prelude" bindings are bound "before" the bindings in the call stack. In many cultures the past is to the left, so let's continue there.
 
 Let's add a `left` attribute to our `Frame` class and make it work in a similar
-way to `up`, start the lookup in the current `Frame` and continue `up` until `upLimit`,
-then continue `left` until `leftLimit` or until `left` is `null`.
+way to `up`, start the lookup in the current `Frame` and continue `up` until `upLimit` or until it's `null`, then continue `left` until `leftLimit` or until `left` is `null`.
 
-The `right` method is similar to the `down` method but it returns a new `Frame` instance that has the current frame as its left and up set to `null`.
+The `right` method is similar to the `down` method but it returns a new `Frame` instance that has the current frame as its `left` and `up` set to `null`.
 
 We redefine `down` to return a new `Frame` instance where `left` is the same as the `left` of the current frame and `up` is the current frame itself.
 */
@@ -236,10 +237,12 @@ We redefine `down` to return a new `Frame` instance where `left` is the same as 
       this.leftLimit = false;
       this.binds = new Map();
     }
+
     bind(name, value) {
       this.binds.set(name, value);
       return this;
     }
+
     find(name) {
       const v = this.binds.get(name);
       if (v === undefined) {
@@ -256,16 +259,20 @@ We redefine `down` to return a new `Frame` instance where `left` is the same as 
         return v;
       }
     }
+
     down() {
       return new Frame(this.left, this);
     }
+
     right() {
       return new Frame(this, null);
     }
+
     setUpLimit() {
       this.upLimit = true;
       return this;
     }
+
     setLeftLimit() {
       this.leftLimit = true;
       return this;
@@ -287,12 +294,12 @@ We redefine `down` to return a new `Frame` instance where `left` is the same as 
     });
   }
 }
+
 /*
-Another thing in object oriented languages that is about looking up bindings
+Another thing in object oriented languages that can be described as looking up bindings
 is "message dispatch", let's see some examples.
 
-If we define an empty class `A` in JavaScript it "inherits by default" the
-methods from the `Object` class:
+If we define an empty class `A` in JavaScript it "inherits by default" from the `Object` class:
 */
 
 {
@@ -304,7 +311,7 @@ methods from the `Object` class:
 }
 
 /*
-We can emulate the lookup of `toString` with the `Frame` class we have:
+We can emulate the lookup of `toString` with the `Frame` class as it is:
 */
 
 {
@@ -315,7 +322,7 @@ We can emulate the lookup of `toString` with the `Frame` class we have:
 }
 
 /*
-We can define a class `B` that defines its own `toString` method:
+We can declare a class `B` that defines its own `toString` method:
 */
 
 class B {
@@ -341,7 +348,7 @@ test("method implementation", () => {
 });
 
 /*
-A more complicated `prototype` chain
+A more complicated `prototype` chain:
 */
 
 class C extends B {
@@ -361,6 +368,7 @@ test("method override implementation", () => {
     .bind("toString", () => "B!")
     .down()
     .bind("toString", () => "C!");
+
   expect(c.find("toString")()).toBe("C!");
 });
 
@@ -379,6 +387,7 @@ class D extends C {
 test("instance attributes", () => {
   const d1 = new D(10);
   const d2 = new D(20);
+
   expect(d1.toString()).toBe("C!");
   expect(d1.count).toBe(10);
   expect(d2.toString()).toBe("C!");
@@ -408,19 +417,18 @@ test("method override implementation", () => {
 });
 
 /*
-But manipulating the frame directly doesn't look like a programming language,
+But manipulating the frame directly doesn't feel like a programming language,
 if we wanted to create a really simple language on top we should be able to
 at least bind and lookup names and do some operations on those values, like
-arithmetic operations.
+arithmetic operations on numbers.
 
-This is the point where most articles would create a small lisp or forth interpreter, but
-the initial motivation for thos one was to find a small object oriented language that
+This is the point where most articles would create a small Lisp or Forth interpreter, but
+the initial motivation for this one was to find a small object oriented language that
 could be grown and expressed from a small set of primitives.
 
-We are going to start with numbers, specifically integers, let's use JavaScript `BigInt`s for that.
+We are going to start with numbers, specifically integers, let's use JavaScript `BigInt`s.
 
-To express a variable we can define a `Name` class that holds the name of the
-variable to lookup as its `value` attribte:
+To express a variable we can define a `Name` class that holds the variable name to lookup as its `value` attribute:
 */
 
 {
@@ -436,9 +444,10 @@ variable to lookup as its `value` attribte:
 
   /*
   The OOP way to eval a `Name` would be to send it a message, like `eval`.
-  For that we need a `Msg` class that hold the `eval` as the `verb` and following
-  the vocabulary of message, name and verb, the message is sent to the subject and
-  holds an `object`, in case of `eval` the object is the current scope:
+
+  To do that we need a `Msg` class that can hold `eval` as the `verb`.
+
+  Following the vocabulary of message, name and verb, the message is sent to the subject and has an `object`, in case of `eval` the object is the current scope:
 
   > Some verbs (called transitive verbs) take direct objects; some also take indirect objects. A direct object names the person or thing directly affected by the action of an active sentence. An indirect object names the entity indirectly affected
   > -- https://en.wikipedia.org/wiki/Traditional_grammar
@@ -456,10 +465,10 @@ variable to lookup as its `value` attribte:
   }
 
   /*
-  Let's redefine Frame with just to extra methods:
+  Let's redefine Frame with just two extra methods:
 
-  - eval(v): sends the message `eval` to `v` and return the result
-  - send(s, m): sends the message `m` to the subject `s`
+  - `eval(v)`: sends the message `eval` to `v` and return the result
+  - `send(s, m)`: sends the message `m` to the subject `s`
   */
 
   class Frame {
@@ -474,6 +483,7 @@ variable to lookup as its `value` attribte:
     eval(v) {
       return this.send(v, new Msg("eval", this));
     }
+
     send(s, m) {
       return this.find(s.getType()).find(m.verb).call(null, s, m, this);
     }
@@ -482,6 +492,7 @@ variable to lookup as its `value` attribte:
       this.binds.set(name, value);
       return this;
     }
+
     find(name) {
       const v = this.binds.get(name);
       if (v === undefined) {
@@ -498,16 +509,20 @@ variable to lookup as its `value` attribte:
         return v;
       }
     }
+
     down() {
       return new Frame(this.left, this);
     }
+
     right() {
       return new Frame(this, null);
     }
+
     setUpLimit() {
       this.upLimit = true;
       return this;
     }
+
     setLeftLimit() {
       this.leftLimit = true;
       return this;
@@ -516,17 +531,17 @@ variable to lookup as its `value` attribte:
 
   /*
   The implementation of `send` gets the type of the subject, looks up the type in
-  the environment, the result should be a `Frame` instance with the "prototype" of
-  the type and then it does a lookup for the `Msg` verb in the prototype and
-  calls the handler passing the subject, the message and the environment as arguments.
+  the environment, the result should be a `Frame` instance with the "prototype" for that type.
+  Then it does a lookup for the `Msg` `verb` in the prototype and
+  calls the handler passing the subject, message and environment as arguments.
   */
 
   /*
   We can try it by:
 
   - Creating an instance of `Name` for the name "a"
-  - Creating a `Frame` that works as the prototype of `Name` that holds a binding
-    for `eval` that when called does a lookup for the variable name in the environment
+  - Creating a `Frame` that works as the prototype for `Name`, it holds a binding
+    for `eval` that when called does a variable lookup in the environment
   - Creating a `Frame` for the call stack, binding "a" to `42`, `nameEnv` to the type of `Name` (returned by `a.getType()`)
   - Evaluating `a` in `env` and checking that it returns `42`
   */
@@ -539,11 +554,9 @@ variable to lookup as its `value` attribte:
   });
 
   /*
-  With this we have a language that supports bindings but still no 
-  "first class message sends".
+  We now have a language that supports bindings but still no "first class message sends".
 
-  Let's fix this by defining a `Send` class that holds a subject and a message as
-  attributes:
+  Let's fix this by defining a `Send` class that has a subject and a message as attributes:
   */
 
   class Send {
@@ -558,29 +571,29 @@ variable to lookup as its `value` attribte:
   }
 
   /*
-  Since we are going to be using `BigInt`s as our language Ints we are going
-  to monkey patch `BigInt`'s prototype with the `getType` methods so we can
+  Since we are going to be using `BigInt` as our language's Int we will need
+  to monkey patch `BigInt`'s prototype with the `getType` method to be able to
   lookup handlers for `Int`s in our language:
   */
 
   BigInt.prototype.getType = () => "Int";
 
   /*
-  Note: in the real implementation we use `Symbol`s to avoid monkey patching.
+  Note: in the real implementation we can use `Symbol`s to avoid monkey patching.
   */
 
   /*
-  We can now implement message sends in our language by defining eval for:
+  We can now implement message sends in our language by defining `eval` for:
 
-  - Name: does a lookup for the name in the environment
-  - BigInt: returns itself
-  - Msg: returns a new Msg instance where the verb is the same but `obj` is evaluated
-  - Send:
+  - `Name`: does a lookup for the name in the environment
+  - `BigInt`: returns itself
+  - `Msg`: returns a new Msg instance where the verb is the same but `obj` is evaluated
+  - `Send`:
     - evaluates subject and message
     - enters a call frame
     - binds `it` to the subject
       - I use `it` instead of `this` to differenciate from `this` and `self` in other OOP languages
-    - binds ,`msg` to the message
+    - binds `msg` to the message
     - binds `that` for the message's `obj`ect and
     - sends the evaluated `msg` to the evaluated `subj`ect
 
@@ -591,6 +604,7 @@ variable to lookup as its `value` attribte:
     Finally we test it by building an object that represents the expression `10 + a`
     and check that it results in `42n` since `a` was bounds to `32n` in the environment.
   */
+
   test("Msg Send eval", () => {
     const nameEnv = new Frame().bind("eval", (s, _m, e) => e.find(s.value));
     const intEnv = new Frame()
@@ -619,14 +633,16 @@ variable to lookup as its `value` attribte:
       .bind("Send", sendEnv)
       .right()
       .bind("a", 32n);
+
     // 10 + a
-    expect(env.eval(new Send(10n, new Msg("+", new Name("a"))))).toBe(42n);
+    const expr = new Send(10n, new Msg("+", new Name("a")));
+    expect(env.eval(expr)).toBe(42n);
   });
 }
 
 /*
 Let's write a parser for our language to make it easier to test, we are going
-to use https://ohmjs.org/
+to use [ohmjs](https://ohmjs.org/)
 */
 
 import * as ohm from "./node_modules/ohm-js/index.mjs";
@@ -640,10 +656,12 @@ function mkLang(g, s) {
     semantics = grammar.createSemantics().addOperation("toAst", s),
     parse = (code) => {
       const matchResult = grammar.match(code);
+
       if (matchResult.failed()) {
         console.warn("parse failed", matchResult.message);
         return null;
       }
+
       return semantics(matchResult).toAst();
     },
     run = (code, e) => {
@@ -655,9 +673,7 @@ function mkLang(g, s) {
 }
 
 /*
-We are going to define our base types again to use Symbols instead of monkey patching.
-
-Also to add a base class that allows any type to be used as a reply handler for a message by implementing the `call` method:
+Let's define our types again to use Symbols instead of monkey patching and to add a base class that allows any type to be used as a reply handler for a message by implementing the `call` method:
 */
 
 class Base {
@@ -667,7 +683,7 @@ class Base {
 }
 
 /*
-Name, Msg and Send are almost the same as before:
+`Name`, `Msg` and `Send` are almost the same as before:
 */
 
 class Name extends Base {
@@ -694,12 +710,11 @@ class Send extends Base {
 }
 
 /*
-But now instead of implementing `getType` as a method they are going to have
-a unique Symbol used to lookup the prototype when looking for a message handler.
+But now instead of implementing `getType` as a method each type is going to have
+a unique Symbol used to lookup its "prototype" in the call stack when looking for a message handler.
 
-`typeSym` is the symbol we are going to use to get and set the type for each class,
-also 3 utility functions to get, set and make a type, which creates the type sets it
-on a class and returns it:
+We are going to create a Symbol called `typeSym` to get and set the type for each object and 3 utility functions to get, set and make a type, which creates the type sets it
+on a class and returns the type Symbol:
 */
 
 const typeSym = Symbol("TypeSym"),
@@ -707,13 +722,17 @@ const typeSym = Symbol("TypeSym"),
   setType = (Cls, type) => ((Cls.prototype[typeSym] = type), type),
   mkType = (name, Cls) => setType(Cls, Symbol(name));
 
+/*
+Let's define types for the classes we already have:
+*/
+
 const TYPE_NAME = mkType("Name", Name),
   TYPE_MSG = mkType("Msg", Msg),
   TYPE_SEND = mkType("Send", Send),
   TYPE_INT = mkType("Int", BigInt);
 
 /*
-Redefine `Frame` for the last time to use `getType` to get the type associated
+Let's redefine `Frame` for the last time to use `getType` to get the type associated
 with a value:
 */
 
@@ -729,6 +748,7 @@ class Frame {
   eval(v) {
     return this.send(v, new Msg("eval", this));
   }
+
   send(s, m) {
     return this.find(getType(s)).find(m.verb).call(null, s, m, this);
   }
@@ -737,6 +757,7 @@ class Frame {
     this.binds.set(name, value);
     return this;
   }
+
   find(name) {
     const v = this.binds.get(name);
     if (v === undefined) {
@@ -753,16 +774,20 @@ class Frame {
       return v;
     }
   }
+
   down() {
     return new Frame(this.left, this);
   }
+
   right() {
     return new Frame(this, null);
   }
+
   setUpLimit() {
     this.upLimit = true;
     return this;
   }
+
   setLeftLimit() {
     this.leftLimit = true;
     return this;
@@ -816,8 +841,7 @@ function mkProto(obj) {
 }
 
 /*
-And yet another utility function that creates a basic environment with `eval` handlers for Name, BitInt, Msg and Send that will be reused from now on to test
-our languages:
+And yet another function that creates a basic environment with `eval` handlers for `Name`, `BigInt`, `Msg` and `Send` that will be reused from now on to test our languages:
 */
 
 function mkEnv1() {
@@ -858,16 +882,16 @@ Let's test some basic expressions in our first language:
 
 test("Msg Send eval with parser", () => {
   const env = mkEnv1().right().bind("a", 32n);
+
   expect(run1("10 + 4", env)).toBe(14n);
   expect(run1("10 + a", env)).toBe(42n);
   expect(run1("10 + a + 4", env)).toBe(46n);
 });
 
 /*
-After arithmetic operations the next feature that sets a language appart from
+After arithmetic operations the next feature that sets a language apart from
 an advanced calculator are conditional expressions, to support them we need some
-new types, one to express `false` and also the lack of a value, it's usually called
-null, nil or Unit, in our language it will be called Nil and it's syntax will be `()`:
+new types, one to express `false` and also the lack of a value, a useful type for this is usually called `null`, `nil` or `Unit`, in our language it will be called `Nil` and its syntax will be `()`:
 */
 
 class Nil extends Base {}
@@ -875,7 +899,7 @@ const NIL = new Nil();
 
 /*
 For conditionals we need a way to express two branches and pick one of them, for
-that and as lisp as taught us, for many other things we are going to create the `Pair` type that has two fields, not car/cdr, not first/rest, not head/tail but a and b:
+that and, as Lisp as taught us, many other reasons we are going to create the `Pair` type that has two fields, not car/cdr, not first/rest, not head/tail but `a` and `b`:
 */
 
 class Pair extends Base {
@@ -949,8 +973,8 @@ const { run: run2 } = mkLang(
 
 /*
 The simplest implementation for conditionals in a language with no side effects and
-free CPU time is as a message reply handler on Nil that picks the second item
-of the Pair passed as message's object and an implementation for the rest of the types that picks the Pair's first item:
+free CPU time is as a message reply handler on `Nil` that picks the second item
+of the `Pair` passed as the message object and an implementation for the remaining types that picks the `Pair`'s first item:
 */
 
 test("eager conditional", () => {
@@ -976,8 +1000,8 @@ test("eager conditional", () => {
 });
 
 /*
-But from the last test case, which throws because there's no reply handler for `*` registered for Ints, we can tell that this implementation evaluates both sides of
-the pair, something we don't want.
+In the last test case we can see that it throws, this is because there's no reply handler for `*` for Ints. From this we can tell that this implementation evaluates both sides of
+the pair, something we probably don't want.
 
 Let's fix this by implementing `eval` for `Later` which wraps any other value and returns the wrapped value unevaluated on eval:
 */
@@ -1006,18 +1030,19 @@ test("lazy conditional", () => {
 });
 
 /*
-With later we can "delay" the evaluation of the pair until we know which branch we
+With `Later` we can "delay" the evaluation of the pair until we know which branch we
 want to take.
 
-Notice that the implementations of `?` for Nil and Int now evaluate the branch they take.
+Notice that the implementations of `?` for `Nil` and `Int` now evaluate the branch they take.
 */
 
 /*
 The next feature we probably want is the ability to define reply handlers in our
-language instead of "native" JavaScript functions, to test this we need to be able
-to have more than one expression in our language, we could do it with pairs but
-let's create a `Block` type which contains a sequence of expressions and when
-evaluated it evaluates each in turn and returns the result of the last one:
+language instead of "native" JavaScript functions.
+
+To test this we need to be able to have more than one expression in our language.
+
+We could do it with pairs but let's create a `Block` type which contains a sequence of expressions that when evaluated it evaluates each in turn and returns the result of the last one:
 */
 
 class Block extends Base {
@@ -1028,12 +1053,12 @@ class Block extends Base {
 }
 
 /*
-Let's add the type for Block and to avoid repeating a lot of code for small changes
-let's also introduce Float and Str to our language by adding type tags to them and
+Let's add the type for `Block` and to avoid repeating a lot of code for small changes
+let's also introduce `Float` and `Str` to our language by adding their type tags and
 adding them to the parser:
 */
 
-// FIXME: we have to do this to be able to attach a symbol at runtime further down
+// NOTE: we have to do this to be able to attach a Symbol at runtime further down
 class Str extends String {}
 
 const TYPE_BLOCK = mkType("Block", Block),
@@ -1092,7 +1117,9 @@ const { run: run3 } = mkLang(
 );
 
 /*
-With block support let's implement "message reply definition", since we are going to be using it in subsequent tests let's define a function to create the environment required for reply definitions:
+With block support let's implement "message reply definition".
+
+Since we are going to be using it in subsequent tests let's define a function to create an environment that supports reply definitions:
 */
 
 function mkEnv2() {
@@ -1139,7 +1166,7 @@ function mkEnv2() {
 }
 
 /*
-And now test it
+And test it:
 */
 
 test("Msg Send reply definition", () => {
@@ -1151,29 +1178,32 @@ test("Msg Send reply definition", () => {
 });
 
 /*
-The way to support reply definitions is by adding a handler for the `reply` message
-on the Send type, without Later there's no way to send a message to a Send but with
-it we can "quote" a send and send a message to it.
+The way we support reply definitions is by adding a handler for the `reply` message
+on the `Send` type, without `Later` there's no way to send a message to a `Send` but with
+it we can "quote" a `Send` and send a message to it, yes, we send a message to a message send.
 
-`replies` implementation takes the Send's subject, gets its type, finds the current prototype for it in the environment andd binds a handler for the Send's verb using replies' object.
+`replies` implementation takes `Send`'s subject, gets its type, finds the current prototype for it in the environment and binds a handler for `Send`'s verb using replies' object.
 
 A little convoluted, let's try again, this is the shape of an expression to define a reply to a message: `SampleSend replies ReplyImplementation`.
 
-SampleSend is a Send expression, which we get by using Later on a Send to avoid its evaluation, it's an example of the kind of expression that we want to handle.
+`SampleSend` is a `Send` expression, which we get by using `Later` on a `Send` to delay its evaluation, it's an example of the kind of expression that we want to handle.
 
-As a reminder Send has the shape `Subject Verb Object`.
-We take SampleSend's subject to get the type associated with the new reply.
+As a reminder `Send` has the shape `Subject Verb Object`.
+
+We take `SampleSend`'s subject to get the type associated with the new reply.
+
 From SampleSend we also get the verb that we want to reply to.
-Finally ReplyImplementation is used as the handler for the message, which you
-have to quote if it's not a constant value to delay its evaluation when the message is sent.
+
+Finally `ReplyImplementation` is used as the handler for the message, which you have to quote to delay its evaluation until the message is handled.
 */
 
 /*
 We still don't have iteration, there are many ways to implement it but here's
-a fun set of "primitives" i've been playing with: walk and map.
+a fun set of "primitives" i've been playing with: `walk` and `map`.
 
-- map forwards the quoted message to the subject's items
-- walk also forwards a quoted message but it forwards the walk message itself, not the quoted one, this makes it recursive.
+- `map` forwards the quoted message to the subject's items
+- `walk` also forwards a quoted message but it forwards the `walk` message itself, not the quoted one, this makes it recursive
+- scalar values implement handlers for both by sending the quoted message to themselves
 */
 
 test("walk and map", () => {
@@ -1207,9 +1237,11 @@ test("walk and map", () => {
 
   expect(run3("1 walk \\ + 2", env)).toBe(3n);
   expect(run3("1 map \\ + 2", env)).toBe(3n);
+
   const p1 = run3("1 : 2 map \\ + 2", env);
   expect(p1.a).toBe(3n);
   expect(p1.b).toBe(4n);
+
   const p2 = run3("1 : 2 : 3 walk \\ + 2", env);
   expect(p2.a).toBe(3n);
   expect(p2.b.a).toBe(4n);
@@ -1217,7 +1249,7 @@ test("walk and map", () => {
 });
 
 /*
-You may be asking "but what about user defined types?", well glad you asked because
+You may be asking "but what about user defined types?", well, glad you asked because
 I was planning on explaining that just about now.
 
 We first need to bring the Symbol type to our language:
@@ -1229,9 +1261,9 @@ const TYPE_SYM = mkType("Symbol", Symbol);
 Then we need a way to create new Symbols, instead of adding syntax for it we
 are going to add a reply to the `as-type` message for strings.
 
-And an `apply` handler to the Symbol type to apply itself as the type to the message object.
+And an `apply-to` handler to the Symbol type to apply itself as the type to the message object.
 
-And... that it.
+And... that it?
 */
 
 test("custom type definition", () => {
@@ -1297,11 +1329,11 @@ test("custom type definition", () => {
 });
 
 /*
-Let's go line y line:
+Let's go line by line:
 
 `@MyType is ("my-type" as-type ())`
 
-Define a new type with label "my-type" and bind ig to the name `MyType`.
+Define a new type with label "my-type" and bind it to the name `MyType`.
 
 Notice that until now we had no way to bind new values in the environment, we defined
 a handler for `is` in the `Name` type that binds the object in the environment for the current name. Since each message handler enters its own call frame we bind it in the parent frame.
