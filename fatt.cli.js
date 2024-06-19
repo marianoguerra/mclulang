@@ -7,6 +7,7 @@ import {
   NIL,
   Frame,
   run,
+  getType,
   TYPE_NAME,
   TYPE_MSG,
   TYPE_SEND,
@@ -52,7 +53,14 @@ function ternary(_s, m, e) {
 
 function main(code) {
   const e = bindReplies({
-    [TYPE_NAME]: { eval: (s, _m, e) => e.find(s.value), toStr: (s) => s.value },
+    [TYPE_NAME]: {
+      eval: (s, _m, e) => e.find(s.value),
+      is(s, m, e) {
+        e.up.bind(s.value, m.obj);
+        return m.obj;
+      },
+      toStr: (s) => s.value,
+    },
     [TYPE_MSG]: {
       eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)),
       toStr: (s, m, e) => `\\ ${s.verb} ${fwd(s.obj, m, e)}`,
@@ -71,6 +79,16 @@ function main(code) {
       },
       toStr: (s, m, e) =>
         `${fwd(s.subj, m, e)} ${s.msg.verb} ${fwd(s.msg.obj, m, e)}`,
+      replies(s, m, e) {
+        const target = e.up.eval(s.subj),
+          targetType = getType(target),
+          msgVerb = s.msg.verb,
+          impl = m.obj,
+          proto = e.up.find(targetType);
+
+        proto.bind(msgVerb, impl);
+        return NIL;
+      },
     },
     [TYPE_INT]: {
       eval: (s) => s,
