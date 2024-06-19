@@ -226,65 +226,66 @@ The `right` method is similar to the `down` method but it returns a new `Frame` 
 We redefine `down` to return a new `Frame` instance where `left` is the same as the `left` of the current frame and `up` is the current frame itself.
 */
 
-class Frame {
-  constructor(left = null, up = null) {
-    this.up = up;
-    this.left = left;
-    this.upLimit = false;
-    this.leftLimit = false;
-    this.binds = new Map();
-  }
-  bind(name, value) {
-    this.binds.set(name, value);
-    return this;
-  }
-  find(name) {
-    const v = this.binds.get(name);
-    if (v === undefined) {
-      if (this.upLimit || this.up === null) {
-        if (this.leftLimit || this.left === null) {
-          return v;
+{
+  class Frame {
+    constructor(left = null, up = null) {
+      this.up = up;
+      this.left = left;
+      this.upLimit = false;
+      this.leftLimit = false;
+      this.binds = new Map();
+    }
+    bind(name, value) {
+      this.binds.set(name, value);
+      return this;
+    }
+    find(name) {
+      const v = this.binds.get(name);
+      if (v === undefined) {
+        if (this.upLimit || this.up === null) {
+          if (this.leftLimit || this.left === null) {
+            return v;
+          } else {
+            return this.left.find(name);
+          }
         } else {
-          return this.left.find(name);
+          return this.up.find(name);
         }
       } else {
-        return this.up.find(name);
+        return v;
       }
-    } else {
-      return v;
+    }
+    down() {
+      return new Frame(this.left, this);
+    }
+    right() {
+      return new Frame(this, null);
+    }
+    setUpLimit() {
+      this.upLimit = true;
+      return this;
+    }
+    setLeftLimit() {
+      this.leftLimit = true;
+      return this;
     }
   }
-  down() {
-    return new Frame(this.left, this);
-  }
-  right() {
-    return new Frame(this, null);
-  }
-  setUpLimit() {
-    this.upLimit = true;
-    return this;
-  }
-  setLeftLimit() {
-    this.leftLimit = true;
-    return this;
+
+  {
+    test("prelude implementation", () => {
+      const env = new Frame()
+        .bind("parseInt", parseInt)
+        .right()
+        .bind("a", 10)
+        .right()
+        .down()
+        .setUpLimit();
+
+      expect(env.find("parseInt")("42", 10)).toBe(42);
+      expect(env.find("a")).toBe(10);
+    });
   }
 }
-
-{
-  test("prelude implementation", () => {
-    const env = new Frame()
-      .bind("parseInt", parseInt)
-      .right()
-      .bind("a", 10)
-      .right()
-      .down()
-      .setUpLimit();
-
-    expect(env.find("parseInt")("42", 10)).toBe(42);
-    expect(env.find("a")).toBe(10);
-  });
-}
-
 /*
 Another thing in object oriented languages that is about looking up bindings
 is "message dispatch", let's see some examples.
@@ -622,3 +623,304 @@ variable to lookup as its `value` attribte:
     expect(env.eval(new Send(10n, new Msg("+", new Name("a"))))).toBe(42n);
   });
 }
+
+import * as ohm from "./node_modules/ohm-js/index.mjs";
+
+function mkLang(g, s) {
+  const grammar = ohm.grammar(g),
+    semantics = grammar.createSemantics().addOperation("toAst", s),
+    parse = (code) => {
+      const matchResult = grammar.match(code);
+      if (matchResult.failed()) {
+        console.warn("parse failed", matchResult.message);
+        return null;
+      }
+      return semantics(matchResult).toAst();
+    },
+    run = (code, e) => {
+      const ast = parse(code);
+      return ast ? e.eval(ast) : null;
+    };
+
+  return { run, parse };
+}
+
+class Base {
+  call(s, m, e) {
+    return e.eval(this);
+  }
+}
+
+class Name extends Base {
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+}
+
+class Msg extends Base {
+  constructor(verb, obj) {
+    super();
+    this.verb = verb;
+    this.obj = obj;
+  }
+}
+
+class Send extends Base {
+  constructor(subj, msg) {
+    super();
+    this.subj = subj;
+    this.msg = msg;
+  }
+}
+
+const typeSym = Symbol("TypeSym"),
+  getType = (v) => v[typeSym],
+  setType = (Cls, type) => ((Cls.prototype[typeSym] = type), type),
+  mkType = (name, Cls) => setType(Cls, Symbol(name));
+
+const TYPE_NAME = mkType("Name", Name),
+  TYPE_MSG = mkType("Msg", Msg),
+  TYPE_SEND = mkType("Send", Send),
+  TYPE_INT = mkType("Int", BigInt);
+
+class Frame {
+  constructor(left = null, up = null) {
+    this.up = up;
+    this.left = left;
+    this.upLimit = false;
+    this.leftLimit = false;
+    this.binds = new Map();
+  }
+
+  eval(v) {
+    return this.send(v, new Msg("eval", this));
+  }
+  send(s, m) {
+    return this.find(getType(s)).find(m.verb).call(null, s, m, this);
+  }
+
+  bind(name, value) {
+    this.binds.set(name, value);
+    return this;
+  }
+  find(name) {
+    const v = this.binds.get(name);
+    if (v === undefined) {
+      if (this.upLimit || this.up === null) {
+        if (this.leftLimit || this.left === null) {
+          return v;
+        } else {
+          return this.left.find(name);
+        }
+      } else {
+        return this.up.find(name);
+      }
+    } else {
+      return v;
+    }
+  }
+  down() {
+    return new Frame(this.left, this);
+  }
+  right() {
+    return new Frame(this, null);
+  }
+  setUpLimit() {
+    this.upLimit = true;
+    return this;
+  }
+  setLeftLimit() {
+    this.leftLimit = true;
+    return this;
+  }
+}
+
+const { run: run1 } = mkLang(
+  `Lang {
+    Main = Send
+    name = (letter | "_") (letter | "_" | digit)*
+    Msg = verb Value
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "<" | ">" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+    Send = Value Msg*
+    Value = int | name
+    int = digit+
+  }`,
+  {
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    Msg: (verb, obj) => new Msg(verb.toAst(), obj.toAst()),
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+  },
+);
+
+function mkProto(obj) {
+  const frame = new Frame();
+
+  for (const name in obj) {
+    frame.bind(name, obj[name]);
+  }
+
+  return frame;
+}
+
+function mkEnv1() {
+  return new Frame()
+    .bind(TYPE_NAME, mkProto({ eval: (s, _m, e) => e.find(s.value) }))
+    .bind(
+      TYPE_INT,
+      mkProto({
+        eval: (s, _m, _e) => s,
+        "+": (_s, _m, e) => e.find("it") + e.find("that"),
+      }),
+    )
+    .bind(
+      TYPE_MSG,
+      mkProto({ eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)) }),
+    )
+    .bind(
+      TYPE_SEND,
+      mkProto({
+        eval(s, _m, e) {
+          const subj = e.eval(s.subj),
+            msg = e.eval(s.msg);
+          return e
+            .down()
+            .setUpLimit()
+            .bind("it", subj)
+            .bind("msg", msg)
+            .bind("that", msg.obj)
+            .send(subj, msg);
+        },
+      }),
+    );
+}
+
+test("Msg Send eval with parser", () => {
+  const env = mkEnv1().right().bind("a", 32n);
+  expect(run1("10 + a + 4", env)).toBe(46n);
+});
+
+class Nil extends Base {}
+const NIL = new Nil();
+class Pair extends Base {
+  constructor(a, b) {
+    super();
+    this.a = a;
+    this.b = b;
+  }
+}
+
+class Later extends Base {
+  constructor(value) {
+    super();
+    this.value = value;
+  }
+}
+
+const { run: run2 } = mkLang(
+  `Lang {
+    Main = Send
+    nil = "(" ")"
+    Pair = PairHead ":" Value
+    PairHead = Scalar | Later | ParSend
+    name = (letter | "_") (letter | "_" | digit)*
+    Msg = verb Value
+    verb = verbStart verbPart*
+    verbStart = "+" | "-" | "*" | "/" | "-" | "%" | "&" | "<" | ">" | "!" | "?" | "." | letter
+    verbPart = verbStart | digit
+    Send = Value Msg*
+    ParSend = "(" Send ")"
+    Later = "@" Value
+    Value = Pair | PairHead
+    Scalar = int | nil | name
+    int = digit+
+  }`,
+  {
+    nil: (_o, _c) => NIL,
+    Pair: (a, _, b) => new Pair(a.toAst(), b.toAst()),
+    name(_1, _2) {
+      return new Name(this.sourceString);
+    },
+    Msg: (verb, obj) => new Msg(verb.toAst(), obj.toAst()),
+    verb(_1, _2) {
+      return this.sourceString;
+    },
+    Send(v, msgs) {
+      let r = v.toAst();
+      for (const msg of msgs.children) {
+        r = new Send(r, msg.toAst());
+      }
+      return r;
+    },
+    ParSend: (_o, v, _c) => v.toAst(),
+    Later: (_, v) => new Later(v.toAst()),
+    int(_) {
+      return BigInt(this.sourceString);
+    },
+  },
+);
+
+const TYPE_NIL = mkType("Nil", Nil),
+  TYPE_PAIR = mkType("Pair", Pair),
+  TYPE_LATER = mkType("Later", Later);
+
+test("eager conditional", () => {
+  const env = mkEnv1()
+    .bind(
+      TYPE_NIL,
+      mkProto({ eval: (s, _m, e) => s, "?": (s, m, e) => m.obj.b }),
+    )
+    .bind(
+      TYPE_PAIR,
+      mkProto({ eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)) }),
+    )
+    .bind(
+      TYPE_INT,
+      mkProto({ eval: (s, _m, e) => s, "?": (s, m, e) => m.obj.a }),
+    )
+    .right();
+
+  expect(run2("0 ? 1 : 2", env)).toBe(1n);
+  expect(run2("() ? 1 : 2", env)).toBe(2n);
+  expect(run2("() ? 1 : () ? 2 : 3", env)).toBe(3n);
+  expect(() => run2("0 ? 1 : (1 * 2)", env)).toThrow();
+});
+
+test("lazy conditional", () => {
+  const env = mkEnv1()
+    .bind(TYPE_LATER, mkProto({ eval: (s, _m, e) => s.value }))
+    .bind(
+      TYPE_NIL,
+      mkProto({ eval: (s, _m, e) => s, "?": (s, m, e) => e.eval(m.obj.b) }),
+    )
+    .bind(
+      TYPE_PAIR,
+      mkProto({ eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)) }),
+    )
+    .bind(
+      TYPE_INT,
+      mkProto({ eval: (s, _m, e) => s, "?": (s, m, e) => e.eval(m.obj.a) }),
+    )
+    .right();
+
+  expect(run2("0 ? 1 : 2", env)).toBe(1n);
+  expect(run2("() ? 1 : 2", env)).toBe(2n);
+  expect(run2("() ? 1 : () ? 2 : 3", env)).toBe(3n);
+  expect(run2("0 ? @ 1 : (1 * 2)", env)).toBe(1n);
+});
