@@ -64,8 +64,6 @@ export class Frame {
     return this.send(v, new Msg("eval", this));
   }
   send(s, m) {
-    // console.log(s);
-    // console.log(getType(s), m.verb);
     return this.find(getType(s)).find(m.verb).call(null, s, m, this);
   }
   bind(name, value) {
