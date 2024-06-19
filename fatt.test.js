@@ -1041,24 +1041,57 @@ test("Msg Send reply definition", () => {
   );
 });
 
+Frame.prototype.log = function () {
+  console.log("--------------------------------");
+  for (const [k, v] of this.binds) {
+    if (v instanceof Frame) {
+      console.log("++++++++++++++++++++++++++++++++");
+      console.log("FRAME AT", k);
+      v.log();
+      console.log("++++++++++++++++++++++++++++++++");
+    } else {
+      console.log(k, "\t\t", "" + v);
+    }
+  }
+  if (this.up) {
+    console.log("UP");
+    this.up.log();
+  } else if (this.left) {
+    console.log("LEFT");
+    this.left.log();
+  }
+};
+Msg.prototype.toString = function () {
+  return `\\ ${this.verb} ${this.obj.toString()}`;
+};
+Send.prototype.toString = function () {
+  return `${this.subj.toString()} ${this.verb} ${this.obj.toString()}`;
+};
+
 test("walk and map", () => {
+  function send(s, m, e) {
+    return e.eval(new Send(s, m));
+  }
+  function pair(a, b) {
+    return new Pair(a, b);
+  }
+
   const env = mkEnv1()
     .bind(
       TYPE_PAIR,
       mkProto({
-        eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)),
-        walk: (s, m, e) => new Pair(e.send(s.a, m), e.send(s.b, m)),
-        map: (s, m, e) => new Pair(e.send(s.a, m.obj), e.send(s.b, m.obj)),
+        eval: (s, _m, e) => pair(e.eval(s.a), e.eval(s.b)),
+        walk: (s, m, e) => pair(send(s.a, m, e), send(s.b, m, e)),
+        map: (s, m, e) => pair(send(s.a, m.obj, e), send(s.b, m.obj, e)),
       }),
     )
     .bind(
       TYPE_INT,
       mkProto({
         eval: (s, _m, _e) => s,
-        // XXX: e.find("that") !== m.obj
-        "+": (s, m, e) => s + m.obj,
-        walk: (s, m, e) => e.send(s, m.obj),
-        map: (s, m, e) => e.send(s, m.obj),
+        "+": (s, m, e) => e.find("it") + e.find("that"),
+        walk: (s, m, e) => send(s, m.obj, e),
+        map: (s, m, e) => send(s, m.obj, e),
       }),
     )
     .right();
