@@ -592,7 +592,6 @@ variable to lookup as its `value` attribte:
     and check that it results in `42n` since `a` was bounds to `32n` in the environment.
   */
   test("Msg Send eval", () => {
-    const a = new Name("a");
     const nameEnv = new Frame().bind("eval", (s, _m, e) => e.find(s.value));
     const intEnv = new Frame()
       .bind("eval", (s, _m, _e) => s)
@@ -757,13 +756,8 @@ const { run: run1 } = mkLang(
     verb(_1, _2) {
       return this.sourceString;
     },
-    Send(v, msgs) {
-      let r = v.toAst();
-      for (const msg of msgs.children) {
-        r = new Send(r, msg.toAst());
-      }
-      return r;
-    },
+    Send: (v, msgs) =>
+      msgs.children.reduce((acc, msg) => new Send(acc, msg.toAst()), v.toAst()),
     int(_) {
       return BigInt(this.sourceString);
     },
@@ -862,13 +856,8 @@ const { run: run2 } = mkLang(
     verb(_1, _2) {
       return this.sourceString;
     },
-    Send(v, msgs) {
-      let r = v.toAst();
-      for (const msg of msgs.children) {
-        r = new Send(r, msg.toAst());
-      }
-      return r;
-    },
+    Send: (v, msgs) =>
+      msgs.children.reduce((acc, msg) => new Send(acc, msg.toAst()), v.toAst()),
     ParSend: (_o, v, _c) => v.toAst(),
     Later: (_, v) => new Later(v.toAst()),
     int(_) {
@@ -974,13 +963,8 @@ const { run: run3 } = mkLang(
       return this.sourceString;
     },
     MsgQuote: (_, msg) => msg.toAst(),
-    Send(v, msgs) {
-      let r = v.toAst();
-      for (const msg of msgs.children) {
-        r = new Send(r, msg.toAst());
-      }
-      return r;
-    },
+    Send: (v, msgs) =>
+      msgs.children.reduce((acc, msg) => new Send(acc, msg.toAst()), v.toAst()),
     ParSend: (_o, v, _c) => v.toAst(),
     Later: (_, v) => new Later(v.toAst()),
     int(_) {
@@ -1042,9 +1026,10 @@ test("Msg Send reply definition", () => {
 });
 
 test("walk and map", () => {
-  function send(s, m, e) {
+  function esend(s, m, e) {
     return e.eval(new Send(s, m));
   }
+
   function pair(a, b) {
     return new Pair(a, b);
   }
@@ -1054,8 +1039,8 @@ test("walk and map", () => {
       TYPE_PAIR,
       mkProto({
         eval: (s, _m, e) => pair(e.eval(s.a), e.eval(s.b)),
-        walk: (s, m, e) => pair(send(s.a, m, e), send(s.b, m, e)),
-        map: (s, m, e) => pair(send(s.a, m.obj, e), send(s.b, m.obj, e)),
+        walk: (s, m, e) => pair(esend(s.a, m, e), esend(s.b, m, e)),
+        map: (s, m, e) => pair(esend(s.a, m.obj, e), esend(s.b, m.obj, e)),
       }),
     )
     .bind(
@@ -1063,8 +1048,8 @@ test("walk and map", () => {
       mkProto({
         eval: (s, _m, _e) => s,
         "+": (s, m, e) => e.find("it") + e.find("that"),
-        walk: (s, m, e) => send(s, m.obj, e),
-        map: (s, m, e) => send(s, m.obj, e),
+        walk: (s, m, e) => esend(s, m.obj, e),
+        map: (s, m, e) => esend(s, m.obj, e),
       }),
     )
     .right();
