@@ -1009,13 +1009,6 @@ test("Msg Send reply definition", () => {
       }),
     )
     .bind(
-      TYPE_INT,
-      mkProto({
-        eval: (s, _m, e) => s,
-        "+": (_s, _m, e) => e.find("it") + e.find("that"),
-      }),
-    )
-    .bind(
       TYPE_SEND,
       mkProto({
         eval(s, _m, e) {
@@ -1046,4 +1039,37 @@ test("Msg Send reply definition", () => {
   expect(run3("{@(0 add+1 0) replies @(it + that + 1), 1 add+1 2}", env)).toBe(
     4n,
   );
+});
+
+test("walk and map", () => {
+  const env = mkEnv1()
+    .bind(
+      TYPE_PAIR,
+      mkProto({
+        eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)),
+        walk: (s, m, e) => new Pair(e.send(s.a, m), e.send(s.b, m)),
+        map: (s, m, e) => new Pair(e.send(s.a, m.obj), e.send(s.b, m.obj)),
+      }),
+    )
+    .bind(
+      TYPE_INT,
+      mkProto({
+        eval: (s, _m, _e) => s,
+        // XXX: e.find("that") !== m.obj
+        "+": (s, m, e) => s + m.obj,
+        walk: (s, m, e) => e.send(s, m.obj),
+        map: (s, m, e) => e.send(s, m.obj),
+      }),
+    )
+    .right();
+
+  expect(run3("1 walk \\ + 2", env)).toBe(3n);
+  expect(run3("1 map \\ + 2", env)).toBe(3n);
+  const p1 = run3("1 : 2 map \\ + 2", env);
+  expect(p1.a).toBe(3n);
+  expect(p1.b).toBe(4n);
+  const p2 = run3("1 : 2 : 3 walk \\ + 2", env);
+  expect(p2.a).toBe(3n);
+  expect(p2.b.a).toBe(4n);
+  expect(p2.b.b).toBe(5n);
 });
