@@ -122,7 +122,7 @@ This is an attempt at answering that question based on the following:
 ## Phases CLI
 
 ```sh
-./fatt.phases.cli.js '1 + 2' '1.5 + 1.2' '"hello " + "joe"' '(1 + 2) : 3' '@ (1 + 2)' '{@foo is (1 + 42), foo}' '(0 add+1 (0 + 2)) replies (0 + 1 + it + that)' '{1 + 2, 42, () }' '#{"a": (1 + 3), ("key" + "One"): 42}' '() ? 1 : 2' '42 ? 1 : 2' '1 > 2' '2 > 1' ' 3 > 2 > 1' '3 > 2 < 1' '{@a is (), a ? 1 : 2}' '{@a is 10, (a > 10) ? 1 : 2}' '1 ? 2' '{@a is 1, a ? 1}' '{@a is 1, a ? @ 1}'
+./fatt.phases.cli.js '1 + 2' '1.5 + 1.2' '"hello " + "joe"' '(1 + 2) : 3' '@ (1 + 2)' '{@foo is (1 + 42), foo}' '(0 add+1 (0 + 2)) replies (0 + 1 + it + that)' '{1 + 2, 42, () }' '#{"a": (1 + 3), ("key" + "One"): 42}' '() ? 1 : 2' '42 ? 1 : 2' '1 > 2' '2 > 1' ' 3 > 2 > 1' '3 > 2 < 1' '{@a is (), a ? 1 : 2}' '{@a is 10, (a > 10) ? 1 : 2}' '1 ? 2' '{@a is 1, a ? 1}' '{@a is 1, a ? @ 1}' '1 and 2 or 3' '{@a is 1, a and (1 + 2 + a) or (a * 3)}' '() or 1' '() and 1'
 ```
 
 ```js
@@ -325,4 +325,40 @@ out {@(a) is 1, a ? @(1 : ())}
 #   run
 in  {@(a) is 1, a ? @(1 : ())}
 out 1
+
+>  1 and 2 or 3
+
+#   comp
+in  (1 and 2) or 3
+out 2
+
+#   run
+in  2
+out 2
+
+>  {@a is 1, a and (1 + 2 + a) or (a * 3)}
+
+#   comp
+in  {@(a) is 1, (a and ((1 + 2) + a)) or (a * 3)}
+out {@(a) is 1, (a and @(3 + a)) or @(a * 3)}
+
+>  () or 1
+
+#   comp
+in  () or 1
+out 1
+
+#   run
+in  1
+out 1
+
+>  () and 1
+
+#   comp
+in  () and 1
+out ()
+
+#   run
+in  ()
+out ()
 ```

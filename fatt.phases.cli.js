@@ -50,6 +50,14 @@ function main(code) {
   );
 }
 
+function maybeUnwrapLater(v) {
+  return v instanceof Later ? v.value : v;
+}
+
+function maybeWrapLater(v) {
+  return v instanceof Later ? v : new Later(v);
+}
+
 function pairToLaterOrLaterPair(v) {
   if (v instanceof Pair) {
     return new Later(v);
@@ -123,12 +131,35 @@ function compPhase() {
       return body;
     }
   }
+
+  function trueAnd(_s, m, _e) {
+    return maybeUnwrapLater(m.obj);
+  }
+
+  function trueOr(s) {
+    return s;
+  }
+
+  function lazyRhs(s, m, _e) {
+    return new Send(s, new Msg(m.verb, maybeWrapLater(m.obj)));
+  }
+
+  const andWrap = lazyRhs,
+    orWrap = lazyRhs;
+
   return bindReplies(
     mergeToStr({
-      [TYPE_NAME]: { eval: (s) => s, "?": ternaryWrap },
+      [TYPE_NAME]: {
+        eval: (s) => s,
+        "?": ternaryWrap,
+        and: andWrap,
+        or: orWrap,
+      },
       [TYPE_MSG]: {
         eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)),
         "?": ternaryTrue,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_SEND]: {
         eval: (s, _m, e) => {
@@ -149,6 +180,8 @@ function compPhase() {
           }
         },
         "?": ternaryWrap,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_INT]: {
         eval: (s) => s,
@@ -163,19 +196,29 @@ function compPhase() {
         "<": cCompOp((a, b) => a < b),
         "<=": cCompOp((a, b) => a <= b),
         "?": ternaryTrue,
+        and: trueAnd,
+        or: trueOr,
       },
-      [TYPE_NIL]: { eval: (s) => s, "?": ternaryFalse },
+      [TYPE_NIL]: {
+        eval: (s) => s,
+        "?": ternaryFalse,
+        and: (s) => s,
+        or: (_s, m) => maybeUnwrapLater(m.obj),
+      },
       [TYPE_PAIR]: {
         eval: (s, _, e) => new Pair(e.eval(s.a), e.eval(s.b)),
-        "?": ternaryTrue,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_LATER]: {
         eval: (s, _, e) => new Later(e.eval(s.value)),
-        "?": ternaryWrap,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_BLOCK]: {
         eval: (s, _m, e) => new Block(s.value.map((item) => e.eval(item))),
-        "?": ternaryTrue,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_FLOAT]: {
         eval: (s) => s,
@@ -190,15 +233,20 @@ function compPhase() {
         "<": cCompOp((a, b) => a < b),
         "<=": cCompOp((a, b) => a <= b),
         "?": ternaryTrue,
+        and: trueAnd,
+        or: trueOr,
       },
       [TYPE_STR]: {
         eval: (s) => s,
         "+": cBinOp((a, b) => a + b),
         "?": ternaryTrue,
+        and: trueAnd,
+        or: trueOr,
       },
       [TYPE_ARRAY]: {
         eval: (s, _m, e) => s.value.map((item) => e.eval(item)),
-        "?": ternaryTrue,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_MAP]: {
         eval: (s, _m, e) => {
@@ -208,7 +256,8 @@ function compPhase() {
           }
           return r;
         },
-        "?": ternaryTrue,
+        and: andWrap,
+        or: orWrap,
       },
       [TYPE_SYM]: { eval: (s) => s },
     }),

@@ -179,6 +179,9 @@ export function ternary(_s, m, e) {
 }
 
 export function runPhase() {
+  const or = (s) => s,
+    and = (_s, m, e) => e.eval(m.obj);
+
   return bindReplies(
     mergeToStr({
       [TYPE_NAME]: {
@@ -234,14 +237,20 @@ export function runPhase() {
         "<": compOp((a, b) => a < b),
         "<=": compOp((a, b) => a <= b),
         "?": ternary,
+        and,
+        or,
       },
       [TYPE_NIL]: {
         eval: (s) => s,
         "?": (_s, m, e) => e.eval(m.obj.b),
+        and: (s) => s,
+        or: (_s, m, e) => e.eval(m.obj),
       },
       [TYPE_PAIR]: {
         eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)),
         "?": ternary,
+        and,
+        or,
       },
       [TYPE_LATER]: {
         eval: (s) => s.value,
@@ -254,6 +263,8 @@ export function runPhase() {
           }
           return r;
         },
+        and,
+        or,
       },
       [TYPE_FLOAT]: {
         eval: (s) => s,
@@ -268,6 +279,8 @@ export function runPhase() {
         "<": compOp((a, b) => a < b),
         "<=": compOp((a, b) => a <= b),
         "?": ternary,
+        and,
+        or,
       },
       [TYPE_STR]: {
         eval: (s) => s,
@@ -281,10 +294,14 @@ export function runPhase() {
           );
           return type;
         },
+        and,
+        or,
       },
       [TYPE_ARRAY]: {
         eval: (s, _m, e) => s.map((item) => e.eval(item)),
         "?": ternary,
+        and,
+        or,
       },
       [TYPE_MAP]: {
         eval: (s, _m, e) => {
@@ -296,6 +313,8 @@ export function runPhase() {
         },
         ".": (s, m, _e) => s.get(m.obj) ?? NIL,
         "?": ternary,
+        and,
+        or,
       },
       [TYPE_SYM]: {
         eval: (s) => s,
