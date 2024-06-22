@@ -1,6 +1,5 @@
 #!/usr/bin/env bun
 /*globals Bun*/
-import { run } from "./fatter.js";
 import {
   bindReplies,
   mergeToStr,
