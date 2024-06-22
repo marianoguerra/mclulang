@@ -68,55 +68,261 @@ This is an attempt at answering that question based on the following:
     - `1 ? @ 2 : 3` -> `2`
 - Env: bindings and handlers
 
-## mcli
+## Fatt CLI
 
 ```sh
-./mcli.js '() ? @ 2 : 3' '1 ? @ 2 : 3' '() ? @ 2 : 3 ? @ 4 : 5' '() ? @ 2 : () ? @ 4 : 5' '{@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}'
-
->  () ? @ 2 : 3
-3
->  1 ? @ 2 : 3
-2
->  () ? @ 2 : 3 ? @ 4 : 5
-4
->  () ? @ 2 : () ? @ 4 : 5
-5
->  {@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}
-5
+./fatt.cli.js '42' '10 + 2' '1 : 2.5 : () : "hi"' '() ? @ "true" : "false"' '\ + 2' '@(1 + 2)' '[]' '[1, 1.4, ["hi", ()]]' '"my-type" as-type ()' '@{42, ()}' '#{1: "one", "two
+": 2}' '#{} . "foo"' '#{"foo": "bar"} . "foo"' '@ @ @ foo'
 ```
 
-Other examples:
-
 ```js
->  ()
-()
->  'hi' * 5
-'hihihihihi'
->  1 send \ + 2
-3
->  1 : 2 : 3 send \ + 2
-3 : 4 : 5
+>  42
+42
+
+>  10 + 2
+12
+
+>  1 : 2.5 : () : "hi"
+1 : 2.5 : () : "hi"
+
+>  () ? @ "true" : "false"
+"false"
+
+>  \ + 2
+\ + 2
+
+>  @(1 + 2)
+1 + 2
+
 >  []
 []
->  [10]
-[10]
->  [1, 1.2, 'hi', (), {42}, 1 + 2]
-[1, 1.2, 'hi', (), 42, 3]
->  [1, 2 : 3, [4]] send \ + 1
-[2, 3 : 4, [5]]
->  {@a is 42, a}
-42
->  {@(0 add+1 0) does @{it + that + 1}, 1 add+1 3}
-5
->  {@a is 2, a ? @ a : b}
-2
->  #{}
-#{}
->  #{1: 'one', 'two': 2}
-#{1: 'one', 'two': 2}
->  #{1: 'one', 'two': 2} . 1
-'one'
 
-> {@MyType is ('MyType' as-tag ()), @m is #{}, m apply-tag MyType, @(m say-hello 'bob') does @('hello ' + that + '!'), m say-hello 'Joe'}
-'hello Joe!'
+>  [1, 1.4, ["hi", ()]]
+[1, 1.4, ["hi", ()]]
+
+>  "my-type" as-type ()
+("my-type" as-type ())
+
+>  @{42, ()}
+{42, ()}
+
+>  #{1: "one", "two": 2}
+#{1: "one", "two": 2}
+
+>  #{} . "foo"
+()
+
+>  #{"foo": "bar"} . "foo"
+"bar"
+
+>  @ @ @ foo
+@(@(foo))
+```
+
+## Phases CLI
+
+```sh
+./fatt.phases.cli.js '1 + 2' '1.5 + 1.2' '"hello " + "joe"' '(1 + 2) : 3' '@ (1 + 2)' '{@foo is (1 + 42), foo}' '(0 add+1 (0 + 2)) replies (0 + 1 + it + that)' '{1 + 2, 42, () }' '#{"a": (1 + 3), ("key" + "One"): 42}' '() ? 1 : 2' '42 ? 1 : 2' '1 > 2' '2 > 1' ' 3 > 2 > 1' '3 > 2 < 1' '{@a is (), a ? 1 : 2}' '{@a is 10, (a > 10) ? 1 : 2}' '1 ? 2' '{@a is 1, a ? 1}' '{@a is 1, a ? @ 1}'
+```
+
+```js
+>  1 + 2
+
+#   comp
+in  1 + 2
+out 3
+
+#   run
+in  3
+out 3
+
+>  1.5 + 1.2
+
+#   comp
+in  1.5 + 1.2
+out 2.7
+
+#   run
+in  2.7
+out 2.7
+
+>  "hello " + "joe"
+
+#   comp
+in  "hello " + "joe"
+out "hello joe"
+
+#   run
+in  "hello joe"
+out "hello joe"
+
+>  (1 + 2) : 3
+
+#   comp
+in  (1 + 2) : 3
+out 3 : 3
+
+#   run
+in  3 : 3
+out 3 : 3
+
+>  @ (1 + 2)
+
+#   comp
+in  @(1 + 2)
+out @(3)
+
+#   run
+in  @(3)
+out 3
+
+>  {@foo is (1 + 42), foo}
+
+#   comp
+in  {@(foo) is (1 + 42), foo}
+out {@(foo) is 43, foo}
+
+#   run
+in  {@(foo) is 43, foo}
+out 43
+
+>  (0 add+1 (0 + 2)) replies (0 + 1 + it + that)
+
+#   comp
+in  (0 add+1 (0 + 2)) replies (((0 + 1) + it) + that)
+out @(0 add+1 2) replies @((1 + it) + that)
+
+#   run
+in  @(0 add+1 2) replies @((1 + it) + that)
+out ()
+
+>  {1 + 2, 42, ()}
+
+#   comp
+in  {1 + 2, 42, ()}
+out {3, 42, ()}
+
+#   run
+in  {3, 42, ()}
+out ()
+
+>  #{"a": (1 + 3), ("key" + "One"): 42}
+
+#   comp
+in  #{"a": 1 + 3, "key" + "One": 42}
+out #{"a": 4, "keyOne": 42}
+
+#   run
+in  #{"a": 4, "keyOne": 42}
+out #{"a": 4, "keyOne": 42}
+
+>  () ? 1 : 2
+
+#   comp
+in  () ? 1 : 2
+out 2
+
+#   run
+in  2
+out 2
+
+>  42 ? 1 : 2
+
+#   comp
+in  42 ? 1 : 2
+out 1
+
+#   run
+in  1
+out 1
+
+>  1 > 2
+
+#   comp
+in  1 > 2
+out ()
+
+#   run
+in  ()
+out ()
+
+>  2 > 1
+
+#   comp
+in  2 > 1
+out 2
+
+#   run
+in  2
+out 2
+
+>   3 > 2 > 1
+
+#   comp
+in  (3 > 2) > 1
+out 3
+
+#   run
+in  3
+out 3
+
+>  3 > 2 < 1
+
+#   comp
+in  (3 > 2) < 1
+out ()
+
+#   run
+in  ()
+out ()
+
+>  {@a is (), a ? 1 : 2}
+
+#   comp
+in  {@(a) is (), a ? 1 : 2}
+out {@(a) is (), a ? @(1 : 2)}
+
+#   run
+in  {@(a) is (), a ? @(1 : 2)}
+out 2
+
+>  {@a is 10, (a > 10) ? 1 : 2}
+
+#   comp
+in  {@(a) is 10, (a > 10) ? 1 : 2}
+out {@(a) is 10, (a > 10) ? @(1 : 2)}
+
+#   run
+in  {@(a) is 10, (a > 10) ? @(1 : 2)}
+out 2
+
+>  1 ? 2
+
+#   comp
+in  1 ? 2
+out 2
+
+#   run
+in  2
+out 2
+
+>  {@a is 1, a ? 1}
+
+#   comp
+in  {@(a) is 1, a ? 1}
+out {@(a) is 1, a ? @(1 : ())}
+
+#   run
+in  {@(a) is 1, a ? @(1 : ())}
+out 1
+
+>  {@a is 1, a ? @ 1}
+
+#   comp
+in  {@(a) is 1, a ? @(1)}
+out {@(a) is 1, a ? @(1 : ())}
+
+#   run
+in  {@(a) is 1, a ? @(1 : ())}
+out 1
 ```
