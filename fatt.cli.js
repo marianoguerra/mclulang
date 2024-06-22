@@ -3,7 +3,6 @@
 import {
   bindReplies,
   mergeToStr,
-  mergeNoOpEval,
   runPhase,
   runPhases,
   toStr,
@@ -12,7 +11,7 @@ import {
 function main(code) {
   console.log("> ", code);
 
-  const eToStr = bindReplies(mergeToStr(mergeNoOpEval({}))).right();
+  const eToStr = bindReplies(mergeToStr({})).right();
   runPhases(
     code,
     [{ name: "run", e: runPhase().right() }],

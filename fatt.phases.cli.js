@@ -25,7 +25,6 @@ import {
 import {
   bindReplies,
   mergeToStr,
-  mergeNoOpEval,
   runPhase,
   toStr,
   runPhases,
@@ -35,7 +34,7 @@ function main(code) {
   console.log("> ", code);
   console.log("");
 
-  const eToStr = bindReplies(mergeToStr(mergeNoOpEval({}))).right();
+  const eToStr = bindReplies(mergeToStr({})).right();
   runPhases(
     code,
     [
