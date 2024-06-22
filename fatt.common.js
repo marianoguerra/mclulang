@@ -4,8 +4,10 @@ import {
   Send,
   NIL,
   Frame,
-  run,
+  logError,
   getType,
+  parse,
+  runAst,
   TYPE_NAME,
   TYPE_MSG,
   TYPE_SEND,
@@ -19,18 +21,51 @@ import {
   TYPE_ARRAY,
   TYPE_MAP,
   TYPE_SYM,
-} from "./fatt.js";
+} from "./fatter.js";
+
+export function runPhases(code, phases, eachFn) {
+  return runAstPhases(parse(code), phases, eachFn);
+}
+
+export function runAstPhases(ast, phases, eachFn) {
+  let input = ast,
+    output = null;
+
+  for (const phase of phases) {
+    try {
+      const { e } = phase;
+      output = runAst(input, e);
+    } catch (err) {
+      logError(err);
+      break;
+    }
+
+    if (output === null) {
+      console.error("bad result in phase, stopping");
+      break;
+    } else {
+      eachFn(phase, input, output);
+      input = output;
+    }
+  }
+
+  return output;
+}
+
+function wrapInParIfMsg(v, s) {
+  return v instanceof Send ? `(${s})` : s;
+}
 
 const toStrReplies = {
   [TYPE_NAME]: {
     toStr: (s) => s.value,
   },
   [TYPE_MSG]: {
-    toStr: (s, m, e) => `\\ ${s.verb} ${fwd(s.obj, m, e)}`,
+    toStr: (s, _m, e) => `\\ ${s.verb} ${toStr(s.obj, e)}`,
   },
   [TYPE_SEND]: {
-    toStr: (s, m, e) =>
-      `${fwd(s.subj, m, e)} ${s.msg.verb} ${fwd(s.msg.obj, m, e)}`,
+    toStr: (s, _m, e) =>
+      `${wrapInParIfMsg(s.subj, toStr(s.subj, e))} ${s.msg.verb} ${wrapInParIfMsg(s.msg.obj, toStr(s.msg.obj, e))}`,
   },
   [TYPE_INT]: {
     toStr: (s) => s.toString(),
@@ -39,14 +74,15 @@ const toStrReplies = {
     toStr: () => "()",
   },
   [TYPE_PAIR]: {
-    toStr: (s, m, e) => `${fwd(s.a, m, e)} : ${fwd(s.b, m, e)}`,
+    toStr: (s, _m, e) =>
+      `${wrapInParIfMsg(s.a, toStr(s.a, e))} : ${wrapInParIfMsg(s.b, toStr(s.b, e))}`,
   },
   [TYPE_LATER]: {
-    toStr: (s, m, e) => fwd(s.value, m, e),
+    toStr: (s, _m, e) => `@(${toStr(s.value, e)})`,
   },
   [TYPE_BLOCK]: {
-    toStr: (s, m, e) =>
-      `{${s.value.map((item) => fwd(item, m, e)).join(", ")}}`,
+    toStr: (s, _m, e) =>
+      `{${s.value.map((item) => toStr(item, e)).join(", ")}}`,
   },
   [TYPE_FLOAT]: {
     toStr: (s) => JSON.stringify(s),
@@ -55,12 +91,12 @@ const toStrReplies = {
     toStr: (s) => JSON.stringify(s),
   },
   [TYPE_ARRAY]: {
-    toStr: (s, m, e) => `[${s.map((item) => fwd(item, m, e)).join(", ")}]`,
+    toStr: (s, _m, e) => `[${s.map((item) => toStr(item, e)).join(", ")}]`,
   },
   [TYPE_MAP]: {
-    toStr: (s, m, e) =>
+    toStr: (s, _m, e) =>
       `#{${Array.from(s.entries())
-        .map(([k, v], _i, _) => `${fwd(k, m, e)}: ${fwd(v, m, e)}`)
+        .map(([k, v], _i, _) => `${toStr(k, e)}: ${toStr(v, e)}`)
         .join(", ")}}`,
   },
   [TYPE_SYM]: {
@@ -69,11 +105,41 @@ const toStrReplies = {
 };
 
 export function mergeToStr(replies) {
-  for (const tag of Object.getOwnPropertySymbols(replies)) {
-    replies[tag].toStr = toStrReplies[tag].toStr;
+  return mergeReplies(toStrReplies, replies);
+}
+
+const noOpEvalReplies = {
+  [TYPE_NAME]: { eval: (s) => s },
+  [TYPE_MSG]: { eval: (s) => s },
+  [TYPE_SEND]: { eval: (s) => s },
+  [TYPE_INT]: { eval: (s) => s },
+  [TYPE_NIL]: { eval: (s) => s },
+  [TYPE_PAIR]: { eval: (s) => s },
+  [TYPE_LATER]: { eval: (s) => s },
+  [TYPE_BLOCK]: { eval: (s) => s },
+  [TYPE_FLOAT]: { eval: (s) => s },
+  [TYPE_STR]: { eval: (s) => s },
+  [TYPE_ARRAY]: { eval: (s) => s },
+  [TYPE_MAP]: { eval: (s) => s },
+  [TYPE_SYM]: { eval: (s) => s },
+};
+
+export function mergeNoOpEval(replies) {
+  return mergeReplies(noOpEvalReplies, replies);
+}
+
+export function mergeReplies(toMerge, target) {
+  for (const tag of Object.getOwnPropertySymbols(toMerge)) {
+    target[tag] ??= {};
+    const toMergeTag = toMerge[tag];
+    for (const key in toMergeTag) {
+      if (target[tag][key] === undefined) {
+        target[tag][key] = toMergeTag[key];
+      }
+    }
   }
 
-  return replies;
+  return target;
 }
 
 export function bindReplies(replies, e = new Frame()) {
@@ -98,4 +164,143 @@ export function fwd(s, m, e) {
 
 export function bop(fn) {
   return (_s, _m, e) => fn(e.find("it"), e.find("that"));
+}
+
+export function compOp(fn) {
+  return (_s, _m, e) => {
+    const a = e.find("it"),
+      b = e.find("that");
+    return fn(a, b) ? a : NIL;
+  };
+}
+
+export function ternary(_s, m, e) {
+  return e.eval(m.obj.a);
+}
+
+export function runPhase() {
+  return bindReplies(
+    mergeToStr({
+      [TYPE_NAME]: {
+        eval: (s, _m, e) => {
+          const v = e.find(s.value);
+          if (v !== undefined) {
+            return v;
+          } else {
+            throw new Error("BindingNotFound", { cause: { s, e } });
+          }
+        },
+        is(s, m, e) {
+          e.up.bind(s.value, m.obj);
+          return m.obj;
+        },
+      },
+      [TYPE_MSG]: {
+        eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)),
+      },
+      [TYPE_SEND]: {
+        eval(s, _m, e) {
+          const subj = e.eval(s.subj),
+            msg = e.eval(s.msg);
+          return e
+            .down()
+            .setUpLimit()
+            .bind("it", subj)
+            .bind("msg", msg)
+            .bind("that", msg.obj)
+            .send(subj, msg);
+        },
+        replies(s, m, e) {
+          const target = e.up.eval(s.subj),
+            targetType = getType(target),
+            msgVerb = s.msg.verb,
+            impl = m.obj,
+            proto = e.up.find(targetType);
+
+          proto.bind(msgVerb, impl);
+          return NIL;
+        },
+      },
+      [TYPE_INT]: {
+        eval: (s) => s,
+        "+": bop((a, b) => a + b),
+        "-": bop((a, b) => a - b),
+        "*": bop((a, b) => a * b),
+        "/": bop((a, b) => a / b),
+        "=": compOp((a, b) => a === b),
+        "!=": compOp((a, b) => a !== b),
+        ">": compOp((a, b) => a > b),
+        ">=": compOp((a, b) => a >= b),
+        "<": compOp((a, b) => a < b),
+        "<=": compOp((a, b) => a <= b),
+        "?": ternary,
+      },
+      [TYPE_NIL]: {
+        eval: (s) => s,
+        "?": (_s, m, e) => e.eval(m.obj.b),
+      },
+      [TYPE_PAIR]: {
+        eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)),
+        "?": ternary,
+      },
+      [TYPE_LATER]: {
+        eval: (s) => s.value,
+      },
+      [TYPE_BLOCK]: {
+        eval: (s, _m, e) => {
+          let r = NIL;
+          for (const item of s.value) {
+            r = e.eval(item);
+          }
+          return r;
+        },
+      },
+      [TYPE_FLOAT]: {
+        eval: (s) => s,
+        "+": bop((a, b) => a + b),
+        "-": bop((a, b) => a - b),
+        "*": bop((a, b) => a * b),
+        "/": bop((a, b) => a / b),
+        "=": compOp((a, b) => a === b),
+        "!=": compOp((a, b) => a !== b),
+        ">": compOp((a, b) => a > b),
+        ">=": compOp((a, b) => a >= b),
+        "<": compOp((a, b) => a < b),
+        "<=": compOp((a, b) => a <= b),
+        "?": ternary,
+      },
+      [TYPE_STR]: {
+        eval: (s) => s,
+        "+": bop((a, b) => a + b),
+        "?": ternary,
+        "as-type"(s, _m, e) {
+          const type = Symbol(s);
+          e.left.bind(
+            type,
+            new Frame().bind("eval", (s) => s),
+          );
+          return type;
+        },
+      },
+      [TYPE_ARRAY]: {
+        eval: (s, _m, e) => s.map((item) => e.eval(item)),
+        "?": ternary,
+      },
+      [TYPE_MAP]: {
+        eval: (s, _m, e) => {
+          const r = new Map();
+          for (const [k, v] of s.entries()) {
+            r.set(e.eval(k), e.eval(v));
+          }
+          return r;
+        },
+        ".": (s, m, _e) => s.get(m.obj) ?? NIL,
+        "?": ternary,
+      },
+      [TYPE_SYM]: {
+        eval: (s) => s,
+        "?": ternary,
+      },
+    }),
+  );
 }
