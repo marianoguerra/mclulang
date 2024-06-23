@@ -1,11 +1,11 @@
 #!/usr/bin/env bun
 /*globals Bun*/
 import {
+  Name,
   Pair,
   Msg,
   Send,
   Later,
-  Block,
   NIL,
   getType,
   TYPE_NAME,
@@ -20,11 +20,11 @@ import {
   TYPE_STR,
   TYPE_ARRAY,
   TYPE_MAP,
-  TYPE_SYM,
 } from "./fatter.js";
 import {
   bindReplies,
   mergeToStr,
+  mergeIdent,
   runPhase,
   toStr,
   runPhases,
@@ -38,7 +38,8 @@ function main(code) {
   runPhases(
     code,
     [
-      { name: "comp", e: compPhase().right() },
+      { name: "macro", e: macroPhase().right() },
+      { name: "opt", e: optPhase().right() },
       { name: "run", e: runPhase().right() },
     ],
     ({ name }, input, output) => {
@@ -78,7 +79,7 @@ function pairToLaterOrLaterPair(v) {
   }
 }
 
-function compPhase() {
+function optPhase() {
   function cBinOp(fn) {
     return (s, m) => {
       if (typeof m.obj === typeof s) {
@@ -98,9 +99,6 @@ function compPhase() {
       }
     };
   }
-
-  const ternaryWrap = (s, m, _e) =>
-    new Send(s, new Msg(m.verb, pairToLaterOrLaterPair(m.obj)));
 
   function ternaryTrue(_s, m, _e) {
     const body = m.obj;
@@ -132,6 +130,60 @@ function compPhase() {
     }
   }
 
+  return bindReplies(
+    mergeIdent({
+      [TYPE_SEND]: {
+        eval: (s, _m, e) => {
+          const subj = e.eval(s.subj),
+            msg = e.eval(s.msg);
+          if (e.getSendHandler(subj, msg)) {
+            return e.send(subj, msg);
+          } else {
+            return new Send(subj, msg);
+          }
+        },
+      },
+      [TYPE_NIL]: {
+        "?": ternaryFalse,
+      },
+      [TYPE_INT]: {
+        "?": ternaryTrue,
+        "+": cBinOp((a, b) => a + b),
+        "-": cBinOp((a, b) => a - b),
+        "*": cBinOp((a, b) => a * b),
+        "/": cBinOp((a, b) => a / b),
+        "=": cCompOp((a, b) => a === b),
+        "!=": cCompOp((a, b) => a !== b),
+        ">": cCompOp((a, b) => a > b),
+        ">=": cCompOp((a, b) => a >= b),
+        "<": cCompOp((a, b) => a < b),
+        "<=": cCompOp((a, b) => a <= b),
+      },
+      [TYPE_FLOAT]: {
+        "?": ternaryTrue,
+        "+": cBinOp((a, b) => a + b),
+        "-": cBinOp((a, b) => a - b),
+        "*": cBinOp((a, b) => a * b),
+        "/": cBinOp((a, b) => a / b),
+        "=": cCompOp((a, b) => a === b),
+        "!=": cCompOp((a, b) => a !== b),
+        ">": cCompOp((a, b) => a > b),
+        ">=": cCompOp((a, b) => a >= b),
+        "<": cCompOp((a, b) => a < b),
+        "<=": cCompOp((a, b) => a <= b),
+      },
+      [TYPE_STR]: {
+        "?": ternaryTrue,
+        "+": cBinOp((a, b) => a + b),
+      },
+    }),
+  );
+}
+
+function macroPhase() {
+  const ternaryWrap = (s, m, _e) =>
+    new Send(s, new Msg(m.verb, pairToLaterOrLaterPair(m.obj)));
+
   function trueAnd(_s, m, _e) {
     return maybeUnwrapLater(m.obj);
   }
@@ -148,16 +200,18 @@ function compPhase() {
     orWrap = lazyRhs;
 
   return bindReplies(
-    mergeToStr({
+    mergeIdent({
       [TYPE_NAME]: {
         eval: (s) => s,
+        is: (s, m, _e) =>
+          s instanceof Name ? new Send(new Later(s), m) : new Send(s, m),
         "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
       [TYPE_MSG]: {
         eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)),
-        "?": ternaryTrue,
+        "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
@@ -184,82 +238,49 @@ function compPhase() {
         or: orWrap,
       },
       [TYPE_INT]: {
-        eval: (s) => s,
-        "+": cBinOp((a, b) => a + b),
-        "-": cBinOp((a, b) => a - b),
-        "*": cBinOp((a, b) => a * b),
-        "/": cBinOp((a, b) => a / b),
-        "=": cCompOp((a, b) => a === b),
-        "!=": cCompOp((a, b) => a !== b),
-        ">": cCompOp((a, b) => a > b),
-        ">=": cCompOp((a, b) => a >= b),
-        "<": cCompOp((a, b) => a < b),
-        "<=": cCompOp((a, b) => a <= b),
-        "?": ternaryTrue,
+        "?": ternaryWrap,
         and: trueAnd,
         or: trueOr,
       },
       [TYPE_NIL]: {
-        eval: (s) => s,
-        "?": ternaryFalse,
+        "?": ternaryWrap,
         and: (s) => s,
         or: (_s, m) => maybeUnwrapLater(m.obj),
       },
       [TYPE_PAIR]: {
-        eval: (s, _, e) => new Pair(e.eval(s.a), e.eval(s.b)),
+        "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
       [TYPE_LATER]: {
-        eval: (s, _, e) => new Later(e.eval(s.value)),
+        "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
       [TYPE_BLOCK]: {
-        eval: (s, _m, e) => new Block(s.value.map((item) => e.eval(item))),
         and: andWrap,
         or: orWrap,
       },
       [TYPE_FLOAT]: {
-        eval: (s) => s,
-        "+": cBinOp((a, b) => a + b),
-        "-": cBinOp((a, b) => a - b),
-        "*": cBinOp((a, b) => a * b),
-        "/": cBinOp((a, b) => a / b),
-        "=": cCompOp((a, b) => a === b),
-        "!=": cCompOp((a, b) => a !== b),
-        ">": cCompOp((a, b) => a > b),
-        ">=": cCompOp((a, b) => a >= b),
-        "<": cCompOp((a, b) => a < b),
-        "<=": cCompOp((a, b) => a <= b),
-        "?": ternaryTrue,
+        "?": ternaryWrap,
         and: trueAnd,
         or: trueOr,
       },
       [TYPE_STR]: {
-        eval: (s) => s,
-        "+": cBinOp((a, b) => a + b),
-        "?": ternaryTrue,
+        "?": ternaryWrap,
         and: trueAnd,
         or: trueOr,
       },
       [TYPE_ARRAY]: {
-        eval: (s, _m, e) => s.value.map((item) => e.eval(item)),
+        "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
       [TYPE_MAP]: {
-        eval: (s, _m, e) => {
-          const r = new Map();
-          for (const [k, v] of s.entries()) {
-            r.set(e.eval(k), e.eval(v));
-          }
-          return r;
-        },
+        "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
-      [TYPE_SYM]: { eval: (s) => s },
     }),
   );
 }

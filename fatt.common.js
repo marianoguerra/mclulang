@@ -1,6 +1,8 @@
 import {
+  Block,
   Pair,
   Msg,
+  Later,
   Send,
   NIL,
   Frame,
@@ -65,7 +67,7 @@ const toStrReplies = {
   },
   [TYPE_SEND]: {
     toStr: (s, _m, e) =>
-      `${wrapInParIfMsg(s.subj, toStr(s.subj, e))} ${s.msg.verb} ${wrapInParIfMsg(s.msg.obj, toStr(s.msg.obj, e))}`,
+      `${toStr(s.subj, e)} ${s.msg.verb} ${wrapInParIfMsg(s.msg.obj, toStr(s.msg.obj, e))}`,
   },
   [TYPE_INT]: {
     toStr: (s) => s.toString(),
@@ -176,6 +178,56 @@ export function compOp(fn) {
 
 export function ternary(_s, m, e) {
   return e.eval(m.obj.a);
+}
+
+const identReplies = {
+  [TYPE_NAME]: {
+    eval: (s) => s,
+  },
+  [TYPE_MSG]: {
+    eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)),
+  },
+  [TYPE_SEND]: {
+    eval: (s, _m, e) => new Send(e.eval(s.subj), e.eval(s.msg)),
+  },
+  [TYPE_INT]: {
+    eval: (s) => s,
+  },
+  [TYPE_NIL]: {
+    eval: (s) => s,
+  },
+  [TYPE_PAIR]: {
+    eval: (s, _, e) => new Pair(e.eval(s.a), e.eval(s.b)),
+  },
+  [TYPE_LATER]: {
+    eval: (s, _, e) => new Later(e.eval(s.value)),
+  },
+  [TYPE_BLOCK]: {
+    eval: (s, _m, e) => new Block(s.value.map((item) => e.eval(item))),
+  },
+  [TYPE_FLOAT]: {
+    eval: (s) => s,
+  },
+  [TYPE_STR]: {
+    eval: (s) => s,
+  },
+  [TYPE_ARRAY]: {
+    eval: (s, _m, e) => s.value.map((item) => e.eval(item)),
+  },
+  [TYPE_MAP]: {
+    eval: (s, _m, e) => {
+      const r = new Map();
+      for (const [k, v] of s.entries()) {
+        r.set(e.eval(k), e.eval(v));
+      }
+      return r;
+    },
+  },
+  [TYPE_SYM]: { eval: (s) => s },
+};
+
+export function mergeIdent(replies) {
+  return mergeReplies(identReplies, replies);
 }
 
 export function runPhase() {
