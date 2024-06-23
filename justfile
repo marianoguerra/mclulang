@@ -1,15 +1,12 @@
 set shell := ["nu", "-c"]
 
-build:
-    lit mclulang.lit
+test-all: test-single test-phases
 
-build-pandoc:
-    lit --md-compiler pandoc mclulang.lit
+test-single: (test "cli.tests" "fatt.cli.js")
 
-cli-test:
-    open oneliners.mclu | lines | where {|line| ($line | str length) > 0 and not ($line | str starts-with "#") } | each {|$line| ./mcli.js $"($line)"; print ""}
+test-phases: (test "phases.tests" "fatt.phases.cli.js")
 
-cli-test-mcro:
-    open oneliners.mclu | lines | where {|line| ($line | str length) > 0 and not ($line | str starts-with "#") } | each {|$line| ./mcro.js $"($line)"; print ""}
-    ./mcro.js '(a + 1) does 2'
-    ./mcro.js '[{#{"fn": ((a + 1) does 2)}}]'
+test FILE BIN:
+    open {{FILE}} | lines | where {|line| ($line | str length) > 0 and not ($line | str starts-with "#") } | each {|$line| ./{{BIN}} $"($line)"; print ""}
+
+
