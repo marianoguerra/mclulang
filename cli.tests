@@ -12,3 +12,7 @@
 #{} . "foo"
 #{"foo": "bar"} . "foo"
 @ @ @ foo
+1 or 2 and 3
+1 and 2 or 3
+() or 2 and 3
+1 and () or 3

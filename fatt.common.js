@@ -211,8 +211,8 @@ export function mergeIdent(replies) {
 }
 
 export function runPhase() {
-  const or = (s) => s,
-    and = (_s, m, e) => e.eval(m.obj);
+  const or = (s, m, e) => (s === NIL ? e.eval(m.obj) : s),
+    and = (s, m, e) => (s === NIL ? s : e.eval(m.obj));
 
   return bindReplies(
     mergeToStr({
