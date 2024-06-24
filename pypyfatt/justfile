@@ -1,0 +1,8 @@
+
+fatt-c:
+	echo "Building Plang with JIT"
+	./pypy/rpython/bin/rpython fatt.py
+
+fatt-c-jit:
+	echo "Building Plang with JIT"
+	./pypy/rpython/bin/rpython -Ojit fatt.py
