@@ -55,10 +55,6 @@ function maybeUnwrapLater(v) {
   return v instanceof Later ? v.value : v;
 }
 
-function maybeWrapLater(v) {
-  return v instanceof Later ? v : new Later(v);
-}
-
 function pairToLaterOrLaterPair(v) {
   if (v instanceof Pair) {
     return new Later(v);
@@ -76,6 +72,18 @@ function pairToLaterOrLaterPair(v) {
   } else {
     console.error("Expected pair or later of pair, got", getType(v), "fixing");
     return new Later(new Pair(v, NIL));
+  }
+}
+
+function isConstantExpr(v) {
+  switch (getType(v)) {
+    case TYPE_INT:
+    case TYPE_FLOAT:
+    case TYPE_STR:
+    case TYPE_NIL:
+      return true;
+    default:
+      return false;
   }
 }
 
@@ -130,6 +138,14 @@ function optPhase() {
     }
   }
 
+  function trueAnd(_s, m, _e) {
+    return maybeUnwrapLater(m.obj);
+  }
+
+  function trueOr(s) {
+    return s;
+  }
+
   return bindReplies(
     mergeIdent({
       [TYPE_SEND]: {
@@ -145,6 +161,12 @@ function optPhase() {
       },
       [TYPE_NIL]: {
         "?": ternaryFalse,
+        ">": () => NIL,
+        ">=": () => NIL,
+        "<": () => NIL,
+        "<=": () => NIL,
+        and: () => NIL,
+        or: (_s, m) => m.obj,
       },
       [TYPE_INT]: {
         "?": ternaryTrue,
@@ -158,6 +180,8 @@ function optPhase() {
         ">=": cCompOp((a, b) => a >= b),
         "<": cCompOp((a, b) => a < b),
         "<=": cCompOp((a, b) => a <= b),
+        and: trueAnd,
+        or: trueOr,
       },
       [TYPE_FLOAT]: {
         "?": ternaryTrue,
@@ -171,10 +195,20 @@ function optPhase() {
         ">=": cCompOp((a, b) => a >= b),
         "<": cCompOp((a, b) => a < b),
         "<=": cCompOp((a, b) => a <= b),
+        and: trueAnd,
+        or: trueOr,
       },
       [TYPE_STR]: {
         "?": ternaryTrue,
         "+": cBinOp((a, b) => a + b),
+        and: trueAnd,
+        or: trueOr,
+      },
+      [TYPE_LATER]: {
+        eval(s, _, e) {
+          const v = e.eval(s.value);
+          return isConstantExpr(v) ? v : new Later(v);
+        },
       },
     }),
   );
@@ -184,12 +218,8 @@ function macroPhase() {
   const ternaryWrap = (s, m, _e) =>
     new Send(s, new Msg(m.verb, pairToLaterOrLaterPair(m.obj)));
 
-  function trueAnd(_s, m, _e) {
-    return maybeUnwrapLater(m.obj);
-  }
-
-  function trueOr(s) {
-    return s;
+  function maybeWrapLater(v) {
+    return v instanceof Later ? v : new Later(v);
   }
 
   function lazyRhs(s, m, _e) {
@@ -203,8 +233,7 @@ function macroPhase() {
     mergeIdent({
       [TYPE_NAME]: {
         eval: (s) => s,
-        is: (s, m, _e) =>
-          s instanceof Name ? new Send(new Later(s), m) : new Send(s, m),
+        is: (s, m, _e) => new Send(new Later(s), m),
         "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
@@ -225,62 +254,26 @@ function macroPhase() {
             return new Send(subj, msg);
           }
         },
-        replies(s, m, _e) {
-          // no need to eval here since we wre called by send which evaluated
-          if (s instanceof Send) {
-            return new Send(new Later(s), new Msg(m.verb, new Later(m.obj)));
-          } else {
-            return new Send(s, m);
-          }
-        },
+        // no need to eval here since we ewre called by send which evaluated
+        replies: (s, m) =>
+          new Send(new Later(s), new Msg(m.verb, new Later(m.obj))),
         "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
-      [TYPE_INT]: {
-        "?": ternaryWrap,
-        and: trueAnd,
-        or: trueOr,
-      },
+      [TYPE_INT]: { "?": ternaryWrap, and: andWrap, or: orWrap },
       [TYPE_NIL]: {
         "?": ternaryWrap,
-        and: (s) => s,
-        or: (_s, m) => maybeUnwrapLater(m.obj),
-      },
-      [TYPE_PAIR]: {
-        "?": ternaryWrap,
         and: andWrap,
         or: orWrap,
       },
-      [TYPE_LATER]: {
-        "?": ternaryWrap,
-        and: andWrap,
-        or: orWrap,
-      },
-      [TYPE_BLOCK]: {
-        and: andWrap,
-        or: orWrap,
-      },
-      [TYPE_FLOAT]: {
-        "?": ternaryWrap,
-        and: trueAnd,
-        or: trueOr,
-      },
-      [TYPE_STR]: {
-        "?": ternaryWrap,
-        and: trueAnd,
-        or: trueOr,
-      },
-      [TYPE_ARRAY]: {
-        "?": ternaryWrap,
-        and: andWrap,
-        or: orWrap,
-      },
-      [TYPE_MAP]: {
-        "?": ternaryWrap,
-        and: andWrap,
-        or: orWrap,
-      },
+      [TYPE_PAIR]: { "?": ternaryWrap, and: andWrap, or: orWrap },
+      [TYPE_LATER]: { "?": ternaryWrap, and: andWrap, or: orWrap },
+      [TYPE_BLOCK]: { and: andWrap, or: orWrap },
+      [TYPE_FLOAT]: { "?": ternaryWrap, and: andWrap, or: orWrap },
+      [TYPE_STR]: { "?": ternaryWrap, and: andWrap, or: orWrap },
+      [TYPE_ARRAY]: { "?": ternaryWrap, and: andWrap, or: orWrap },
+      [TYPE_MAP]: { "?": ternaryWrap, and: andWrap, or: orWrap },
     }),
   );
 }

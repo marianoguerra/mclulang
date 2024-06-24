@@ -181,39 +181,20 @@ export function ternary(_s, m, e) {
 }
 
 const identReplies = {
-  [TYPE_NAME]: {
-    eval: (s) => s,
-  },
-  [TYPE_MSG]: {
-    eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)),
-  },
-  [TYPE_SEND]: {
-    eval: (s, _m, e) => new Send(e.eval(s.subj), e.eval(s.msg)),
-  },
-  [TYPE_INT]: {
-    eval: (s) => s,
-  },
-  [TYPE_NIL]: {
-    eval: (s) => s,
-  },
-  [TYPE_PAIR]: {
-    eval: (s, _, e) => new Pair(e.eval(s.a), e.eval(s.b)),
-  },
-  [TYPE_LATER]: {
-    eval: (s, _, e) => new Later(e.eval(s.value)),
-  },
+  [TYPE_NAME]: { eval: (s) => s },
+  [TYPE_INT]: { eval: (s) => s },
+  [TYPE_NIL]: { eval: (s) => s },
+  [TYPE_FLOAT]: { eval: (s) => s },
+  [TYPE_STR]: { eval: (s) => s },
+  [TYPE_SYM]: { eval: (s) => s },
+  [TYPE_MSG]: { eval: (s, _m, e) => new Msg(s.verb, e.eval(s.obj)) },
+  [TYPE_SEND]: { eval: (s, _m, e) => new Send(e.eval(s.subj), e.eval(s.msg)) },
+  [TYPE_PAIR]: { eval: (s, _, e) => new Pair(e.eval(s.a), e.eval(s.b)) },
+  [TYPE_LATER]: { eval: (s, _, e) => new Later(e.eval(s.value)) },
   [TYPE_BLOCK]: {
     eval: (s, _m, e) => new Block(s.value.map((item) => e.eval(item))),
   },
-  [TYPE_FLOAT]: {
-    eval: (s) => s,
-  },
-  [TYPE_STR]: {
-    eval: (s) => s,
-  },
-  [TYPE_ARRAY]: {
-    eval: (s, _m, e) => s.value.map((item) => e.eval(item)),
-  },
+  [TYPE_ARRAY]: { eval: (s, _m, e) => s.value.map((item) => e.eval(item)) },
   [TYPE_MAP]: {
     eval: (s, _m, e) => {
       const r = new Map();
@@ -223,7 +204,6 @@ const identReplies = {
       return r;
     },
   },
-  [TYPE_SYM]: { eval: (s) => s },
 };
 
 export function mergeIdent(replies) {
@@ -297,6 +277,10 @@ export function runPhase() {
         "?": (_s, m, e) => e.eval(m.obj.b),
         and: (s) => s,
         or: (_s, m, e) => e.eval(m.obj),
+        ">": () => NIL,
+        ">=": () => NIL,
+        "<": () => NIL,
+        "<=": () => NIL,
       },
       [TYPE_PAIR]: {
         eval: (s, _m, e) => new Pair(e.eval(s.a), e.eval(s.b)),
