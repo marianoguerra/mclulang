@@ -25,7 +25,7 @@ class Type(object):
         return e.eval(self)
 
     def is_int(self):
-        return self.type == TYPE_INT
+        return False
 
 class Handler(Type):
     def __init__(self, fn):
@@ -42,6 +42,9 @@ class Int(Type):
 
     def __str__(self):
         return str(self.ival)
+
+    def is_int(self):
+        return True
 
 class Float(Type):
     def __init__(self, value):
