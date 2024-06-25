@@ -6,3 +6,10 @@ fatt-c:
 fatt-c-jit:
 	echo "Building Plang with JIT"
 	./pypy/rpython/bin/rpython -Ojit fatt.py
+
+setup-dev:
+	rm -rf rply appdirs.py
+	wget https://raw.githubusercontent.com/ActiveState/appdirs/48357882e5c095003e10f8351b405bf54e41424f/appdirs.py
+	git clone https://github.com/alex/rply.git rplyrepo
+	mv rplyrepo/rply .
+	rm -rf rplyrepo
