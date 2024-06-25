@@ -1,6 +1,7 @@
 import sys
 from fatt_types import *
 from fatt_parser import parse
+from rply import LexingError, ParsingError
 
 def type_expected(expected, a, b):
     fail("Expected '" + expected + "' got '" + a.type + "' and '" + b.type + "'")
@@ -137,15 +138,25 @@ def entry_point(argv):
         try:
             expr = parse(code).to_type()
             print f1.eval(expr).to_str()
-        except Error, err:
-            print "ERROR:", err.msg
-        except ValueError, err:
-            print err.__str__()
+        except Error as err:
+            print "Runtime Error:", err.msg
+        except LexingError as err:
+            print "Lexing Error:", err.message, "|", format_pos(err.source_pos)
+        except ParsingError as err:
+            print "Parsing Error:", err.message, "|", format_pos(err.source_pos)
+        except Exception as err:
+            print "Error:", str(err)
     else:
         print "usage: fatt '1 + 2'"
 
 
     return 0
+
+def format_pos(pos):
+    if pos is None:
+        return "no source position available"
+    else:
+        return "line: %d, column: %d" % (pos.lineno, pos.colno)
 
 def target(*args):
     return entry_point, None

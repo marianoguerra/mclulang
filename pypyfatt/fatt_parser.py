@@ -1,4 +1,4 @@
-from rply import ParserGenerator, LexerGenerator
+from rply import ParserGenerator, LexerGenerator, ParsingError
 from rply.token import BaseBox
 import fatt_types as t
 
@@ -284,7 +284,7 @@ def value_string(state, p):
 
 @pg.error
 def error_handler(state, token):
-    raise ValueError("Ran into a %s where it wasn't expected" % token.gettokentype())
+    raise ParsingError("Unexpected token of type %s ('%s')" % (token.gettokentype(), token.getstr()), token.getsourcepos())
 
 parser = pg.build()
 
