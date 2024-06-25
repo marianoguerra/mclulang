@@ -117,7 +117,6 @@ def entry_point(argv):
     send_proto = Frame()
     send_proto.bind("eval", Handler(send_eval))
 
-
     f.bind(TYPE_NIL, nil_proto)
     f.bind(TYPE_INT, int_proto)
     f.bind(TYPE_FLOAT, float_proto)
@@ -131,60 +130,19 @@ def entry_point(argv):
     f.bind(TYPE_MSG, msg_proto)
     f.bind(TYPE_SEND, send_proto)
 
-    f.bind("i", Int(42))
-    f.bind("f", Float(1.5))
-    f.bind("s", Str("hi"))
-    f.bind("b", Block([NIL, Int(4), Float(1.4), Pair(Int(1), Int(2))]))
-    f.bind("a", Array([NIL, Int(4), Float(1.4), Pair(Int(1), Int(2))]))
-    f.bind("m", Map({"n": NIL, "i": Int(4), "f": Float(1.4), "p": Pair(Int(1), Int(2)), "a\"b": Int(0)}))
-    f.bind("p", Pair(NIL, Int(10)))
-    f.bind("l", Later(Int(1)))
-    
     f1 = f.right().down()
-
-
-    try:
-        print f1.eval(Send(Int(10), Msg("+", Name("i")))).to_str()
-        print f1.eval(Send(Float(2.1), Msg("+", Name("f")))).to_str()
-        print f1.eval(Send(Str("hey "), Msg("+", Name("s")))).to_str()
-        print f1.eval(Name("b")).to_str()
-        print f1.eval(Name("a")).to_str()
-        print f1.eval(Name("m")).to_str()
-        print f1.eval(Name("p")).to_str()
-        print f1.eval(Name("l")).to_str()
-    except Error, err:
-        print "ERROR:", err.msg
-
-    print parse("12").to_type().to_str()
-    print parse("1.5").to_type().to_str()
-    print parse("()").to_type().to_str()
-    print parse('"hi"').to_type().to_str()
-    print parse('foo').to_type().to_str()
-    print parse('\\ + 1').to_type().to_str()
-    print parse('@ 1').to_type().to_str()
-    print parse('1 + 2').to_type().to_str()
-    print parse('1 + 2 + 3').to_type().to_str()
-    print parse('1 : 2').to_type().to_str()
-    print parse('1 : 2 : 3').to_type().to_str()
-    print parse('{1}').to_type().to_str()
-    print parse('{1, 2}').to_type().to_str()
-    print parse('{1, 2, 3}').to_type().to_str()
-    print parse('[]').to_type().to_str()
-    print parse('[1]').to_type().to_str()
-    print parse('[1, 2]').to_type().to_str()
-    print parse('[1, 2, 3]').to_type().to_str()
-    print parse('#{}').to_type().to_str()
-    print parse('#{"i": 1}').to_type().to_str()
-    print parse('#{"i": 1, "f": 1.5}').to_type().to_str()
-    print parse('#{"i": 1, "f": 1.5, "n": ()}').to_type().to_str()
 
     if len(argv) > 1:
         code = argv[1]
         try:
             expr = parse(code).to_type()
             print f1.eval(expr).to_str()
+        except Error, err:
+            print "ERROR:", err.msg
         except ValueError, err:
-            print err
+            print err.__str__()
+    else:
+        print "usage: fatt '1 + 2'"
 
 
     return 0
