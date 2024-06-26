@@ -23,6 +23,7 @@ import {
   TYPE_ARRAY,
   TYPE_MAP,
   TYPE_SYM,
+  TYPE_FRAME,
 } from "./fatter.js";
 
 export function runPhases(code, phases, eachFn) {
@@ -104,6 +105,7 @@ const toStrReplies = {
   [TYPE_SYM]: {
     toStr: (s) => `(${JSON.stringify(s.description)} as-type ())`,
   },
+  [TYPE_FRAME]: { toStr: () => "<Frame>" },
 };
 
 export function mergeToStr(replies) {

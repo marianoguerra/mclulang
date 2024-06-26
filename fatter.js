@@ -38,20 +38,7 @@ export const NIL = new Nil(),
   typeSym = Symbol("TypeSym"),
   getType = (v) => (v != null ? v[typeSym] : null),
   setType = (Cls, type) => ((Cls.prototype[typeSym] = type), type),
-  mkType = (name, Cls) => setType(Cls, Symbol(name)),
-  TYPE_NAME = mkType("Name", Name),
-  TYPE_MSG = mkType("Msg", Msg),
-  TYPE_SEND = mkType("Send", Send),
-  TYPE_INT = mkType("Int", BigInt),
-  TYPE_NIL = mkType("Nil", Nil),
-  TYPE_PAIR = mkType("Pair", Pair),
-  TYPE_LATER = mkType("Later", Later),
-  TYPE_BLOCK = mkType("Block", Block),
-  TYPE_FLOAT = mkType("Float", Number),
-  TYPE_STR = mkType("Str", String),
-  TYPE_ARRAY = mkType("Array", Array),
-  TYPE_MAP = mkType("Map", Map),
-  TYPE_SYM = mkType("Symbol", Symbol);
+  mkType = (name, Cls) => setType(Cls, Symbol(name));
 export class Frame {
   constructor(left = null, up = null) {
     this.up = up;
@@ -113,6 +100,20 @@ export class Frame {
     return this;
   }
 }
+export const TYPE_FRAME = mkType("Frame", Frame),
+  TYPE_NAME = mkType("Name", Name),
+  TYPE_MSG = mkType("Msg", Msg),
+  TYPE_SEND = mkType("Send", Send),
+  TYPE_INT = mkType("Int", BigInt),
+  TYPE_NIL = mkType("Nil", Nil),
+  TYPE_PAIR = mkType("Pair", Pair),
+  TYPE_LATER = mkType("Later", Later),
+  TYPE_BLOCK = mkType("Block", Block),
+  TYPE_FLOAT = mkType("Float", Number),
+  TYPE_STR = mkType("Str", String),
+  TYPE_ARRAY = mkType("Array", Array),
+  TYPE_MAP = mkType("Map", Map),
+  TYPE_SYM = mkType("Symbol", Symbol);
 import * as ohm from "./node_modules/ohm-js/index.mjs";
 export const grammar = ohm.grammar(`McLulang {
     Main = Send
