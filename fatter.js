@@ -186,20 +186,20 @@ export const grammar = ohm.grammar(`McLulang {
   logError = (err) => {
     switch (err.message) {
       case "BindingNotFound": {
-        const { s } = err.cause;
+        const { s, e } = err.cause;
 
-        console.error("Binding not Found:", s.value);
+        console.error("Binding not Found:", s.value, e);
         break;
       }
       case "HandlerNotFound": {
         const { s, m } = err.cause;
 
         console.error(
-          "Handler not Found for type",
-          s ?? getType(s),
+          "Handler not found for type",
+          s && getType(s),
           "message",
           m.verb,
-          "in",
+          m.obj instanceof Frame ? "<Frame>" : m.obj,
         );
         break;
       }
