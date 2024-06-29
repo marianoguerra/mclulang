@@ -53,21 +53,47 @@ def entry_point(argv):
     nil_proto.bind("eval", Handler(lambda s, m, e: s))
 
     int_proto = Frame()
+    int_proto.bind("eval", Handler(lambda s, m, e: s))
+
     int_proto.bind("+", int_binop(lambda a, b: a + b))
     int_proto.bind("-", int_binop(lambda a, b: a - b))
     int_proto.bind("*", int_binop(lambda a, b: a * b))
-    int_proto.bind("eval", Handler(lambda s, m, e: s))
+
+    int_proto.bind("<", int_compop(lambda a, b: a < b))
+    int_proto.bind("<=", int_compop(lambda a, b: a <= b))
+    int_proto.bind(">", int_compop(lambda a, b: a > b))
+    int_proto.bind(">=", int_compop(lambda a, b: a >= b))
+    int_proto.bind("=", int_compop(lambda a, b: a == b))
+    int_proto.bind("!=", int_compop(lambda a, b: a != b))
 
     float_proto = Frame()
+    float_proto.bind("eval", Handler(lambda s, m, e: s))
+
     float_proto.bind("+", float_binop(lambda a, b: a + b))
     float_proto.bind("-", float_binop(lambda a, b: a - b))
     float_proto.bind("*", float_binop(lambda a, b: a * b))
     float_proto.bind("/", float_binop(lambda a, b: a / b))
-    float_proto.bind("eval", Handler(lambda s, m, e: s))
+
+    float_proto.bind("<", float_compop(lambda a, b: a < b))
+    float_proto.bind("<=", float_compop(lambda a, b: a <= b))
+    float_proto.bind(">", float_compop(lambda a, b: a > b))
+    float_proto.bind(">=", float_compop(lambda a, b: a >= b))
+    float_proto.bind("=", float_compop(lambda a, b: a == b))
+    float_proto.bind("!=", float_compop(lambda a, b: a != b))
+
 
     str_proto = Frame()
-    str_proto.bind("+", str_binop(lambda a, b: a + b))
     str_proto.bind("eval", Handler(lambda s, m, e: s))
+
+    str_proto.bind("+", str_binop(lambda a, b: a + b))
+
+    str_proto.bind("<", str_compop(lambda a, b: a < b))
+    str_proto.bind("<=", str_compop(lambda a, b: a <= b))
+    str_proto.bind(">", str_compop(lambda a, b: a > b))
+    str_proto.bind(">=", str_compop(lambda a, b: a >= b))
+    str_proto.bind("=", str_compop(lambda a, b: a == b))
+    str_proto.bind("!=", str_compop(lambda a, b: a != b))
+
 
     name_proto = Frame()
     name_proto.bind("eval", Handler(name_lookup))

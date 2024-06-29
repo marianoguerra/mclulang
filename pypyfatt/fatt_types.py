@@ -340,3 +340,53 @@ def float_binop(fn):
 def str_binop(fn):
     return StrBinOpHandler(fn)
 
+class CompOpHandler(Handler):
+    def __init__(self, type_pred, type_expected):
+        Type.__init__(self, TYPE_HANDLER)
+        self.type_pred = type_pred
+        self.type_expected = type_expected
+
+    def handle(self, s, m, e):
+        if self.type_pred(s) and self.type_pred(m.obj):
+            if self.compare(s, m.obj):
+                return s
+            else:
+                return NIL
+        else:
+            self.type_expected(s, m.obj)
+
+    def compare(self, a, b):
+        return False
+
+class IntCompOpHandler(CompOpHandler):
+    def __init__(self, comp_op):
+        CompOpHandler.__init__(self, lambda x: x.is_int(), int_expected)
+        self.icomp = comp_op
+
+    def compare(self, a, b):
+        return self.icomp(a.ival, b.ival)
+
+class FloatCompOpHandler(CompOpHandler):
+    def __init__(self, comp_op):
+        CompOpHandler.__init__(self, lambda x: x.is_float(), float_expected)
+        self.fcomp = comp_op
+
+    def compare(self, a, b):
+        return self.fcomp(a.fval, b.fval)
+
+class StrCompOpHandler(CompOpHandler):
+    def __init__(self, comp_op):
+        CompOpHandler.__init__(self, lambda x: x.is_str(), str_expected)
+        self.scomp = comp_op
+
+    def compare(self, a, b):
+        return self.scomp(a.sval, b.sval)
+
+def int_compop(fn):
+    return IntCompOpHandler(fn)
+
+def float_compop(fn):
+    return FloatCompOpHandler(fn)
+
+def str_compop(fn):
+    return StrCompOpHandler(fn)
