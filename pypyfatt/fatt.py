@@ -1,7 +1,9 @@
+from __future__ import print_function
 import sys
 from fatt_types import *
 from fatt_parser import parse
 from rply import LexingError, ParsingError
+
 
 def name_lookup(s, _m, e):
     v = e.find(s.name)
@@ -10,8 +12,10 @@ def name_lookup(s, _m, e):
     else:
         return v
 
+
 def later_eval(s, m, e):
     return s.lval
+
 
 def block_eval(s, m, e):
     r = NIL
@@ -20,6 +24,7 @@ def block_eval(s, m, e):
 
     return r
 
+
 def array_eval(s, m, e):
     r = []
     for item in s.items:
@@ -27,24 +32,31 @@ def array_eval(s, m, e):
 
     return Array(r)
 
+
 def map_eval(s, m, e):
     r = {}
-    for (k, v) in s.kv.iteritems():
+    for k, v in s.kv.iteritems():
         r[k] = e.eval(v)
 
     return Map(r)
 
+
 def pair_eval(s, m, e):
     return Pair(e.eval(s.a), e.eval(s.b))
 
+
 def msg_eval(s, _m, e):
     return Msg(s.verb, e.eval(s.obj))
+
 
 def send_eval(s, m, e):
     subj = e.eval(s.subj)
     msg = e.eval(s.msg)
 
-    return e.down().set_up_limit().bind("it", subj).bind("that", msg.obj).send(subj, msg)
+    return (
+        e.down().set_up_limit().bind("it", subj).bind("that", msg.obj).send(subj, msg)
+    )
+
 
 def entry_point(argv):
     f = Frame()
@@ -88,7 +100,6 @@ def entry_point(argv):
     float_proto.bind("=", float_compop(lambda a, b: a == b))
     float_proto.bind("!=", float_compop(lambda a, b: a != b))
 
-
     str_proto = Frame()
     str_proto.bind("eval", Handler(lambda s, m, e: s))
 
@@ -100,7 +111,6 @@ def entry_point(argv):
     str_proto.bind(">=", str_compop(lambda a, b: a >= b))
     str_proto.bind("=", str_compop(lambda a, b: a == b))
     str_proto.bind("!=", str_compop(lambda a, b: a != b))
-
 
     name_proto = Frame()
     name_proto.bind("eval", Handler(name_lookup))
@@ -145,20 +155,20 @@ def entry_point(argv):
         code = argv[1]
         try:
             expr = parse(code).to_type()
-            print f1.eval(expr).to_str()
+            print(f1.eval(expr).to_str())
         except Error as err:
-            print "Runtime Error:", err.msg
+            print("Runtime Error:", err.msg)
         except LexingError as err:
-            print "Lexing Error:", err.message, "|", format_pos(err.source_pos)
+            print("Lexing Error:", err.message, "|", format_pos(err.source_pos))
         except ParsingError as err:
-            print "Parsing Error:", err.message, "|", format_pos(err.source_pos)
+            print("Parsing Error:", err.message, "|", format_pos(err.source_pos))
         except Exception as err:
-            print "Error:", str(err)
+            print("Error:", str(err))
     else:
-        print "usage: fatt '1 + 2'"
-
+        print("usage: fatt '1 + 2'")
 
     return 0
+
 
 def format_pos(pos):
     if pos is None:
@@ -166,8 +176,10 @@ def format_pos(pos):
     else:
         return "line: %d, column: %d" % (pos.lineno, pos.colno)
 
+
 def target(*args):
     return entry_point, None
+
 
 if __name__ == "__main__":
     entry_point(sys.argv)
