@@ -280,3 +280,63 @@ def fail(msg):
     print "ERROR:", msg
     raise Error(msg)
 
+def type_expected(expected, a, b):
+    fail("Expected '" + expected.sym_name + "' got '" + a.type.sym_name + "' and '" + b.type.sym_name + "'")
+
+def int_expected(a, b):
+    type_expected(TYPE_INT, a, b)
+
+def float_expected(a, b):
+    type_expected(TYPE_FLOAT, a, b)
+
+def str_expected(a, b):
+    type_expected(TYPE_STR, a, b)
+
+class BinOpHandler(Handler):
+    def __init__(self, type_pred, type_expected):
+        Type.__init__(self, TYPE_HANDLER)
+        self.type_pred = type_pred
+        self.type_expected = type_expected
+
+    def handle(self, s, m, e):
+        if self.type_pred(s) and self.type_pred(m.obj):
+            return self.apply_op(s, m.obj)
+        else:
+            self.type_expected(s, m.obj)
+
+    def apply_op(self, a, b):
+        return NIL
+
+class IntBinOpHandler(BinOpHandler):
+    def __init__(self, op):
+        BinOpHandler.__init__(self, lambda x: x.is_int(), int_expected)
+        self.iop = op
+
+    def apply_op(self, a, b):
+        return Int(self.iop(a.ival, b.ival))
+
+class FloatBinOpHandler(BinOpHandler):
+    def __init__(self, op):
+        BinOpHandler.__init__(self, lambda x: x.is_float(), float_expected)
+        self.fop = op
+
+    def apply_op(self, a, b):
+        return Float(self.fop(a.fval, b.fval))
+
+class StrBinOpHandler(BinOpHandler):
+    def __init__(self, op):
+        BinOpHandler.__init__(self, lambda x: x.is_str(), str_expected)
+        self.sop = op
+
+    def apply_op(self, a, b):
+        return Str(self.sop(a.sval, b.sval))
+
+def int_binop(fn):
+    return IntBinOpHandler(fn)
+
+def float_binop(fn):
+    return FloatBinOpHandler(fn)
+
+def str_binop(fn):
+    return StrBinOpHandler(fn)
+

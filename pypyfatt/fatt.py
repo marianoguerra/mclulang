@@ -3,36 +3,6 @@ from fatt_types import *
 from fatt_parser import parse
 from rply import LexingError, ParsingError
 
-def type_expected(expected, a, b):
-    fail("Expected '" + expected.sym_name + "' got '" + a.type.sym_name + "' and '" + b.type.sym_name + "'")
-
-def int_expected(a, b):
-    type_expected(TYPE_INT, a, b)
-
-def int_add(s, m, e):
-    if s.is_int() and m.obj.is_int():
-        return Int(s.ival + m.obj.ival)
-    else:
-        int_expected(s, m.obj)
-
-def float_expected(a, b):
-    type_expected(TYPE_FLOAT, a, b)
-
-def float_add(s, m, e):
-    if s.is_float() and m.obj.is_float():
-        return Float(s.fval + m.obj.fval)
-    else:
-        float_expected(s, m.obj)
-
-def str_expected(a, b):
-    type_expected(TYPE_STR, a, b)
-
-def str_add(s, m, e):
-    if s.is_str() and m.obj.is_str():
-        return Str(s.sval + m.obj.sval)
-    else:
-        str_expected(s, m.obj)
-
 def name_lookup(s, _m, e):
     v = e.find(s.name)
     if v is None:
@@ -83,15 +53,20 @@ def entry_point(argv):
     nil_proto.bind("eval", Handler(lambda s, m, e: s))
 
     int_proto = Frame()
-    int_proto.bind("+", Handler(int_add))
+    int_proto.bind("+", int_binop(lambda a, b: a + b))
+    int_proto.bind("-", int_binop(lambda a, b: a - b))
+    int_proto.bind("*", int_binop(lambda a, b: a * b))
     int_proto.bind("eval", Handler(lambda s, m, e: s))
 
     float_proto = Frame()
-    float_proto.bind("+", Handler(float_add))
+    float_proto.bind("+", float_binop(lambda a, b: a + b))
+    float_proto.bind("-", float_binop(lambda a, b: a - b))
+    float_proto.bind("*", float_binop(lambda a, b: a * b))
+    float_proto.bind("/", float_binop(lambda a, b: a / b))
     float_proto.bind("eval", Handler(lambda s, m, e: s))
 
     str_proto = Frame()
-    str_proto.bind("+", Handler(str_add))
+    str_proto.bind("+", str_binop(lambda a, b: a + b))
     str_proto.bind("eval", Handler(lambda s, m, e: s))
 
     name_proto = Frame()
