@@ -52,6 +52,13 @@ def entry_point(argv):
     nil_proto = Frame()
     nil_proto.bind("eval", Handler(lambda s, m, e: s))
 
+    nil_proto.bind("<", nil_compop(lambda a, b: False))
+    nil_proto.bind("<=", nil_compop(lambda a, b: False))
+    nil_proto.bind(">", nil_compop(lambda a, b: False))
+    nil_proto.bind(">=", nil_compop(lambda a, b: False))
+    nil_proto.bind("=", nil_compop(lambda a, b: b.is_nil()))
+    nil_proto.bind("!=", nil_compop(lambda a, b: not b.is_nil()))
+
     int_proto = Frame()
     int_proto.bind("eval", Handler(lambda s, m, e: s))
 

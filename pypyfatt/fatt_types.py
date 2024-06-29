@@ -17,6 +17,9 @@ class Type(object):
     def is_str(self):
         return False
 
+    def is_nil(self):
+        return False
+
 class Symbol(Type):
     def __init__(self, sym_name):
         Type.__init__(self, self)
@@ -169,6 +172,9 @@ class Nil(Type):
     def to_str(self):
         return "()"
 
+    def is_nil(self):
+        return True
+
 NIL = Nil()
 
 class Msg(Type):
@@ -292,7 +298,10 @@ def float_expected(a, b):
 def str_expected(a, b):
     type_expected(TYPE_STR, a, b)
 
-class BinOpHandler(Handler):
+def nil_expected(a, b):
+    type_expected(TYPE_NIL, a, b)
+
+class BinOpHandler(Type):
     def __init__(self, type_pred, type_expected):
         Type.__init__(self, TYPE_HANDLER)
         self.type_pred = type_pred
@@ -340,16 +349,17 @@ def float_binop(fn):
 def str_binop(fn):
     return StrBinOpHandler(fn)
 
-class CompOpHandler(Handler):
-    def __init__(self, type_pred, type_expected):
+class BaseCompOpHandler(Type):
+    def __init__(self, left_type_pred, right_type_pred, type_expected):
         Type.__init__(self, TYPE_HANDLER)
-        self.type_pred = type_pred
+        self.left_type_pred = left_type_pred
+        self.right_type_pred = right_type_pred
         self.type_expected = type_expected
 
     def handle(self, s, m, e):
-        if self.type_pred(s) and self.type_pred(m.obj):
+        if self.left_type_pred(s) and self.right_type_pred(m.obj):
             if self.compare(s, m.obj):
-                return s
+                return self.get_return_for_true(s, m.obj)
             else:
                 return NIL
         else:
@@ -357,6 +367,15 @@ class CompOpHandler(Handler):
 
     def compare(self, a, b):
         return False
+
+    def get_return_for_true(self, left, right):
+        return left
+
+class CompOpHandler(BaseCompOpHandler):
+    def __init__(self, type_pred, type_expected):
+        BaseCompOpHandler.__init__(self, type_pred, type_pred, type_expected)
+        self.type_pred = type_pred
+        self.type_expected = type_expected
 
 class IntCompOpHandler(CompOpHandler):
     def __init__(self, comp_op):
@@ -382,6 +401,17 @@ class StrCompOpHandler(CompOpHandler):
     def compare(self, a, b):
         return self.scomp(a.sval, b.sval)
 
+class NilCompOpHandler(BaseCompOpHandler):
+    def __init__(self, comp_op):
+        BaseCompOpHandler.__init__(self, lambda x: x.is_nil(), lambda x: True, nil_expected)
+        self.ncomp = comp_op
+
+    def compare(self, a, b):
+        return self.ncomp(a, b)
+
+    def get_return_for_true(self, left, right):
+        return Int(1) if right.is_nil() else right
+
 def int_compop(fn):
     return IntCompOpHandler(fn)
 
@@ -390,3 +420,6 @@ def float_compop(fn):
 
 def str_compop(fn):
     return StrCompOpHandler(fn)
+
+def nil_compop(fn):
+    return NilCompOpHandler(fn)
