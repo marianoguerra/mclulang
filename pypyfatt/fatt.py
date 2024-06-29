@@ -4,7 +4,7 @@ from fatt_parser import parse
 from rply import LexingError, ParsingError
 
 def type_expected(expected, a, b):
-    fail("Expected '" + expected + "' got '" + a.type + "' and '" + b.type + "'")
+    fail("Expected '" + expected.sym_name + "' got '" + a.type.sym_name + "' and '" + b.type.sym_name + "'")
 
 def int_expected(a, b):
     type_expected(TYPE_INT, a, b)
@@ -118,18 +118,18 @@ def entry_point(argv):
     send_proto = Frame()
     send_proto.bind("eval", Handler(send_eval))
 
-    f.bind(TYPE_NIL, nil_proto)
-    f.bind(TYPE_INT, int_proto)
-    f.bind(TYPE_FLOAT, float_proto)
-    f.bind(TYPE_STR, str_proto)
-    f.bind(TYPE_LATER, later_proto)
-    f.bind(TYPE_BLOCK, block_proto)
-    f.bind(TYPE_PAIR, pair_proto)
-    f.bind(TYPE_ARRAY, array_proto)
-    f.bind(TYPE_MAP, map_proto)
-    f.bind(TYPE_NAME, name_proto)
-    f.bind(TYPE_MSG, msg_proto)
-    f.bind(TYPE_SEND, send_proto)
+    f.bind_type(TYPE_NIL, nil_proto)
+    f.bind_type(TYPE_INT, int_proto)
+    f.bind_type(TYPE_FLOAT, float_proto)
+    f.bind_type(TYPE_STR, str_proto)
+    f.bind_type(TYPE_LATER, later_proto)
+    f.bind_type(TYPE_BLOCK, block_proto)
+    f.bind_type(TYPE_PAIR, pair_proto)
+    f.bind_type(TYPE_ARRAY, array_proto)
+    f.bind_type(TYPE_MAP, map_proto)
+    f.bind_type(TYPE_NAME, name_proto)
+    f.bind_type(TYPE_MSG, msg_proto)
+    f.bind_type(TYPE_SEND, send_proto)
 
     f1 = f.right().down()
 

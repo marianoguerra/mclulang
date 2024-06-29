@@ -1,25 +1,9 @@
-TYPE_NIL = "Nil"
-TYPE_INT = "Int"
-TYPE_FLOAT = "Float"
-TYPE_STR = "Str"
-TYPE_NAME = "Name"
-TYPE_LATER = "Later"
-TYPE_BLOCK = "Block"
-TYPE_PAIR = "Pair"
-TYPE_ARRAY = "Array"
-TYPE_MAP = "Map"
-TYPE_MSG = "Msg"
-TYPE_SEND = "Send"
-TYPE_FRAME = "Frame"
-
-TYPE_HANDLER = "Handler"
-
 class Type(object):
     def __init__(self, type):
         self.type = type
 
     def to_str(self):
-        return self.type
+        return self.type.sym_name
 
     def handle(self, _s, _m, e):
         return e.eval(self)
@@ -32,6 +16,26 @@ class Type(object):
 
     def is_str(self):
         return False
+
+class Symbol(Type):
+    def __init__(self, sym_name):
+        Type.__init__(self, self)
+        self.sym_name = sym_name
+
+TYPE_NIL = Symbol("Nil")
+TYPE_INT = Symbol("Int")
+TYPE_FLOAT = Symbol("Float")
+TYPE_STR = Symbol("Str")
+TYPE_NAME = Symbol("Name")
+TYPE_LATER = Symbol("Later")
+TYPE_BLOCK = Symbol("Block")
+TYPE_PAIR = Symbol("Pair")
+TYPE_ARRAY = Symbol("Array")
+TYPE_MAP = Symbol("Map")
+TYPE_MSG = Symbol("Msg")
+TYPE_SEND = Symbol("Send")
+TYPE_FRAME = Symbol("Frame")
+TYPE_HANDLER = Symbol("Handler")
 
 class Handler(Type):
     def __init__(self, fn):
@@ -193,6 +197,7 @@ class Frame(Type):
         self.left_limit = False
         self.left = left
         self.binds = {}
+        self.type_binds = {}
 
     def bind(self, name, value):
         self.binds[name] = value
@@ -209,6 +214,24 @@ class Frame(Type):
                     return self.left.find(name)
             else:
                 return self.up.find(name)
+        else:
+            return v
+
+    def bind_type(self, sym, value):
+        self.type_binds[sym.sym_name] = value
+        return self
+
+    def find_type(self, sym):
+        v = self.type_binds.get(sym.sym_name)
+
+        if v is None:
+            if self.up_limit or self.up is None:
+                if self.left_limit or self.left is None:
+                    return v
+                else:
+                    return self.left.find_type(sym)
+            else:
+                return self.up.find_type(sym)
         else:
             return v
 
@@ -230,13 +253,13 @@ class Frame(Type):
         return self.send(v, Msg("eval", self))
 
     def get_send_handler(self, s, m):
-        proto = self.find(s.type)
+        proto = self.find_type(s.type)
 
         if proto:
-            print "proto found for " + s.type + " " + m.verb + " " + s.to_str()
+            print "proto found for " + s.type.sym_name + " " + m.verb + " " + s.to_str()
             return proto.find(m.verb)
         else:
-            print "proto not found for type", s.type, "verb", m.verb, "s", s.to_str()
+            print "proto not found for type", s.type.sym_name, "verb", m.verb, "s", s.to_str()
             return None
 
     def send(self, s, m):
@@ -245,7 +268,7 @@ class Frame(Type):
         if handler is not None:
             return handler.handle(s, m, self);
         else:
-            print "handler not found for ", s.type, s.to_str(),  m.to_str()
+            print "handler not found for ", s.type.sym_name, s.to_str(),  m.to_str()
             fail("HandlerNotFound: " + s.to_str())
 
 class Error(Exception):
