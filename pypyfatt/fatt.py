@@ -58,6 +58,36 @@ def send_eval(s, m, e):
     )
 
 
+def nil_ternary(s, m, e):
+    if isinstance(m.obj, Pair):
+        return e.eval(m.obj.b)
+    else:
+        val_type_expected(TYPE_PAIR, m.obj)
+
+
+def true_ternary(s, m, e):
+    if isinstance(m.obj, Pair):
+        return e.eval(m.obj.a)
+    else:
+        val_type_expected(TYPE_PAIR, m.obj)
+
+
+def nil_and(s, m, e):
+    return s
+
+
+def true_and(s, m, e):
+    return e.eval(m.obj)
+
+
+def nil_or(s, m, e):
+    return e.eval(m.obj)
+
+
+def true_or(s, m, e):
+    return s
+
+
 def entry_point(argv):
     f = Frame()
 
@@ -70,6 +100,10 @@ def entry_point(argv):
     nil_proto.bind(">=", nil_compop(lambda a, b: False))
     nil_proto.bind("=", nil_compop(lambda a, b: b.is_nil()))
     nil_proto.bind("!=", nil_compop(lambda a, b: not b.is_nil()))
+
+    nil_proto.bind("?", Handler(nil_ternary))
+    nil_proto.bind("and", Handler(nil_and))
+    nil_proto.bind("or", Handler(nil_or))
 
     int_proto = Frame()
     int_proto.bind("eval", Handler(lambda s, m, e: s))
@@ -84,6 +118,10 @@ def entry_point(argv):
     int_proto.bind(">=", int_compop(lambda a, b: a >= b))
     int_proto.bind("=", int_compop(lambda a, b: a == b))
     int_proto.bind("!=", int_compop(lambda a, b: a != b))
+
+    int_proto.bind("?", Handler(true_ternary))
+    int_proto.bind("and", Handler(true_and))
+    int_proto.bind("or", Handler(true_or))
 
     float_proto = Frame()
     float_proto.bind("eval", Handler(lambda s, m, e: s))
@@ -100,6 +138,10 @@ def entry_point(argv):
     float_proto.bind("=", float_compop(lambda a, b: a == b))
     float_proto.bind("!=", float_compop(lambda a, b: a != b))
 
+    float_proto.bind("?", Handler(true_ternary))
+    float_proto.bind("and", Handler(true_and))
+    float_proto.bind("or", Handler(true_or))
+
     str_proto = Frame()
     str_proto.bind("eval", Handler(lambda s, m, e: s))
 
@@ -112,29 +154,65 @@ def entry_point(argv):
     str_proto.bind("=", str_compop(lambda a, b: a == b))
     str_proto.bind("!=", str_compop(lambda a, b: a != b))
 
+    str_proto.bind("?", Handler(true_ternary))
+    str_proto.bind("and", Handler(true_and))
+    str_proto.bind("or", Handler(true_or))
+
     name_proto = Frame()
     name_proto.bind("eval", Handler(name_lookup))
+
+    name_proto.bind("?", Handler(true_ternary))
+    name_proto.bind("and", Handler(true_and))
+    name_proto.bind("or", Handler(true_or))
 
     later_proto = Frame()
     later_proto.bind("eval", Handler(later_eval))
 
+    later_proto.bind("?", Handler(true_ternary))
+    later_proto.bind("and", Handler(true_and))
+    later_proto.bind("or", Handler(true_or))
+
     block_proto = Frame()
     block_proto.bind("eval", Handler(block_eval))
+
+    block_proto.bind("?", Handler(true_ternary))
+    block_proto.bind("and", Handler(true_and))
+    block_proto.bind("or", Handler(true_or))
 
     pair_proto = Frame()
     pair_proto.bind("eval", Handler(pair_eval))
 
+    pair_proto.bind("?", Handler(true_ternary))
+    pair_proto.bind("and", Handler(true_and))
+    pair_proto.bind("or", Handler(true_or))
+
     array_proto = Frame()
     array_proto.bind("eval", Handler(array_eval))
+
+    array_proto.bind("?", Handler(true_ternary))
+    array_proto.bind("and", Handler(true_and))
+    array_proto.bind("or", Handler(true_or))
 
     map_proto = Frame()
     map_proto.bind("eval", Handler(map_eval))
 
+    map_proto.bind("?", Handler(true_ternary))
+    map_proto.bind("and", Handler(true_and))
+    map_proto.bind("or", Handler(true_or))
+
     msg_proto = Frame()
     msg_proto.bind("eval", Handler(msg_eval))
 
+    msg_proto.bind("?", Handler(true_ternary))
+    msg_proto.bind("and", Handler(true_and))
+    msg_proto.bind("or", Handler(true_or))
+
     send_proto = Frame()
     send_proto.bind("eval", Handler(send_eval))
+
+    send_proto.bind("?", Handler(true_ternary))
+    send_proto.bind("and", Handler(true_and))
+    send_proto.bind("or", Handler(true_or))
 
     f.bind_type(TYPE_NIL, nil_proto)
     f.bind_type(TYPE_INT, int_proto)

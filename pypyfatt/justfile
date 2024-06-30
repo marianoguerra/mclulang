@@ -7,8 +7,12 @@ fatt-c-jit:
 	echo "Building Plang with JIT"
 	./pypy/rpython/bin/rpython -Ojit fatt.py
 
+format:
+	black fatt*.py
+
 setup-dev:
 	rm -rf rply appdirs.py
+	git clone https://github.com/pypy/pypy.git
 	wget https://raw.githubusercontent.com/ActiveState/appdirs/48357882e5c095003e10f8351b405bf54e41424f/appdirs.py
 	git clone https://github.com/alex/rply.git rplyrepo
 	mv rplyrepo/rply .

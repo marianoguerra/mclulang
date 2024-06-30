@@ -329,6 +329,10 @@ def type_expected(expected, a, b):
     )
 
 
+def val_type_expected(expected, v):
+    fail("Expected '" + expected.sym_name + "' got '" + v.type.sym_name + "'")
+
+
 def int_expected(a, b):
     type_expected(TYPE_INT, a, b)
 

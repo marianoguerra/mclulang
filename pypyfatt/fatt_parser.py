@@ -346,7 +346,12 @@ def scalar_msg_quote(state, p):
 
 
 @pg.production("msg : verb value")
-def value_string(state, p):
+def msg(state, p):
+    return Msg(p[0].getstr(), p[1])
+
+
+@pg.production("msg : name value")
+def msg_verb_is_name(state, p):
     return Msg(p[0].getstr(), p[1])
 
 
