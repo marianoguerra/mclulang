@@ -2,7 +2,8 @@ from __future__ import print_function
 
 from rpython.rlib.jit import JitDriver
 
-jitdriver = JitDriver(greens=['s', 'm'], reds=['e'], is_recursive=True)
+jitdriver = JitDriver(greens=["s", "m"], reds=["e"], is_recursive=True)
+
 
 class Type(object):
     def __init__(self, type):
