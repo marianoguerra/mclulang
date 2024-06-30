@@ -118,9 +118,9 @@ lg.add("float", r"\d+\.\d+")
 lg.add("number", r"\d+")
 lg.add("string", r'"(\\\^.|\\.|[^\"])*"')
 
-lg.add("name", NAME_RE)
-
 lg.add("verb", VERB_RE)
+
+lg.add("name", NAME_RE)
 
 lg.add("sep", r",")
 
@@ -148,8 +148,8 @@ pg = ParserGenerator(
         "number",
         "float",
         "string",
-        "name",
         "verb",
+        "name",
         "bslash",
         "at",
         "colon",
@@ -337,6 +337,12 @@ def scalar_string(state, p):
 
 @pg.production("scalar : name")
 def scalar_name(state, p):
+    return Name(p[0].getstr())
+
+
+# TODO: this allows variable names that aren't valid in the previous one
+@pg.production("scalar : verb")
+def scalar_name_from_verb(state, p):
     return Name(p[0].getstr())
 
 

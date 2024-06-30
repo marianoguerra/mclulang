@@ -282,9 +282,7 @@ class Frame(Type):
         proto = self.find_type(s.type)
 
         if proto:
-            print(
-                "proto found for " + s.type.sym_name + " " + m.verb + " " + s.to_str()
-            )
+            # print("proto found for", s.type.sym_name, m.verb, s.to_str())
             return proto.find(m.verb)
         else:
             print(
@@ -303,7 +301,7 @@ class Frame(Type):
         if handler is not None:
             return handler.handle(s, m, self)
         else:
-            print("handler not found for ", s.type.sym_name, s.to_str(), m.to_str())
+            print("handler not found for", s.type.sym_name, s.to_str(), m.to_str())
             fail("HandlerNotFound: " + s.to_str())
 
 
