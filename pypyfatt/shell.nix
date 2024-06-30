@@ -4,7 +4,9 @@ pkgs.mkShell {
 	LOCALE_ARCHIVE_2_27 = if (pkgs.glibcLocales != null) then "${pkgs.glibcLocales}/lib/locale/locale-archive" else "";
 	buildInputs = [
 		pkgs.glibcLocales
+		pkgs.mercurial
 		pkgs.nodejs
+		pkgs.libffi
 		pkgs.vscode-langservers-extracted
 		pkgs.nodePackages.eslint
 		pkgs.nodePackages.prettier

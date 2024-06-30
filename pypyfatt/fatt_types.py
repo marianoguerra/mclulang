@@ -1,5 +1,8 @@
 from __future__ import print_function
 
+from rpython.rlib.jit import JitDriver
+
+jitdriver = JitDriver(greens=['s', 'm'], reds=['e'], is_recursive=True)
 
 class Type(object):
     def __init__(self, type):
@@ -296,10 +299,13 @@ class Frame(Type):
             return None
 
     def send(self, s, m):
+        jitdriver.jit_merge_point(s=s, m=m, e=self)
         handler = self.get_send_handler(s, m)
 
         if handler is not None:
-            return handler.handle(s, m, self)
+            r = handler.handle(s, m, self)
+            jitdriver.can_enter_jit(s=s, m=m, e=self)
+            return r
         else:
             print("handler not found for", s.type.sym_name, s.to_str(), m.to_str())
             fail("HandlerNotFound: " + s.to_str())
