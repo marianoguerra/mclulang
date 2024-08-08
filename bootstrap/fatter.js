@@ -84,12 +84,19 @@ export class Frame {
     this.binds.set(name, value);
     return this;
   }
-  bindObj(obj) {
-    for (const name in obj) {
-      this.bind(name, obj[name]);
-    }
+  mergeObj(obj) {
     for (const sym of Object.getOwnPropertySymbols(obj)) {
-      this.bind(sym, obj[sym]);
+      const curFrame = this.find(sym),
+        frame = curFrame ?? new Frame(),
+        symObj = obj[sym];
+
+      if (curFrame === undefined) {
+        this.bind(sym, frame);
+      }
+
+      for (const name in symObj) {
+        frame.bind(name, symObj[name]);
+      }
     }
     return this;
   }
@@ -154,8 +161,8 @@ export const grammar = ohm.grammar(`McLulang {
     Later = "@" (ParSend | Block | Array | Map | name)
     Value = Pair | PairHead
     Scalar = float | int | str | nil | name | MsgQuote
-    float = digit+ "." digit+
-    int = digit+
+    float = "-"? digit+ "." digit+
+    int = "-"? digit+
     str = "\\\"" (~"\\\"" any)* "\\\""
     Array = "[" "]" -- empty
       | "[" Exprs "]" -- items
@@ -181,10 +188,10 @@ export const grammar = ohm.grammar(`McLulang {
       msgs.children.reduce((acc, msg) => new Send(acc, msg.toAst()), v.toAst()),
     ParSend: (_o, v, _c) => v.toAst(),
     Later: (_, v) => new Later(v.toAst()),
-    int(_) {
+    int(_s, _) {
       return BigInt(this.sourceString);
     },
-    float(_a, _d, _b) {
+    float(_s, _a, _d, _b) {
       return parseFloat(this.sourceString);
     },
     str: (_1, s, _3) => s.sourceString,

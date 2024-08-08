@@ -59,7 +59,7 @@ function wrapInParIfMsg(v, s) {
   return v instanceof Send ? `(${s})` : s;
 }
 
-const toStrReplies = {
+export const toStrReplies = {
   [TYPE_NAME]: {
     toStr: (s) => s.value,
   },

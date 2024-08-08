@@ -14,6 +14,7 @@
   - +
   - <
   - =
+  - size
 - Later
   - eval: unwraps
 - Frame
@@ -43,6 +44,8 @@
   - eval: evals all items returns last
 - Array
   - eval: evals all items and returns list of results
+  - item access
+  - size
 
 Bootstrapped:
 
@@ -52,4 +55,6 @@ Bootstrapped:
 - remaining comparisons: <= > >=
 - and, or
 - ternary operator
+- string and array empty?()
+
 
