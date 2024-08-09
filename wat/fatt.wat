@@ -39,4 +39,27 @@
 			(export "valGetI64") (param $v (ref $Val)) (result i64)
 	    (struct.get $Int $val
 			(call $valGetInt (local.get $v))))
+
+	;; float
+
+	(type $Float (struct (field $val f64)))
+	(global $TYPE_FLOAT (export "TYPE_FLOAT") i32 (i32.const 2))
+
+	(func $newFloat (export "newFloat") (param $i f64) (result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_FLOAT)
+			(struct.new $Float (local.get $i))))
+
+	(func $isFloat (export "isFloat") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_FLOAT)))
+
+	(func $valGetFloat
+			(export "valGetFloat") (param $v (ref $Val)) (result (ref $Float))
+		(struct.get $Val $v (local.get $v))
+		(ref.cast (ref $Float)))
+
+	(func $valGetF64
+			(export "valGetF64") (param $v (ref $Val)) (result f64)
+	    (struct.get $Float $val
+			(call $valGetFloat (local.get $v))))
 )

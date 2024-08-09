@@ -12,6 +12,11 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         isInt,
         newInt,
         valGetI64,
+
+        TYPE_FLOAT: { value: TYPE_FLOAT },
+        isFloat,
+        newFloat,
+        valGetF64,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -27,4 +32,10 @@ test("Int", () => {
   assertEquals(isInt(newInt(42n)), 1);
   assertEquals(valGetTag(newInt(42n)), TYPE_INT);
   assertEquals(valGetI64(newInt(42n)), 42n);
+});
+
+test("Float", () => {
+  assertEquals(isFloat(newFloat(42)), 1);
+  assertEquals(valGetTag(newFloat(42)), TYPE_FLOAT);
+  assertEquals(valGetF64(newFloat(42)), 42);
 });
