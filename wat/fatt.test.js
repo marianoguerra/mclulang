@@ -20,6 +20,8 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         newFloat,
         valGetF64,
 
+        TYPE_STR: { value: TYPE_STR },
+        isStr,
         strLen,
         strFromMem,
         strGetChar,
@@ -65,6 +67,8 @@ test("Float", () => {
 });
 
 test("Str", () => {
+  assertEquals(isStr(mkStr("hi!")), 1);
+  assertEquals(valGetTag(mkStr("hi!")), TYPE_STR);
   assertEquals(strLen(mkStr("hi!")), 3);
   assertEquals(strGetChar(mkStr("abc"), 0), 97);
   assertEquals(strEquals(mkStr("hell"), mkStr("hello")), 0);

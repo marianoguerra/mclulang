@@ -68,6 +68,9 @@
 	(type $Str (array (mut i8)))
 	(global $TYPE_STR (export "TYPE_STR") i32 (i32.const 3))
 
+	(func $isStr (export "isStr") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_STR)))
+
 	(func $strFromMem
 			(export "strFromMem")
 			(param $start i32) (param $len i32) (result (ref $Val))
