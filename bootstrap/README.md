@@ -57,4 +57,8 @@ Bootstrapped:
 - ternary operator
 - string and array empty?()
 
+TODO:
+
+- loops
+- switch
 
