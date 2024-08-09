@@ -280,6 +280,14 @@
 	(func $isMsg (export "isMsg") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_MSG)))
 
+	(func $newRawMsg
+			(export "newRawMsg")
+			(param $verb (ref $Str)) (param $obj (ref $Val))
+			(result (ref $Msg))
+		(struct.new $Msg
+			(local.get $verb)
+			(local.get $obj)))
+
 	(func $newMsg
 			(export "newMsg")
 			(param $verb (ref $Str)) (param $obj (ref $Val))
@@ -309,4 +317,40 @@
 		(struct.get $Msg $obj
 			(ref.cast (ref $Msg)
 				(struct.get $Val $v (local.get $v)))))
+
+	;; send
+
+	(type $Send (struct (field $subj (ref $Val)) (field $msg (ref $Msg))))
+	(global $TYPE_SEND (export "TYPE_SEND") i32 (i32.const 8))
+
+	(func $isSend (export "isSend") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_SEND)))
+
+	(func $newSend
+			(export "newSend")
+			(param $subj (ref $Val)) (param $msg (ref $Msg))
+			(result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_SEND)
+			(struct.new $Send
+				(local.get $subj)
+				(local.get $msg))))
+
+	(func $valGetSendSubj
+			(export "valGetSendSubj")
+			(param $v (ref $Val))
+			(result (ref $Val))
+		(struct.get $Send $subj
+			(ref.cast (ref $Send)
+				(struct.get $Val $v (local.get $v)))))
+
+	(func $valGetSendMsg
+			(export "valGetSendMsg")
+			(param $v (ref $Val))
+			(result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_MSG)
+			(struct.get $Send $msg
+				(ref.cast (ref $Send)
+					(struct.get $Val $v (local.get $v))))))
 )
