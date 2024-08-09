@@ -248,7 +248,6 @@
 		(call $strFromRawStr
 			(call $valGetNameRawStr (local.get $v))))
 
-
 	(func $newName (export "newName") (param $s (ref $Str)) (result (ref $Val))
 		(struct.new $Val
 			(global.get $TYPE_NAME)
@@ -271,5 +270,43 @@
 		(export "laterUnwrap") (param $v (ref $Val)) (result (ref $Val))
 		(struct.get $Later $val
 			(ref.cast (ref $Later)
+				(struct.get $Val $v (local.get $v)))))
+
+	;; msg
+
+	(type $Msg (struct (field $verb (ref $Str)) (field $obj (ref $Val))))
+	(global $TYPE_MSG (export "TYPE_MSG") i32 (i32.const 7))
+
+	(func $isMsg (export "isMsg") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_MSG)))
+
+	(func $newMsg
+			(export "newMsg")
+			(param $verb (ref $Str)) (param $obj (ref $Val))
+			(result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_MSG)
+			(struct.new $Msg
+				(local.get $verb)
+				(local.get $obj))))
+
+	(func $valGetMsgVerbRawStr (param $v (ref $Val)) (result (ref $Str))
+		(struct.get $Msg $verb
+			(ref.cast (ref $Msg)
+				(struct.get $Val $v (local.get $v)))))
+
+	(func $valGetMsgVerb
+			(export "valGetMsgVerb")
+			(param $v (ref $Val))
+			(result (ref $Val))
+		(call $strFromRawStr
+			(call $valGetMsgVerbRawStr (local.get $v))))
+
+	(func $valGetMsgObj
+			(export "valGetMsgObj")
+			(param $v (ref $Val))
+			(result (ref $Val))
+		(struct.get $Msg $obj
+			(ref.cast (ref $Msg)
 				(struct.get $Val $v (local.get $v)))))
 )
