@@ -353,4 +353,26 @@
 			(struct.get $Send $msg
 				(ref.cast (ref $Send)
 					(struct.get $Val $v (local.get $v))))))
+
+	;; block
+
+	(type $Block (array (ref $Val)))
+	(global $TYPE_BLOCK (export "TYPE_BLOCK") i32 (i32.const 9))
+
+	(func $isBlock (export "isBlock") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_BLOCK)))
+
+	(func $newBlockEmpty (export "newBlockEmpty") (result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_BLOCK)
+			(array.new_fixed $Block 0)))
+
+	(func $valGetBlockRaw (param $v (ref $Val)) (result (ref $Block))
+		(ref.cast (ref $Block)
+			(struct.get $Val $v (local.get $v))))
+
+	(func $blockLen (export "blockLen") (param $v (ref $Val)) (result i32)
+		(array.len
+			(call $valGetBlockRaw (local.get $v))))
+	
 )

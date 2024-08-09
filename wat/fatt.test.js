@@ -56,6 +56,11 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         newSend,
         valGetSendSubj,
         valGetSendMsg,
+
+        TYPE_BLOCK: { value: TYPE_BLOCK },
+        isBlock,
+        newBlockEmpty,
+        blockLen,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -149,4 +154,9 @@ test("Send", () => {
   assertEquals(valGetTag(send), TYPE_SEND);
   assertEquals(valGetI64(valGetSendSubj(send)), 4n);
   assertEquals(isMsg(valGetSendMsg(send)), 1);
+});
+
+test("Send", () => {
+  assertEquals(isBlock(newBlockEmpty()), 1);
+  assertEquals(blockLen(newBlockEmpty()), 0);
 });
