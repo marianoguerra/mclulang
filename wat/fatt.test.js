@@ -38,6 +38,11 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         isName,
         newName,
         valGetNameStr,
+
+        TYPE_LATER: { value: TYPE_LATER },
+        isLater,
+        newLater,
+        laterUnwrap,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -107,4 +112,10 @@ test("Name", () => {
     strEquals(valGetNameStr(newName(mkRawStr("foo"))), mkStr("foo")),
     1,
   );
+});
+
+test("Later", () => {
+  assertEquals(isLater(newLater(NIL)), 1);
+  assertEquals(valGetTag(newLater(NIL)), TYPE_LATER);
+  assertEquals(laterUnwrap(newLater(NIL)), NIL);
 });

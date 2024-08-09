@@ -253,4 +253,23 @@
 		(struct.new $Val
 			(global.get $TYPE_NAME)
 			(struct.new $Name (local.get $s))))
+
+	;; later
+
+	(type $Later (struct (field $val (ref $Val))))
+	(global $TYPE_LATER (export "TYPE_LATER") i32 (i32.const 6))
+
+	(func $isLater (export "isLater") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_LATER)))
+
+	(func $newLater (export "newLater") (param $v (ref $Val)) (result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_LATER)
+			(struct.new $Later (local.get $v))))
+
+	(func $laterUnwrap
+		(export "laterUnwrap") (param $v (ref $Val)) (result (ref $Val))
+		(struct.get $Later $val
+			(ref.cast (ref $Later)
+				(struct.get $Val $v (local.get $v)))))
 )
