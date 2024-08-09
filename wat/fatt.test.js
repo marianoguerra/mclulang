@@ -4,7 +4,9 @@ const bin = Deno.readFileSync("./fatt.wasm"),
   {
     instance: {
       exports: {
+        mem,
         valGetTag,
+
         NIL: { value: NIL },
         TYPE_NIL: { value: TYPE_NIL },
         isNil,
@@ -17,11 +19,33 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         isFloat,
         newFloat,
         valGetF64,
+
+        strLen,
+        strFromMem,
+        strGetChar,
+        strEquals,
       },
     },
   } = await WebAssembly.instantiate(bin);
 
 const { test } = Deno;
+
+const memU8 = new Uint8Array(mem.buffer);
+
+function copyStringToMem(s, start = 0) {
+  const buf = new TextEncoder().encode(s),
+    len = buf.length;
+  for (let i = 0; i < len; i++) {
+    memU8[start + i] = buf[i];
+  }
+
+  return { start, len };
+}
+
+function mkStr(s, start = 0) {
+  const { len } = copyStringToMem(s, start);
+  return strFromMem(start, len);
+}
 
 test("NIL", () => {
   assertEquals(isNil(NIL), 1);
@@ -38,4 +62,11 @@ test("Float", () => {
   assertEquals(isFloat(newFloat(42)), 1);
   assertEquals(valGetTag(newFloat(42)), TYPE_FLOAT);
   assertEquals(valGetF64(newFloat(42)), 42);
+});
+
+test("Str", () => {
+  assertEquals(strLen(mkStr("hi!")), 3);
+  assertEquals(strGetChar(mkStr("abc"), 0), 97);
+  assertEquals(strEquals(mkStr("hell"), mkStr("hello")), 0);
+  assertEquals(strEquals(mkStr("hell"), mkStr("hell")), 1);
 });
