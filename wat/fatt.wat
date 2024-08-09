@@ -191,5 +191,33 @@
 		(else
 			(i32.const 0)
 		))
-  )
+	)
+
+	;; pair
+
+	(type $Pair (struct (field $a (ref $Val)) (field $b (ref $Val))))
+	(global $TYPE_PAIR (export "TYPE_PAIR") i32 (i32.const 4))
+	
+	(func $isPair (export "isPair") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_PAIR)))
+
+	(func $newNair (export "newPair")
+			(param $a (ref $Val)) (param $b (ref $Val))
+			(result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_PAIR)
+			(struct.new $Pair (local.get $a) (local.get $b))))
+
+	(func $valGetPair
+			(export "valGetPair") (param $v (ref $Val)) (result (ref $Pair))
+		(ref.cast (ref $Pair)
+			(struct.get $Val $v (local.get $v))))
+
+	(func $pairGetA (export "pairGetA") (param $v (ref $Val)) (result (ref $Val))
+		(struct.get $Pair $a
+			(call $valGetPair (local.get $v))))
+
+	(func $pairGetB (export "pairGetB") (param $v (ref $Val)) (result (ref $Val))
+		(struct.get $Pair $b
+		(call $valGetPair (local.get $v))))
 )

@@ -26,6 +26,12 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         strFromMem,
         strGetChar,
         strEquals,
+
+        TYPE_PAIR: { value: TYPE_PAIR },
+        isPair,
+        newPair,
+        pairGetA,
+        pairGetB,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -73,4 +79,11 @@ test("Str", () => {
   assertEquals(strGetChar(mkStr("abc"), 0), 97);
   assertEquals(strEquals(mkStr("hell"), mkStr("hello")), 0);
   assertEquals(strEquals(mkStr("hell"), mkStr("hell")), 1);
+});
+
+test("Pair", () => {
+  assertEquals(isPair(newPair(NIL, NIL)), 1);
+  assertEquals(valGetTag(newPair(NIL, NIL)), TYPE_PAIR);
+  assertEquals(valGetI64(pairGetA(newPair(newInt(10n), newFloat(15)))), 10n);
+  assertEquals(valGetF64(pairGetB(newPair(newInt(10n), newFloat(15)))), 15);
 });
