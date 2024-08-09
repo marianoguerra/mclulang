@@ -66,6 +66,7 @@ test("eval pair", () => {
 test("eval msg", () => {
   expect(runPrim("\\ + 2").verb).toBe("+");
   expect(runPrim("\\ + 2").obj).toBe(2n);
+  expect(runPrim('{e bind "a" : 42, \\ + a obj ()}')).toBe(42n);
 });
 test("eval block", () => {
   expect(runPrim("{1, 2}")).toBe(2n);
@@ -211,8 +212,9 @@ e find (e get-type e)
       bind ((msg obj() a() msg() verb()) : (msg obj() b())),
     ()
   },
-e reply @(@a is _) : @(e up () bind (it name ()) : that),
 e reply @(@(subj verb obj) -> body) : @(e reply it : that),
+
+@(@a is _) -> @(e up () bind (it name ()) : that),
 
 @(()  not _) -> 1,
 @(0   not _) -> (),
@@ -287,7 +289,10 @@ e reply @(@(subj verb obj) -> body) : @(e reply it : that),
   "" empty?(),
   [] empty?(),
   "1" empty?(),
-  [1] empty?()
+  [1] empty?(),
+
+  3 > 2 > 1,
+  3 >= 2 >= 1
 ]
   }`;
 
@@ -360,6 +365,9 @@ e reply @(@(subj verb obj) -> body) : @(e reply it : that),
     arrayEmpty,
     strNotEmpty,
     arrayNotEmpty,
+
+    chainGt,
+    chainGe,
   ] = runPrim(code, false);
 
   expect(nilNot).toBe(1n);
@@ -435,4 +443,7 @@ e reply @(@(subj verb obj) -> body) : @(e reply it : that),
   expect(arrayEmpty).toBe(0n);
   expect(strNotEmpty).toBe(NIL);
   expect(arrayNotEmpty).toBe(NIL);
+
+  expect(chainGt).toBe(3n);
+  expect(chainGe).toBe(3n);
 });
