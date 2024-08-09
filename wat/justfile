@@ -1,0 +1,6 @@
+
+test:
+    wasm-tools validate --features=gc fatt.wat
+    wasm-tools parse fatt.wat -o fatt.wasm
+    wasm-tools print fatt.wasm
+    deno test -A fatt.test.js
