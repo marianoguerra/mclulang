@@ -26,12 +26,18 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         strFromMem,
         strGetChar,
         strEquals,
+        rawStrFromMem,
 
         TYPE_PAIR: { value: TYPE_PAIR },
         isPair,
         newPair,
         pairGetA,
         pairGetB,
+
+        TYPE_NAME: { value: TYPE_NAME },
+        isName,
+        newName,
+        valGetNameStr,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -53,6 +59,11 @@ function copyStringToMem(s, start = 0) {
 function mkStr(s, start = 0) {
   const { len } = copyStringToMem(s, start);
   return strFromMem(start, len);
+}
+
+function mkRawStr(s, start = 0) {
+  const { len } = copyStringToMem(s, start);
+  return rawStrFromMem(start, len);
 }
 
 test("NIL", () => {
@@ -86,4 +97,14 @@ test("Pair", () => {
   assertEquals(valGetTag(newPair(NIL, NIL)), TYPE_PAIR);
   assertEquals(valGetI64(pairGetA(newPair(newInt(10n), newFloat(15)))), 10n);
   assertEquals(valGetF64(pairGetB(newPair(newInt(10n), newFloat(15)))), 15);
+});
+
+test("Name", () => {
+  assertEquals(isName(newName(mkRawStr("foo"))), 1);
+  assertEquals(valGetTag(newName(mkRawStr("foo"))), TYPE_NAME);
+  assertEquals(isStr(valGetNameStr(newName(mkRawStr("foo")))), 1);
+  assertEquals(
+    strEquals(valGetNameStr(newName(mkRawStr("foo"))), mkStr("foo")),
+    1,
+  );
 });

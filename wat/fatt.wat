@@ -71,12 +71,16 @@
 	(func $isStr (export "isStr") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_STR)))
 
+	(func $strFromRawStr
+			(param $rs (ref $Str)) (result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_STR)
+			(local.get $rs)))
+
 	(func $strFromMem
 			(export "strFromMem")
 			(param $start i32) (param $len i32) (result (ref $Val))
-
-		(struct.new $Val
-			(global.get $TYPE_STR)
+		(call $strFromRawStr
 			(call $rawStrFromMem (local.get $start) (local.get $len))))
 
 	(func $rawStrFromMem
@@ -220,4 +224,33 @@
 	(func $pairGetB (export "pairGetB") (param $v (ref $Val)) (result (ref $Val))
 		(struct.get $Pair $b
 		(call $valGetPair (local.get $v))))
+
+	;; name
+
+	(type $Name (struct (field $name (ref $Str))))
+	(global $TYPE_NAME (export "TYPE_NAME") i32 (i32.const 5))
+
+	(func $isName (export "isName") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_NAME)))
+
+	(func $valGetNameRawStr
+			(export "valGetNameRawStr")
+			(param $v (ref $Val))
+			(result (ref $Str))
+		(struct.get $Name $name
+			(ref.cast (ref $Name)
+				(struct.get $Val $v (local.get $v)))))
+
+	(func $valGetNameStr
+			(export "valGetNameStr")
+			(param $v (ref $Val))
+			(result (ref $Val))
+		(call $strFromRawStr
+			(call $valGetNameRawStr (local.get $v))))
+
+
+	(func $newName (export "newName") (param $s (ref $Str)) (result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_NAME)
+			(struct.new $Name (local.get $s))))
 )
