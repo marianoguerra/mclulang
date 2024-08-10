@@ -1,6 +1,6 @@
 
 test:
-    wasm-tools validate --features=gc fatt.wat
+    wasm-tools validate --features=gc,function-references fatt.wat
     wasm-tools parse fatt.wat -o fatt.wasm
     wasm-tools print fatt.wasm
-    deno test -A fatt.test.js
+    deno test -A --v8-flags="--experimental-wasm-jspi" fatt.test.js

@@ -30,13 +30,11 @@
 	(func $isInt (export "isInt") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_INT)))
 
-	(func $valGetInt
-			(export "valGetInt") (param $v (ref $Val)) (result (ref $Int))
+	(func $valGetInt (export "valGetInt") (param $v (ref $Val)) (result (ref $Int))
 		(struct.get $Val $v (local.get $v))
 		(ref.cast (ref $Int)))
 
-	(func $valGetI64
-			(export "valGetI64") (param $v (ref $Val)) (result i64)
+	(func $valGetI64 (export "valGetI64") (param $v (ref $Val)) (result i64)
 	    (struct.get $Int $val
 			(call $valGetInt (local.get $v))))
 
@@ -53,13 +51,12 @@
 	(func $isFloat (export "isFloat") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_FLOAT)))
 
-	(func $valGetFloat
-			(export "valGetFloat") (param $v (ref $Val)) (result (ref $Float))
+	(func $valGetFloat (export "valGetFloat")
+			(param $v (ref $Val)) (result (ref $Float))
 		(struct.get $Val $v (local.get $v))
 		(ref.cast (ref $Float)))
 
-	(func $valGetF64
-			(export "valGetF64") (param $v (ref $Val)) (result f64)
+	(func $valGetF64 (export "valGetF64") (param $v (ref $Val)) (result f64)
 	    (struct.get $Float $val
 			(call $valGetFloat (local.get $v))))
 
@@ -71,20 +68,17 @@
 	(func $isStr (export "isStr") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_STR)))
 
-	(func $strFromRawStr
-			(param $rs (ref $Str)) (result (ref $Val))
+	(func $strFromRawStr (param $rs (ref $Str)) (result (ref $Val))
 		(struct.new $Val
 			(global.get $TYPE_STR)
 			(local.get $rs)))
 
-	(func $strFromMem
-			(export "strFromMem")
+	(func $strFromMem (export "strFromMem")
 			(param $start i32) (param $len i32) (result (ref $Val))
 		(call $strFromRawStr
 			(call $rawStrFromMem (local.get $start) (local.get $len))))
 
-	(func $rawStrFromMem
-			(export "rawStrFromMem")
+	(func $rawStrFromMem (export "rawStrFromMem")
 			(param $start i32) (param $len i32) (result (ref $Str))
 
 		;; let $i: i32, $end: i32, str: Str
@@ -126,8 +120,8 @@
 		(local.get $str)
 	)
 
-	(func $valGetStr
-			(export "valGetStr") (param $v (ref $Val)) (result (ref $Str))
+	(func $valGetStr (export "valGetStr")
+			(param $v (ref $Val)) (result (ref $Str))
 		(ref.cast (ref $Str)
 			(struct.get $Val $v (local.get $v))))
 
@@ -135,15 +129,13 @@
 		(array.len
 			(call $valGetStr (local.get $v))))
 
-	(func $strGetChar
-			(export "strGetChar")
+	(func $strGetChar (export "strGetChar")
 			(param $v (ref $Val)) (param $i i32) (result i32)
 		(array.get_u $Str
 			(call $valGetStr (local.get $v))
 			(local.get $i)))
 
-	(func $strEquals
-			(export "strEquals")
+	(func $strEquals (export "strEquals")
 			(param $a (ref $Val))
 			(param $b (ref $Val))
 			(result i32)
@@ -151,8 +143,7 @@
 			(call $valGetStr (local.get $a))
 			(call $valGetStr (local.get $b))))
 
-	(func $rawStrEquals
-			(export "rawStrEquals")
+	(func $rawStrEquals (export "rawStrEquals")
 			(param $aStr (ref $Str))
 			(param $bStr (ref $Str))
 			(result i32)
@@ -212,8 +203,8 @@
 			(global.get $TYPE_PAIR)
 			(struct.new $Pair (local.get $a) (local.get $b))))
 
-	(func $valGetPair
-			(export "valGetPair") (param $v (ref $Val)) (result (ref $Pair))
+	(func $valGetPair (export "valGetPair")
+			(param $v (ref $Val)) (result (ref $Pair))
 		(ref.cast (ref $Pair)
 			(struct.get $Val $v (local.get $v))))
 
@@ -233,16 +224,14 @@
 	(func $isName (export "isName") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_NAME)))
 
-	(func $valGetNameRawStr
-			(export "valGetNameRawStr")
+	(func $valGetNameRawStr (export "valGetNameRawStr")
 			(param $v (ref $Val))
 			(result (ref $Str))
 		(struct.get $Name $name
 			(ref.cast (ref $Name)
 				(struct.get $Val $v (local.get $v)))))
 
-	(func $valGetNameStr
-			(export "valGetNameStr")
+	(func $valGetNameStr (export "valGetNameStr")
 			(param $v (ref $Val))
 			(result (ref $Val))
 		(call $strFromRawStr
@@ -266,8 +255,8 @@
 			(global.get $TYPE_LATER)
 			(struct.new $Later (local.get $v))))
 
-	(func $laterUnwrap
-		(export "laterUnwrap") (param $v (ref $Val)) (result (ref $Val))
+	(func $laterUnwrap (export "laterUnwrap")
+			(param $v (ref $Val)) (result (ref $Val))
 		(struct.get $Later $val
 			(ref.cast (ref $Later)
 				(struct.get $Val $v (local.get $v)))))
@@ -280,16 +269,14 @@
 	(func $isMsg (export "isMsg") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_MSG)))
 
-	(func $newRawMsg
-			(export "newRawMsg")
+	(func $newRawMsg (export "newRawMsg")
 			(param $verb (ref $Str)) (param $obj (ref $Val))
 			(result (ref $Msg))
 		(struct.new $Msg
 			(local.get $verb)
 			(local.get $obj)))
 
-	(func $newMsg
-			(export "newMsg")
+	(func $newMsg (export "newMsg")
 			(param $verb (ref $Str)) (param $obj (ref $Val))
 			(result (ref $Val))
 		(struct.new $Val
@@ -303,15 +290,13 @@
 			(ref.cast (ref $Msg)
 				(struct.get $Val $v (local.get $v)))))
 
-	(func $valGetMsgVerb
-			(export "valGetMsgVerb")
+	(func $valGetMsgVerb (export "valGetMsgVerb")
 			(param $v (ref $Val))
 			(result (ref $Val))
 		(call $strFromRawStr
 			(call $valGetMsgVerbRawStr (local.get $v))))
 
-	(func $valGetMsgObj
-			(export "valGetMsgObj")
+	(func $valGetMsgObj (export "valGetMsgObj")
 			(param $v (ref $Val))
 			(result (ref $Val))
 		(struct.get $Msg $obj
@@ -326,8 +311,7 @@
 	(func $isSend (export "isSend") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_SEND)))
 
-	(func $newSend
-			(export "newSend")
+	(func $newSend (export "newSend")
 			(param $subj (ref $Val)) (param $msg (ref $Msg))
 			(result (ref $Val))
 		(struct.new $Val
@@ -336,16 +320,14 @@
 				(local.get $subj)
 				(local.get $msg))))
 
-	(func $valGetSendSubj
-			(export "valGetSendSubj")
+	(func $valGetSendSubj (export "valGetSendSubj")
 			(param $v (ref $Val))
 			(result (ref $Val))
 		(struct.get $Send $subj
 			(ref.cast (ref $Send)
 				(struct.get $Val $v (local.get $v)))))
 
-	(func $valGetSendMsg
-			(export "valGetSendMsg")
+	(func $valGetSendMsg (export "valGetSendMsg")
 			(param $v (ref $Val))
 			(result (ref $Val))
 		(struct.new $Val
@@ -375,15 +357,13 @@
 		(array.len
 			(call $valGetBlockRaw (local.get $v))))
 	
-	(func $blockGetItem
-			(export "blockGetItem")
+	(func $blockGetItem (export "blockGetItem")
 			(param $v (ref $Val))
 			(param $i i32)
 			(result (ref $Val))
 		(array.get $Block (call $valGetBlockRaw (local.get $v)) (local.get $i)))
 
-	(func $blockSetItem
-			(export "blockSetItem")
+	(func $blockSetItem (export "blockSetItem")
 			(param $v (ref $Val))
 			(param $i i32)
 			(param $item (ref $Val))
@@ -413,8 +393,7 @@
 		(array.len
 			(call $valGetArrayRaw (local.get $v))))
 	
-	(func $arrayGetItem
-			(export "arrayGetItem")
+	(func $arrayGetItem (export "arrayGetItem")
 			(param $v (ref $Val))
 			(param $i i32)
 			(result (ref $Val))
@@ -441,8 +420,7 @@
 	(func $newBindNull (export "newBindNull") (result (ref null $BindEntry))
 		(ref.null $BindEntry))
 
-	(func $newBindEntry
-			(export "newBindEntry")
+	(func $newBindEntry (export "newBindEntry")
 			(param $key (ref $Str))
 			(param $val (ref $Val))
 			(param $up (ref null $BindEntry))
@@ -452,8 +430,7 @@
 			(local.get $val)
 			(local.get $up)))
 
-	(func $bindFind
-			(export "bindFind")
+	(func $bindFind (export "bindFind")
 			(param $be (ref null $BindEntry))
 			(param $key (ref $Str))
 			(result (ref null $Val))
@@ -481,13 +458,11 @@
 			(field $upLimit (mut i32))
 			(field $binds (mut (ref null $BindEntry)))))
 
-	(func $newFrameNull
-			(export "newFrameNull")
+	(func $newFrameNull (export "newFrameNull")
 			(result (ref null $Frame))
 		(ref.null $Frame))
 
-	(func $newFrame
-			(export "newFrame")
+	(func $newFrame (export "newFrame")
 			(result (ref $Frame))
 		(struct.new $Frame
 			(call $newFrameNull)
@@ -496,8 +471,7 @@
 			(i32.const 0)
 			(call $newBindNull)))
 
-	(func $frameDown
-			(export "frameDown")
+	(func $frameDown (export "frameDown")
 			(param $f (ref $Frame))
 			(result (ref $Frame))
 		(struct.new $Frame
@@ -507,14 +481,12 @@
 			(i32.const 0)
 			(call $newBindNull)))
 
-	(func $frameUp
-			(export "frameUp")
+	(func $frameUp (export "frameUp")
 			(param $f (ref null $Frame)) ;; doesn't check if ref.null
 			(result (ref null $Frame))
 		(struct.get $Frame $up (local.get $f)))
 
-	(func $frameBind
-			(export "frameBind")
+	(func $frameBind (export "frameBind")
 			(param $f (ref $Frame))
 			(param $key (ref $Str))
 			(param $val (ref $Val))
@@ -525,8 +497,7 @@
 				(local.get $val)
 				(struct.get $Frame $binds (local.get $f)))))
 
-	(func $frameFind
-			(export "frameFind")
+	(func $frameFind (export "frameFind")
 			(param $f (ref null $Frame))
 			(param $key (ref $Str))
 			(result (ref null $Val))
@@ -544,4 +515,83 @@
 			(if (result (ref null $Val)) (ref.is_null (local.get $r))
 			(then (call $frameFind (call $frameUp (local.get $f)) (local.get $key)))
 			(else (local.get $r))))))
+
+	;; handler
+
+	(type $HandlerFn
+		(func
+			(param $subj anyref)
+			(param $verb anyref)
+			(param $obj anyref)
+			(param $e anyref)
+			(result anyref)))
+
+	(type $HandlerEntry
+		(struct
+			(field $key (ref $Str))
+			(field $val (ref $HandlerFn))
+			(field $up (ref null $HandlerEntry))))
+
+	(func $newHandlerEntryNull (export "newHandlerEntryNull")
+			(result (ref null $HandlerEntry))
+		(ref.null $HandlerEntry))
+
+	(func $newHandlerEntry (export "newHandlerEntry")
+			(param $key (ref $Str))
+			(param $val (ref $HandlerFn))
+			(param $up (ref null $HandlerEntry))
+			(result (ref $HandlerEntry))
+		(struct.new $HandlerEntry
+			(local.get $key)
+			(local.get $val)
+			(local.get $up)))
+
+	(func $handlerFind (export "handlerFind")
+			(param $he (ref null $HandlerEntry))
+			(param $key (ref $Str))
+			(result (ref null $HandlerFn))
+
+		(if (result (ref null $HandlerFn))
+				(ref.is_null (local.get $he))
+		(then (ref.null $HandlerFn))
+		(else (if (result (ref null $HandlerFn))
+				(call $rawStrEquals
+					(local.get $key)
+					(struct.get $HandlerEntry $key (local.get $he)))
+			(then (struct.get $HandlerEntry $val (local.get $he)))
+			(else
+				(call $handlerFind
+					(struct.get $HandlerEntry $up (local.get $he))
+					(local.get $key)))))))
+
+	(func $callHandler (export "callHandler")
+			(param $fn (ref null $HandlerFn))
+			(param $subj anyref)
+			(param $verb anyref)
+			(param $obj anyref)
+			(param $e anyref)
+			(result (ref $Val))
+
+		(ref.cast (ref $Val) (local.get $subj))
+		(ref.cast (ref $Str) (local.get $verb))
+		(ref.cast (ref $Val) (local.get $obj))
+		(ref.cast (ref $Frame) (local.get $e))
+		(local.get $fn)
+		(call_ref $HandlerFn)
+		(ref.cast (ref $Val)))
+
+	;; int handlers
+
+	(func $intAdd (export "intAdd")
+			(param $subj anyref)
+			(param $verb anyref)
+			(param $obj anyref)
+			(param $e anyref)
+			(result anyref)
+		(call $newInt
+			(i64.add
+				(call $valGetI64 (ref.cast (ref $Val) (local.get $subj)))
+				(call $valGetI64 (ref.cast (ref $Val) (local.get $obj))))))
+
+	(global $INT_ADD (export "INT_ADD") (ref $HandlerFn) (ref.func $intAdd))
 )

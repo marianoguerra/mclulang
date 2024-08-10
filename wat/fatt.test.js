@@ -79,6 +79,12 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         frameBind,
         frameFind,
         frameDown,
+
+        INT_ADD: { value: INT_ADD },
+        newHandlerEntryNull,
+        newHandlerEntry,
+        handlerFind,
+        callHandler,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -219,4 +225,77 @@ test("Frame", () => {
   assertEquals(valGetI64(frameFind(f1, sFoo)), 15n);
   const f2 = frameDown(f1);
   assertEquals(valGetI64(frameFind(f2, sFoo)), 15n);
+});
+
+function fnToHandler(fn) {
+  return new WebAssembly.Function(
+    {
+      parameters: ["anyref", "anyref", "anyref", "anyref"],
+      results: ["anyref"],
+    },
+    fn,
+  );
+}
+
+test("HandlerEntry", () => {
+  const handlerEntry = newHandlerEntry(
+    mkRawStr("+"),
+    INT_ADD,
+    newHandlerEntryNull(),
+  );
+  assertEquals(handlerFind(handlerEntry, mkRawStr("+")), INT_ADD);
+
+  assertEquals(
+    valGetI64(
+      callHandler(
+        INT_ADD,
+        newInt(100n),
+        mkRawStr("+"),
+        newInt(33n),
+        newFrame(),
+      ),
+    ),
+    133n,
+  );
+
+  assertEquals(
+    valGetI64(
+      callHandler(
+        handlerFind(handlerEntry, mkRawStr("+")),
+        newInt(100n),
+        mkRawStr("+"),
+        newInt(34n),
+        newFrame(),
+      ),
+    ),
+    134n,
+  );
+
+  function intAdd(s, _v, o, _e) {
+    return newInt(valGetI64(s) + valGetI64(o));
+  }
+
+  assertEquals(
+    valGetI64(intAdd(newInt(100n), mkRawStr("+"), newInt(32n), newFrame())),
+    132n,
+  );
+
+  const intAddEntry = newHandlerEntry(
+    mkRawStr("+"),
+    fnToHandler(intAdd),
+    newHandlerEntryNull(),
+  );
+
+  assertEquals(
+    valGetI64(
+      callHandler(
+        handlerFind(intAddEntry, mkRawStr("+")),
+        newInt(10n),
+        mkRawStr("+"),
+        newInt(34n),
+        newFrame(),
+      ),
+    ),
+    44n,
+  );
 });
