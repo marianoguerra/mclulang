@@ -430,4 +430,44 @@
 			(local.get $i)
 			(local.get $item)))
 
+	;; bind entry
+
+	(type $BindEntry
+		(struct
+			(field $key (ref $Str))
+			(field $val (ref $Val))
+			(field $up (ref null $BindEntry))))
+
+	(func $newBindNull (export "newBindNull") (result (ref null $BindEntry))
+		(ref.null $BindEntry))
+
+	(func $newBindEntry
+			(export "newBindEntry")
+			(param $key (ref $Str))
+			(param $val (ref $Val))
+			(param $up (ref null $BindEntry))
+			(result (ref $BindEntry))
+		(struct.new $BindEntry
+			(local.get $key)
+			(local.get $val)
+			(local.get $up)))
+
+	(func $bindFind
+			(export "bindFind")
+			(param $be (ref null $BindEntry))
+			(param $key (ref $Str))
+			(result (ref null $Val))
+
+		(if (result (ref null $Val)) (ref.is_null (local.get $be))
+		(then (ref.null $Val))
+		(else (if (result (ref null $Val))
+				(call $rawStrEquals
+					(local.get $key)
+					(struct.get $BindEntry $key (local.get $be)))
+
+			(then (struct.get $BindEntry $val (local.get $be)))
+			(else (call $bindFind
+						(struct.get $BindEntry $up (local.get $be))
+						(local.get $key))))))
+	)
 )
