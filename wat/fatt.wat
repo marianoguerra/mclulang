@@ -470,4 +470,78 @@
 						(struct.get $BindEntry $up (local.get $be))
 						(local.get $key))))))
 	)
+
+	;; frame
+
+	(type $Frame
+		(struct
+			(field $left (ref null $Frame))
+			(field $up (ref null $Frame))
+			(field $leftLimit (mut i32))
+			(field $upLimit (mut i32))
+			(field $binds (mut (ref null $BindEntry)))))
+
+	(func $newFrameNull
+			(export "newFrameNull")
+			(result (ref null $Frame))
+		(ref.null $Frame))
+
+	(func $newFrame
+			(export "newFrame")
+			(result (ref $Frame))
+		(struct.new $Frame
+			(call $newFrameNull)
+			(call $newFrameNull)
+			(i32.const 0)
+			(i32.const 0)
+			(call $newBindNull)))
+
+	(func $frameDown
+			(export "frameDown")
+			(param $f (ref $Frame))
+			(result (ref $Frame))
+		(struct.new $Frame
+			(struct.get $Frame $left (local.get $f))
+			(local.get $f)
+			(i32.const 0)
+			(i32.const 0)
+			(call $newBindNull)))
+
+	(func $frameUp
+			(export "frameUp")
+			(param $f (ref null $Frame)) ;; doesn't check if ref.null
+			(result (ref null $Frame))
+		(struct.get $Frame $up (local.get $f)))
+
+	(func $frameBind
+			(export "frameBind")
+			(param $f (ref $Frame))
+			(param $key (ref $Str))
+			(param $val (ref $Val))
+		(struct.set $Frame $binds
+			(local.get $f)
+			(call $newBindEntry
+				(local.get $key)
+				(local.get $val)
+				(struct.get $Frame $binds (local.get $f)))))
+
+	(func $frameFind
+			(export "frameFind")
+			(param $f (ref null $Frame))
+			(param $key (ref $Str))
+			(result (ref null $Val))
+
+		(local $r (ref null $Val))
+
+		(if (result (ref null $Val)) (ref.is_null (local.get $f))
+		(then (ref.null $Val))
+		(else (block
+			(local.set $r
+				(call $bindFind
+					(struct.get $Frame $binds (local.get $f))
+					(local.get $key))))
+
+			(if (result (ref null $Val)) (ref.is_null (local.get $r))
+			(then (call $frameFind (call $frameUp (local.get $f)) (local.get $key)))
+			(else (local.get $r))))))
 )

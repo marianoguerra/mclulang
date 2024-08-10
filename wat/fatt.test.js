@@ -74,6 +74,11 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         newBindNull,
         newBindEntry,
         bindFind,
+
+        newFrame,
+        frameBind,
+        frameFind,
+        frameDown,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -203,4 +208,15 @@ test("BindEntry", () => {
   assertEquals(bindFind(b1, sBar), null);
   assertEquals(valGetF64(bindFind(b2, sBar)), 42);
   assertEquals(valGetI64(bindFind(b2, sFoo)), 100n);
+});
+
+test("Frame", () => {
+  const f1 = newFrame(),
+    vFoo = newInt(15n),
+    sFoo = mkRawStr("foo");
+  assertEquals(frameFind(f1, sFoo), null);
+  frameBind(f1, sFoo, vFoo);
+  assertEquals(valGetI64(frameFind(f1, sFoo)), 15n);
+  const f2 = frameDown(f1);
+  assertEquals(valGetI64(frameFind(f2, sFoo)), 15n);
 });
