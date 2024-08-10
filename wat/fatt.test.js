@@ -63,6 +63,13 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         blockLen,
         blockGetItem,
         blockSetItem,
+
+        TYPE_ARRAY: { value: TYPE_ARRAY },
+        isArray,
+        newArray,
+        arrayLen,
+        arrayGetItem,
+        arraySetItem,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -166,4 +173,14 @@ test("Block", () => {
   assertEquals(isNil(blockGetItem(b, 0)), 1);
   blockSetItem(b, 0, newInt(40n));
   assertEquals(valGetI64(blockGetItem(b, 0)), 40n);
+});
+
+test("Array", () => {
+  const b = newArray(3);
+  assertEquals(isArray(b), 1);
+  assertEquals(valGetTag(b), TYPE_ARRAY);
+  assertEquals(arrayLen(b), 3);
+  assertEquals(isNil(arrayGetItem(b, 0)), 1);
+  arraySetItem(b, 0, newInt(40n));
+  assertEquals(valGetI64(arrayGetItem(b, 0)), 40n);
 });

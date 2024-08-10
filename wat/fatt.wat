@@ -391,4 +391,43 @@
 			(call $valGetBlockRaw (local.get $v))
 			(local.get $i)
 			(local.get $item)))
+
+	;; array
+
+	(type $Array (array (mut (ref $Val))))
+	(global $TYPE_ARRAY (export "TYPE_ARRAY") i32 (i32.const 10))
+
+	(func $isArray (export "isArray") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_ARRAY)))
+
+	(func $newArray (export "newArray") (param $size i32) (result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_ARRAY)
+			(array.new $Array (global.get $NIL) (local.get $size))))
+
+	(func $valGetArrayRaw (param $v (ref $Val)) (result (ref $Array))
+		(ref.cast (ref $Array)
+			(struct.get $Val $v (local.get $v))))
+
+	(func $arrayLen (export "arrayLen") (param $v (ref $Val)) (result i32)
+		(array.len
+			(call $valGetArrayRaw (local.get $v))))
+	
+	(func $arrayGetItem
+			(export "arrayGetItem")
+			(param $v (ref $Val))
+			(param $i i32)
+			(result (ref $Val))
+		(array.get $Array (call $valGetArrayRaw (local.get $v)) (local.get $i)))
+
+	(func $arraySetItem
+			(export "arraySetItem")
+			(param $v (ref $Val))
+			(param $i i32)
+			(param $item (ref $Val))
+		(array.set $Array
+			(call $valGetArrayRaw (local.get $v))
+			(local.get $i)
+			(local.get $item)))
+
 )
