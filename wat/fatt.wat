@@ -356,16 +356,16 @@
 
 	;; block
 
-	(type $Block (array (ref $Val)))
+	(type $Block (array (mut (ref $Val))))
 	(global $TYPE_BLOCK (export "TYPE_BLOCK") i32 (i32.const 9))
 
 	(func $isBlock (export "isBlock") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_BLOCK)))
 
-	(func $newBlockEmpty (export "newBlockEmpty") (result (ref $Val))
+	(func $newBlock (export "newBlock") (param $size i32) (result (ref $Val))
 		(struct.new $Val
 			(global.get $TYPE_BLOCK)
-			(array.new_fixed $Block 0)))
+			(array.new $Block (global.get $NIL) (local.get $size))))
 
 	(func $valGetBlockRaw (param $v (ref $Val)) (result (ref $Block))
 		(ref.cast (ref $Block)
@@ -375,4 +375,20 @@
 		(array.len
 			(call $valGetBlockRaw (local.get $v))))
 	
+	(func $blockGetItem
+			(export "blockGetItem")
+			(param $v (ref $Val))
+			(param $i i32)
+			(result (ref $Val))
+		(array.get $Block (call $valGetBlockRaw (local.get $v)) (local.get $i)))
+
+	(func $blockSetItem
+			(export "blockSetItem")
+			(param $v (ref $Val))
+			(param $i i32)
+			(param $item (ref $Val))
+		(array.set $Block
+			(call $valGetBlockRaw (local.get $v))
+			(local.get $i)
+			(local.get $item)))
 )
