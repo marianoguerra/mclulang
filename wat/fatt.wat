@@ -448,74 +448,6 @@
 						(local.get $key))))))
 	)
 
-	;; frame
-
-	(type $Frame
-		(struct
-			(field $left (ref null $Frame))
-			(field $up (ref null $Frame))
-			(field $leftLimit (mut i32))
-			(field $upLimit (mut i32))
-			(field $binds (mut (ref null $BindEntry)))))
-
-	(func $newFrameNull (export "newFrameNull")
-			(result (ref null $Frame))
-		(ref.null $Frame))
-
-	(func $newFrame (export "newFrame")
-			(result (ref $Frame))
-		(struct.new $Frame
-			(call $newFrameNull)
-			(call $newFrameNull)
-			(i32.const 0)
-			(i32.const 0)
-			(call $newBindNull)))
-
-	(func $frameDown (export "frameDown")
-			(param $f (ref $Frame))
-			(result (ref $Frame))
-		(struct.new $Frame
-			(struct.get $Frame $left (local.get $f))
-			(local.get $f)
-			(i32.const 0)
-			(i32.const 0)
-			(call $newBindNull)))
-
-	(func $frameUp (export "frameUp")
-			(param $f (ref null $Frame)) ;; doesn't check if ref.null
-			(result (ref null $Frame))
-		(struct.get $Frame $up (local.get $f)))
-
-	(func $frameBind (export "frameBind")
-			(param $f (ref $Frame))
-			(param $key (ref $Str))
-			(param $val (ref $Val))
-		(struct.set $Frame $binds
-			(local.get $f)
-			(call $newBindEntry
-				(local.get $key)
-				(local.get $val)
-				(struct.get $Frame $binds (local.get $f)))))
-
-	(func $frameFind (export "frameFind")
-			(param $f (ref null $Frame))
-			(param $key (ref $Str))
-			(result (ref null $Val))
-
-		(local $r (ref null $Val))
-
-		(if (result (ref null $Val)) (ref.is_null (local.get $f))
-		(then (ref.null $Val))
-		(else (block
-			(local.set $r
-				(call $bindFind
-					(struct.get $Frame $binds (local.get $f))
-					(local.get $key))))
-
-			(if (result (ref null $Val)) (ref.is_null (local.get $r))
-			(then (call $frameFind (call $frameUp (local.get $f)) (local.get $key)))
-			(else (local.get $r))))))
-
 	;; handler
 
 	(type $HandlerFn
@@ -594,4 +526,144 @@
 				(call $valGetI64 (ref.cast (ref $Val) (local.get $obj))))))
 
 	(global $INT_ADD (export "INT_ADD") (ref $HandlerFn) (ref.func $intAdd))
+
+	;; handlers
+
+	(type $NativeHandlers (array (mut (ref null $HandlerEntry))))
+	(type $Handlers
+		(struct
+			(field $entries (ref $NativeHandlers))))
+
+	(func $newNativeHandlers (result (ref $NativeHandlers))
+		(array.new $NativeHandlers (call $newHandlerEntryNull) (i32.const 11)))
+
+	(func $newHandlers (export "newHandlers") (result (ref $Handlers))
+		(struct.new $Handlers
+			(call $newNativeHandlers)))
+
+	(func $handlersGetForType (export "handlersGetForType")
+			(param $self (ref $Handlers))
+			(param $t i32)
+			(result (ref null $HandlerEntry))
+		(array.get $NativeHandlers
+			(struct.get $Handlers $entries (local.get $self))
+			(local.get $t)))
+
+	(func $handlersBind (export "handlersBind")
+			(param $self (ref $Handlers))
+			(param $t i32)
+			(param $k (ref $Str))
+			(param $h (ref $HandlerFn))
+		(array.set $NativeHandlers
+			(struct.get $Handlers $entries (local.get $self))
+			(local.get $t)
+			(call $newHandlerEntry
+				(local.get $k)
+				(local.get $h)
+				(call $handlersGetForType
+					(local.get $self)
+					(local.get $t)))))
+
+	(func $handlersFind (export "handlersFind")
+			(param $self (ref $Handlers))
+			(param $t i32)
+			(param $k (ref $Str))
+			(result (ref null $HandlerFn))
+		(call $handlerFind
+			(call $handlersGetForType
+				(local.get $self)
+				(local.get $t))
+			(local.get $k)))
+
+	;; frame
+
+	(type $Frame
+		(struct
+			(field $left (ref null $Frame))
+			(field $up (ref null $Frame))
+			(field $leftLimit (mut i32))
+			(field $upLimit (mut i32))
+			(field $binds (mut (ref null $BindEntry)))
+			(field $handlers (mut (ref $Handlers)))))
+
+	(func $newFrameNull (export "newFrameNull")
+			(result (ref null $Frame))
+		(ref.null $Frame))
+
+	(func $newFrame (export "newFrame")
+			(result (ref $Frame))
+		(struct.new $Frame
+			(call $newFrameNull)
+			(call $newFrameNull)
+			(i32.const 0)
+			(i32.const 0)
+			(call $newBindNull)
+			(call $newHandlers)))
+
+	(func $frameDown (export "frameDown")
+			(param $f (ref $Frame))
+			(result (ref $Frame))
+		(struct.new $Frame
+			(struct.get $Frame $left (local.get $f))
+			(local.get $f)
+			(i32.const 0)
+			(i32.const 0)
+			(call $newBindNull)
+			(struct.get $Frame $handlers (local.get $f))))
+
+	(func $frameUp (export "frameUp")
+			(param $f (ref null $Frame)) ;; doesn't check if ref.null
+			(result (ref null $Frame))
+		(struct.get $Frame $up (local.get $f)))
+
+	(func $frameBind (export "frameBind")
+			(param $f (ref $Frame))
+			(param $key (ref $Str))
+			(param $val (ref $Val))
+		(struct.set $Frame $binds
+			(local.get $f)
+			(call $newBindEntry
+				(local.get $key)
+				(local.get $val)
+				(struct.get $Frame $binds (local.get $f)))))
+
+	(func $frameFind (export "frameFind")
+			(param $f (ref null $Frame))
+			(param $key (ref $Str))
+			(result (ref null $Val))
+
+		(local $r (ref null $Val))
+
+		(if (result (ref null $Val)) (ref.is_null (local.get $f))
+		(then (ref.null $Val))
+		(else (block
+			(local.set $r
+				(call $bindFind
+					(struct.get $Frame $binds (local.get $f))
+					(local.get $key))))
+
+			(if (result (ref null $Val)) (ref.is_null (local.get $r))
+			(then (call $frameFind (call $frameUp (local.get $f)) (local.get $key)))
+			(else (local.get $r))))))
+
+	(func $frameBindHandler (export "frameBindHandler")
+			(param $f (ref $Frame))
+			(param $t i32)
+			(param $k (ref $Str))
+			(param $h (ref $HandlerFn))
+		(call $handlersBind
+			(struct.get $Frame $handlers (local.get $f))
+			(local.get $t)
+			(local.get $k)
+			(local.get $h)))
+
+	(func $frameFindHandler (export "frameFindHandler")
+			(param $f (ref $Frame))
+			(param $t i32)
+			(param $k (ref $Str))
+			(result (ref null $HandlerFn))
+		(call $handlersFind
+			(struct.get $Frame $handlers (local.get $f))
+			(local.get $t)
+			(local.get $k)))
 )

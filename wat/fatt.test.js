@@ -79,12 +79,19 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         frameBind,
         frameFind,
         frameDown,
+        frameBindHandler,
+        frameFindHandler,
 
         INT_ADD: { value: INT_ADD },
         newHandlerEntryNull,
         newHandlerEntry,
         handlerFind,
         callHandler,
+
+        newHandlers,
+        handlersGetForType,
+        handlersBind,
+        handlersFind,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -216,17 +223,6 @@ test("BindEntry", () => {
   assertEquals(valGetI64(bindFind(b2, sFoo)), 100n);
 });
 
-test("Frame", () => {
-  const f1 = newFrame(),
-    vFoo = newInt(15n),
-    sFoo = mkRawStr("foo");
-  assertEquals(frameFind(f1, sFoo), null);
-  frameBind(f1, sFoo, vFoo);
-  assertEquals(valGetI64(frameFind(f1, sFoo)), 15n);
-  const f2 = frameDown(f1);
-  assertEquals(valGetI64(frameFind(f2, sFoo)), 15n);
-});
-
 function fnToHandler(fn) {
   return new WebAssembly.Function(
     {
@@ -235,6 +231,14 @@ function fnToHandler(fn) {
     },
     fn,
   );
+}
+
+function intAdd(s, _v, o, _e) {
+  return newInt(valGetI64(s) + valGetI64(o));
+}
+
+function intSub(s, _v, o, _e) {
+  return newInt(valGetI64(s) - valGetI64(o));
 }
 
 test("HandlerEntry", () => {
@@ -271,10 +275,6 @@ test("HandlerEntry", () => {
     134n,
   );
 
-  function intAdd(s, _v, o, _e) {
-    return newInt(valGetI64(s) + valGetI64(o));
-  }
-
   assertEquals(
     valGetI64(intAdd(newInt(100n), mkRawStr("+"), newInt(32n), newFrame())),
     132n,
@@ -298,4 +298,57 @@ test("HandlerEntry", () => {
     ),
     44n,
   );
+});
+
+test("Handlers", () => {
+  const h = newHandlers();
+  assertEquals(handlersGetForType(h, TYPE_NIL), null); // 0
+  assertEquals(handlersGetForType(h, TYPE_INT), null); // 1
+  assertEquals(handlersGetForType(h, TYPE_FLOAT), null); // 2
+  assertEquals(handlersGetForType(h, TYPE_STR), null); // 3
+  assertEquals(handlersGetForType(h, TYPE_PAIR), null); // 4
+  assertEquals(handlersGetForType(h, TYPE_NAME), null); // 5
+  assertEquals(handlersGetForType(h, TYPE_LATER), null); // 6
+  assertEquals(handlersGetForType(h, TYPE_MSG), null); // 7
+  assertEquals(handlersGetForType(h, TYPE_SEND), null); // 8
+  assertEquals(handlersGetForType(h, TYPE_BLOCK), null); // 9
+  assertEquals(handlersGetForType(h, TYPE_ARRAY), null); // 10
+
+  const hIntAdd = fnToHandler(intAdd),
+    hIntSub = fnToHandler(intSub);
+
+  handlersBind(h, TYPE_INT, mkRawStr("+"), hIntAdd);
+  assertEquals(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
+  handlersBind(h, TYPE_INT, mkRawStr("-"), hIntSub);
+  assertEquals(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
+  assertEquals(handlersFind(h, TYPE_INT, mkRawStr("-")), hIntSub);
+});
+
+test("Frame", () => {
+  const f1 = newFrame(),
+    vFoo = newInt(15n),
+    sFoo = mkRawStr("foo");
+  assertEquals(frameFind(f1, sFoo), null);
+  frameBind(f1, sFoo, vFoo);
+  assertEquals(valGetI64(frameFind(f1, sFoo)), 15n);
+  const f2 = frameDown(f1);
+  assertEquals(valGetI64(frameFind(f2, sFoo)), 15n);
+});
+
+test("frameBindHandler", () => {
+  const f = newFrame(),
+    hIntAdd = fnToHandler(intAdd),
+    hIntSub = fnToHandler(intSub);
+
+  assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("+")), null);
+  assertEquals(
+    frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd),
+    undefined,
+  );
+  assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("+")), hIntAdd);
+  assertEquals(
+    frameBindHandler(f, TYPE_INT, mkRawStr("-"), hIntSub),
+    undefined,
+  );
+  assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("-")), hIntSub);
 });
