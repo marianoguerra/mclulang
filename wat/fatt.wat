@@ -512,21 +512,6 @@
 		(call_ref $HandlerFn)
 		(ref.cast (ref $Val)))
 
-	;; int handlers
-
-	(func $intAdd (export "intAdd")
-			(param $subj anyref)
-			(param $verb anyref)
-			(param $obj anyref)
-			(param $e anyref)
-			(result anyref)
-		(call $newInt
-			(i64.add
-				(call $valGetI64 (ref.cast (ref $Val) (local.get $subj)))
-				(call $valGetI64 (ref.cast (ref $Val) (local.get $obj))))))
-
-	(global $INT_ADD (export "INT_ADD") (ref $HandlerFn) (ref.func $intAdd))
-
 	;; handlers
 
 	(type $NativeHandlers (array (mut (ref null $HandlerEntry))))
@@ -720,4 +705,50 @@
 			(local.get $v)
 			(ref.as_non_null (global.get $RAW_STR_EVAL))
 			(call $newFrameVal (local.get $f))))
+
+	;; int handlers
+
+	(func $anyGetI64 (param $v anyref) (result i64)
+		(call $valGetI64 (ref.cast (ref $Val) (local.get $v))))
+
+	(func $intAdd (export "intAdd")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newInt (i64.add
+				(call $anyGetI64 (local.get $s))
+				(call $anyGetI64 (local.get $o)))))
+
+	(func $intSub (export "intSub")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newInt (i64.sub
+				(call $anyGetI64 (local.get $s))
+				(call $anyGetI64 (local.get $o)))))
+
+	(func $intMul (export "intMul")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newInt (i64.mul
+				(call $anyGetI64 (local.get $s))
+				(call $anyGetI64 (local.get $o)))))
+
+	(func $intEq (export "intEq")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(if (result (ref $Val))
+			(i64.eq
+				(call $anyGetI64 (local.get $s))
+				(call $anyGetI64 (local.get $o)))
+			(then (ref.cast (ref $Val) (local.get $s)))
+			(else (global.get $NIL))))
+
+	(func $intLt (export "intLt")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(if (result (ref $Val))
+			(i64.lt_s
+				(call $anyGetI64 (local.get $s))
+				(call $anyGetI64 (local.get $o)))
+			(then (ref.cast (ref $Val) (local.get $s)))
+			(else (global.get $NIL))))
 )
