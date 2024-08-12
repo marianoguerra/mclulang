@@ -102,6 +102,12 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         intMul,
         intEq,
         intLt,
+
+        floatAdd,
+        floatSub,
+        floatMul,
+        floatEq,
+        floatLt,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -412,4 +418,27 @@ test("int handlers", () => {
   check(intLt, 100n, "<", 101n, 100n);
   checkRaw(intEq, 100n, "=", 1n, NIL);
   checkRaw(intLt, 100n, "<", 1n, NIL);
+});
+
+test("float handlers", () => {
+  function checkRaw(f, a, op, b, r, wrapFn = (f) => f) {
+    assertEquals(
+      wrapFn(
+        callHandler(f, newFloat(a), mkRawStr(op), newFloat(b), newFrame()),
+      ),
+      r,
+    );
+  }
+
+  function check(f, a, op, b, r) {
+    checkRaw(f, a, op, b, r, valGetF64);
+  }
+
+  check(floatAdd, 100.5, "+", 20.3, 120.8);
+  check(floatSub, 100.5, "-", 20.3, 80.2);
+  check(floatMul, 100.5, "*", 20.3, 2040.15);
+  check(floatEq, 100.5, "=", 100.5, 100.5);
+  check(floatLt, 100.5, "<", 101, 100.5);
+  checkRaw(floatEq, 100.5, "=", 1.2, NIL);
+  checkRaw(floatLt, 100.5, "<", 1, NIL);
 });

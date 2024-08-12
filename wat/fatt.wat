@@ -751,4 +751,50 @@
 				(call $anyGetI64 (local.get $o)))
 			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
+
+	;; float handlers
+
+	(func $anyGetF64 (param $v anyref) (result f64)
+		(call $valGetF64 (ref.cast (ref $Val) (local.get $v))))
+
+	(func $floatAdd (export "floatAdd")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newFloat (f64.add
+				(call $anyGetF64 (local.get $s))
+				(call $anyGetF64 (local.get $o)))))
+
+	(func $floatSub (export "floatSub")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newFloat (f64.sub
+				(call $anyGetF64 (local.get $s))
+				(call $anyGetF64 (local.get $o)))))
+
+	(func $floatMul (export "floatMul")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newFloat (f64.mul
+				(call $anyGetF64 (local.get $s))
+				(call $anyGetF64 (local.get $o)))))
+
+	(func $floatEq (export "floatEq")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(if (result (ref $Val))
+			(f64.eq
+				(call $anyGetF64 (local.get $s))
+				(call $anyGetF64 (local.get $o)))
+			(then (ref.cast (ref $Val) (local.get $s)))
+			(else (global.get $NIL))))
+
+	(func $floatLt (export "floatLt")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(if (result (ref $Val))
+			(f64.lt
+				(call $anyGetF64 (local.get $s))
+				(call $anyGetF64 (local.get $o)))
+			(then (ref.cast (ref $Val) (local.get $s)))
+			(else (global.get $NIL))))
 )
