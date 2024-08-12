@@ -10,7 +10,9 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         NIL: { value: NIL },
         TYPE_NIL: { value: TYPE_NIL },
         isNil,
+
         TYPE_INT: { value: TYPE_INT },
+        TRUE: { value: TRUE },
         isInt,
         newInt,
         valGetI64,
@@ -96,6 +98,9 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         frameFindHandler,
         frameSend,
         frameEval,
+
+        nilEq,
+        returnNil,
 
         intAdd,
         intSub,
@@ -243,8 +248,8 @@ test("BindEntry", () => {
 function fnToHandler(fn) {
   return new WebAssembly.Function(
     {
-      parameters: ["anyref", "anyref", "anyref", "anyref"],
-      results: ["anyref"],
+      parameters: ["eqref", "eqref", "eqref", "eqref"],
+      results: ["eqref"],
     },
     fn,
   );
@@ -398,6 +403,22 @@ test("frameEval", () => {
 test("frameVal", () => {
   assertEquals(valGetTag(newFrameVal(newFrame())), TYPE_FRAME);
   assertEquals(isFrame(newFrameVal(newFrame())), 1);
+});
+
+test("nil handlers", () => {
+  assertEquals(
+    valGetI64(callHandler(nilEq, NIL, mkRawStr("="), NIL, newFrame())),
+    1n,
+  );
+  assertEquals(
+    isNil(callHandler(nilEq, NIL, mkRawStr("="), TRUE, newFrame())),
+    1,
+  );
+
+  assertEquals(
+    isNil(callHandler(returnNil, NIL, mkRawStr("!"), TRUE, newFrame())),
+    1,
+  );
 });
 
 test("int handlers", () => {

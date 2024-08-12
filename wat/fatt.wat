@@ -1,7 +1,7 @@
 (module
 	(memory (export "mem") 10)
 
-	(type $Val (struct (field $tag i8) (field $v anyref)))
+	(type $Val (struct (field $tag i8) (field $v eqref)))
 
 	(func $valGetTag (export "valGetTag") (param $v (ref $Val)) (result i32)
 		(struct.get_u $Val $tag (local.get $v)))
@@ -21,6 +21,9 @@
 
 	(type $Int (struct (field $val i64)))
 	(global $TYPE_INT (export "TYPE_INT") i32 (i32.const 1))
+
+	(global $TRUE (export "TRUE") (ref $Val)
+		(struct.new $Val (global.get $TYPE_INT) (struct.new $Int (i64.const 1))))
 
 	(func $newInt (export "newInt") (param $i i64) (result (ref $Val))
 		(struct.new $Val
@@ -452,11 +455,11 @@
 
 	(type $HandlerFn
 		(func
-			(param $subj anyref)
-			(param $verb anyref)
-			(param $obj anyref)
-			(param $e anyref)
-			(result anyref)))
+			(param $subj eqref)
+			(param $verb eqref)
+			(param $obj eqref)
+			(param $e eqref)
+			(result eqref)))
 
 	(type $HandlerEntry
 		(struct
@@ -498,10 +501,10 @@
 
 	(func $callHandler (export "callHandler")
 			(param $fn (ref null $HandlerFn))
-			(param $subj anyref)
-			(param $verb anyref)
-			(param $obj anyref)
-			(param $e anyref)
+			(param $subj eqref)
+			(param $verb eqref)
+			(param $obj eqref)
+			(param $e eqref)
 			(result (ref $Val))
 
 		(ref.cast (ref $Val) (local.get $subj))
@@ -706,35 +709,50 @@
 			(ref.as_non_null (global.get $RAW_STR_EVAL))
 			(call $newFrameVal (local.get $f))))
 
+	;; nil handlers
+
+	(func $nilEq (export "nilEq")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(if (result (ref $Val))
+			(call $isNil (ref.cast (ref $Val) (local.get $o)))
+			(then (global.get $TRUE))
+			(else (global.get $NIL))))
+
+	(func $returnNil (export "returnNil")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(global.get $NIL))
+
 	;; int handlers
 
-	(func $anyGetI64 (param $v anyref) (result i64)
+	(func $anyGetI64 (param $v eqref) (result i64)
 		(call $valGetI64 (ref.cast (ref $Val) (local.get $v))))
 
 	(func $intAdd (export "intAdd")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newInt (i64.add
-				(call $anyGetI64 (local.get $s))
-				(call $anyGetI64 (local.get $o)))))
+			(call $anyGetI64 (local.get $s))
+			(call $anyGetI64 (local.get $o)))))
 
 	(func $intSub (export "intSub")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newInt (i64.sub
-				(call $anyGetI64 (local.get $s))
-				(call $anyGetI64 (local.get $o)))))
+			(call $anyGetI64 (local.get $s))
+			(call $anyGetI64 (local.get $o)))))
 
 	(func $intMul (export "intMul")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newInt (i64.mul
-				(call $anyGetI64 (local.get $s))
-				(call $anyGetI64 (local.get $o)))))
+			(call $anyGetI64 (local.get $s))
+			(call $anyGetI64 (local.get $o)))))
 
 	(func $intEq (export "intEq")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(if (result (ref $Val))
 			(i64.eq
 				(call $anyGetI64 (local.get $s))
@@ -743,8 +761,8 @@
 			(else (global.get $NIL))))
 
 	(func $intLt (export "intLt")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(if (result (ref $Val))
 			(i64.lt_s
 				(call $anyGetI64 (local.get $s))
@@ -754,40 +772,40 @@
 
 	;; float handlers
 
-	(func $anyGetF64 (param $v anyref) (result f64)
+	(func $anyGetF64 (param $v eqref) (result f64)
 		(call $valGetF64 (ref.cast (ref $Val) (local.get $v))))
 
 	(func $floatAdd (export "floatAdd")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newFloat (f64.add
-				(call $anyGetF64 (local.get $s))
-				(call $anyGetF64 (local.get $o)))))
+			(call $anyGetF64 (local.get $s))
+			(call $anyGetF64 (local.get $o)))))
 
 	(func $floatSub (export "floatSub")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newFloat (f64.sub
-				(call $anyGetF64 (local.get $s))
-				(call $anyGetF64 (local.get $o)))))
+			(call $anyGetF64 (local.get $s))
+			(call $anyGetF64 (local.get $o)))))
 
 	(func $floatMul (export "floatMul")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newFloat (f64.mul
-				(call $anyGetF64 (local.get $s))
-				(call $anyGetF64 (local.get $o)))))
+			(call $anyGetF64 (local.get $s))
+			(call $anyGetF64 (local.get $o)))))
 
 	(func $floatDiv (export "floatDiv")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(call $newFloat (f64.div
-				(call $anyGetF64 (local.get $s))
-				(call $anyGetF64 (local.get $o)))))
+			(call $anyGetF64 (local.get $s))
+			(call $anyGetF64 (local.get $o)))))
 
 	(func $floatEq (export "floatEq")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(if (result (ref $Val))
 			(f64.eq
 				(call $anyGetF64 (local.get $s))
@@ -796,8 +814,8 @@
 			(else (global.get $NIL))))
 
 	(func $floatLt (export "floatLt")
-			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
-			(result anyref)
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
 		(if (result (ref $Val))
 			(f64.lt
 				(call $anyGetF64 (local.get $s))
