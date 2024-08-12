@@ -106,6 +106,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         floatAdd,
         floatSub,
         floatMul,
+        floatDiv,
         floatEq,
         floatLt,
       },
@@ -437,6 +438,7 @@ test("float handlers", () => {
   check(floatAdd, 100.5, "+", 20.3, 120.8);
   check(floatSub, 100.5, "-", 20.3, 80.2);
   check(floatMul, 100.5, "*", 20.3, 2040.15);
+  check(floatDiv, 100.5, "/", 2, 50.25);
   check(floatEq, 100.5, "=", 100.5, 100.5);
   check(floatLt, 100.5, "<", 101, 100.5);
   checkRaw(floatEq, 100.5, "=", 1.2, NIL);

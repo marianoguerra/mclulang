@@ -778,6 +778,13 @@
 				(call $anyGetF64 (local.get $s))
 				(call $anyGetF64 (local.get $o)))))
 
+	(func $floatDiv (export "floatDiv")
+			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
+			(result anyref)
+		(call $newFloat (f64.div
+				(call $anyGetF64 (local.get $s))
+				(call $anyGetF64 (local.get $o)))))
+
 	(func $floatEq (export "floatEq")
 			(param $s anyref) (param $v anyref) (param $o anyref) (param $e anyref)
 			(result anyref)
