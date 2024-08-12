@@ -510,7 +510,7 @@
 		(ref.cast (ref $Val) (local.get $subj))
 		(ref.cast (ref $Str) (local.get $verb))
 		(ref.cast (ref $Val) (local.get $obj))
-		(ref.cast (ref $Frame) (local.get $e))
+		(ref.cast (ref $Val) (local.get $e))
 		(local.get $fn)
 		(call_ref $HandlerFn)
 		(ref.cast (ref $Val)))
@@ -672,6 +672,7 @@
 			(param $s (ref $Val))
 			(param $v (ref $Str))
 			(param $o (ref $Val))
+			(param $e (ref $Val))
 			(result (ref null $Val))
 		(local $h (ref null $HandlerFn))
 		(local.set $h
@@ -687,7 +688,7 @@
 						(local.get $s)
 						(local.get $v)
 						(local.get $o)
-						(local.get $f)))))
+						(local.get $e)))))
 
 
 	(data (i32.const 0) "eval")
@@ -703,11 +704,14 @@
 			(param $f (ref $Frame))
 			(param $v (ref $Val))
 			(result (ref null $Val))
+		(local $e (ref $Val))
+		(local.set $e (call $newFrameVal (local.get $f)))
 		(call $frameSend
 			(local.get $f)
 			(local.get $v)
 			(ref.as_non_null (global.get $RAW_STR_EVAL))
-			(call $newFrameVal (local.get $f))))
+			(local.get $e)
+			(local.get $e)))
 
 	;; nil handlers
 
@@ -822,4 +826,37 @@
 				(call $anyGetF64 (local.get $o)))
 			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
+
+	;; str handlers
+
+	(func $anyGetStr (param $v eqref) (result (ref $Str))
+		(call $valGetStr (ref.cast (ref $Val) (local.get $v))))
+
+	(func $strSize (export "strSize")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $newInt
+			(i64.extend_i32_s (call $strLen (ref.cast (ref $Val) (local.get $s))))))
+
+	(func $strEq (export "strEq")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(if (result (ref $Val))
+			(call $rawStrEquals
+				(call $anyGetStr (local.get $s))
+				(call $anyGetStr (local.get $o)))
+			(then (global.get $TRUE))
+			(else (global.get $NIL))))
+
+	;; pair handlers
+
+	(func $hPairA (export "hPairA")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $pairGetA (ref.cast (ref $Val) (local.get $s))))
+
+	(func $hPairB (export "hPairB")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $pairGetB (ref.cast (ref $Val) (local.get $s))))
 )

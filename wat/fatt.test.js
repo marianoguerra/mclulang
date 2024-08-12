@@ -1,5 +1,6 @@
 /*globals Deno*/
 import { assertEquals } from "jsr:@std/assert@1";
+import { mkStrFns } from "./fatt.util.js";
 const bin = Deno.readFileSync("./fatt.wasm"),
   {
     instance: {
@@ -114,34 +115,27 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         floatDiv,
         floatEq,
         floatLt,
+
+        strSize,
+        strEq,
+
+        hPairA,
+        hPairB,
       },
     },
   } = await WebAssembly.instantiate(bin);
 
 const { test } = Deno;
 
-const memU8 = new Uint8Array(mem.buffer);
-
-function copyStringToMem(s, start = 0) {
-  const buf = new TextEncoder().encode(s),
-    len = buf.length;
-  for (let i = 0; i < len; i++) {
-    memU8[start + i] = buf[i];
-  }
-
-  return { start, len };
+function skip(name, _fn) {
+  console.warn("skipping", name);
 }
+const memU8 = new Uint8Array(mem.buffer),
+  { mkStr, mkRawStr } = mkStrFns(memU8, strFromMem, rawStrFromMem);
 
-function mkStr(s, start = 0) {
-  const { len } = copyStringToMem(s, start);
-  return strFromMem(start, len);
+function newE() {
+  return newFrameVal(newFrame());
 }
-
-function mkRawStr(s, start = 0) {
-  const { len } = copyStringToMem(s, start);
-  return rawStrFromMem(start, len);
-}
-
 test("NIL", () => {
   assertEquals(isNil(NIL), 1);
   assertEquals(valGetTag(NIL), TYPE_NIL);
@@ -273,7 +267,7 @@ test("HandlerEntry", () => {
 
   assertEquals(
     valGetI64(
-      callHandler(intAdd, newInt(100n), mkRawStr("+"), newInt(33n), newFrame()),
+      callHandler(intAdd, newInt(100n), mkRawStr("+"), newInt(33n), newE()),
     ),
     133n,
   );
@@ -285,7 +279,7 @@ test("HandlerEntry", () => {
         newInt(100n),
         mkRawStr("+"),
         newInt(34n),
-        newFrame(),
+        newE(),
       ),
     ),
     134n,
@@ -309,7 +303,7 @@ test("HandlerEntry", () => {
         newInt(10n),
         mkRawStr("+"),
         newInt(34n),
-        newFrame(),
+        newE(),
       ),
     ),
     44n,
@@ -375,7 +369,9 @@ test("frameSend", () => {
 
   frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd);
   assertEquals(
-    valGetI64(frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n))),
+    valGetI64(
+      frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n), newFrameVal(f)),
+    ),
     52n,
   );
 });
@@ -407,16 +403,13 @@ test("frameVal", () => {
 
 test("nil handlers", () => {
   assertEquals(
-    valGetI64(callHandler(nilEq, NIL, mkRawStr("="), NIL, newFrame())),
+    valGetI64(callHandler(nilEq, NIL, mkRawStr("="), NIL, newE())),
     1n,
   );
-  assertEquals(
-    isNil(callHandler(nilEq, NIL, mkRawStr("="), TRUE, newFrame())),
-    1,
-  );
+  assertEquals(isNil(callHandler(nilEq, NIL, mkRawStr("="), TRUE, newE())), 1);
 
   assertEquals(
-    isNil(callHandler(returnNil, NIL, mkRawStr("!"), TRUE, newFrame())),
+    isNil(callHandler(returnNil, NIL, mkRawStr("!"), TRUE, newE())),
     1,
   );
 });
@@ -424,7 +417,7 @@ test("nil handlers", () => {
 test("int handlers", () => {
   function checkRaw(f, a, op, b, r, wrapFn = (f) => f) {
     assertEquals(
-      wrapFn(callHandler(f, newInt(a), mkRawStr(op), newInt(b), newFrame())),
+      wrapFn(callHandler(f, newInt(a), mkRawStr(op), newInt(b), newE())),
       r,
     );
   }
@@ -445,9 +438,7 @@ test("int handlers", () => {
 test("float handlers", () => {
   function checkRaw(f, a, op, b, r, wrapFn = (f) => f) {
     assertEquals(
-      wrapFn(
-        callHandler(f, newFloat(a), mkRawStr(op), newFloat(b), newFrame()),
-      ),
+      wrapFn(callHandler(f, newFloat(a), mkRawStr(op), newFloat(b), newE())),
       r,
     );
   }
@@ -464,4 +455,60 @@ test("float handlers", () => {
   check(floatLt, 100.5, "<", 101, 100.5);
   checkRaw(floatEq, 100.5, "=", 1.2, NIL);
   checkRaw(floatLt, 100.5, "<", 1, NIL);
+});
+
+skip("str handlers", () => {
+  assertEquals(strLen(mkStr("hi!")), 3);
+  assertEquals(isStr(mkStr("hi!")), 1);
+  const f = newFrame(),
+    hStrSize = fnToHandler(strSize);
+
+  frameBindHandler(f, TYPE_STR, mkRawStr("size"), hStrSize);
+  assertEquals(
+    frameEval(f, newSend(mkStr("hi!"), newRawMsg(mkRawStr("size"), NIL))),
+    3n,
+  );
+  assertEquals(
+    valGetI64(
+      callHandler(strSize, mkStr("hi!"), mkRawStr("size"), NIL, newE()),
+    ),
+    1n,
+  );
+  assertEquals(
+    isNil(callHandler(strEq, mkStr("hi!"), mkRawStr("="), mkStr("hi"), newE())),
+    1,
+  );
+  assertEquals(
+    valGetI64(
+      callHandler(strEq, mkStr("hi"), mkRawStr("="), mkStr("hi"), newE()),
+    ),
+    1n,
+  );
+});
+
+test("pair handlers", () => {
+  assertEquals(
+    valGetI64(
+      callHandler(
+        hPairA,
+        newPair(newInt(42n), mkStr("hi!")),
+        mkRawStr("a"),
+        NIL,
+        newE(),
+      ),
+    ),
+    42n,
+  );
+  assertEquals(
+    valGetI64(
+      callHandler(
+        hPairB,
+        newPair(newInt(42n), newInt(100n)),
+        mkRawStr("a"),
+        NIL,
+        newE(),
+      ),
+    ),
+    100n,
+  );
 });
