@@ -75,13 +75,6 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         newBindEntry,
         bindFind,
 
-        newFrame,
-        frameBind,
-        frameFind,
-        frameDown,
-        frameBindHandler,
-        frameFindHandler,
-
         INT_ADD: { value: INT_ADD },
         newHandlerEntryNull,
         newHandlerEntry,
@@ -92,6 +85,18 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         handlersGetForType,
         handlersBind,
         handlersFind,
+
+        TYPE_FRAME: { value: TYPE_FRAME },
+        newFrame,
+        newFrameVal,
+        isFrame,
+        frameBind,
+        frameFind,
+        frameDown,
+        frameBindHandler,
+        frameFindHandler,
+        frameSend,
+        frameEval,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -351,4 +356,39 @@ test("frameBindHandler", () => {
     undefined,
   );
   assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("-")), hIntSub);
+});
+
+test("frameSend", () => {
+  const f = newFrame(),
+    hIntAdd = fnToHandler(intAdd);
+
+  frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd);
+  assertEquals(
+    valGetI64(frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n))),
+    52n,
+  );
+});
+
+function nilEval(s, _v, _o, _e) {
+  return s;
+}
+
+function intEval(s, _v, _o, _e) {
+  return s;
+}
+
+test("frameEval", () => {
+  const f = newFrame(),
+    hNilEval = fnToHandler(nilEval),
+    hIntEval = fnToHandler(intEval);
+
+  frameBindHandler(f, TYPE_NIL, mkRawStr("eval"), hNilEval);
+  assertEquals(frameEval(f, NIL), NIL);
+
+  frameBindHandler(f, TYPE_INT, mkRawStr("eval"), hIntEval);
+  assertEquals(valGetI64(frameEval(f, newInt(42n))), 42n);
+});
+
+test("frameVal", () => {
+  assertEquals(isFrame(newFrameVal(newFrame())), 1);
 });

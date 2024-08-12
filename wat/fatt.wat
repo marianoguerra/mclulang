@@ -535,7 +535,7 @@
 			(field $entries (ref $NativeHandlers))))
 
 	(func $newNativeHandlers (result (ref $NativeHandlers))
-		(array.new $NativeHandlers (call $newHandlerEntryNull) (i32.const 11)))
+		(array.new $NativeHandlers (call $newHandlerEntryNull) (i32.const 12)))
 
 	(func $newHandlers (export "newHandlers") (result (ref $Handlers))
 		(struct.new $Handlers
@@ -585,6 +585,18 @@
 			(field $upLimit (mut i32))
 			(field $binds (mut (ref null $BindEntry)))
 			(field $handlers (mut (ref $Handlers)))))
+
+	(global $TYPE_FRAME (export "TYPE_FRAME") i32 (i32.const 11))
+
+	(func $newFrameVal (export "newFrameVal")
+			(param $v (ref $Frame))
+			(result (ref $Val))
+		(struct.new $Val
+			(global.get $TYPE_FRAME)
+			(local.get $v)))
+
+	(func $isFrame (export "isFrame") (param $v (ref $Val)) (result i32)
+		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_FRAME)))
 
 	(func $newFrameNull (export "newFrameNull")
 			(result (ref null $Frame))
@@ -666,4 +678,46 @@
 			(struct.get $Frame $handlers (local.get $f))
 			(local.get $t)
 			(local.get $k)))
+
+	(func $frameSend (export "frameSend")
+			(param $f (ref $Frame))
+			(param $s (ref $Val))
+			(param $v (ref $Str))
+			(param $o (ref $Val))
+			(result (ref null $Val))
+		(local $h (ref null $HandlerFn))
+		(local.set $h
+			(call $frameFindHandler
+				(local.get $f)
+				(call $valGetTag (local.get $s))
+				(local.get $v)))
+
+		(if (result (ref null $Val)) (ref.is_null (local.get $h))
+			(then (ref.null $Val))
+			(else (call $callHandler
+				  		(local.get $h)
+						(local.get $s)
+						(local.get $v)
+						(local.get $o)
+						(local.get $f)))))
+
+
+	(data (i32.const 0) "eval")
+	(global $RAW_STR_EVAL (export "RAW_STR_EVAL") (mut (ref null $Str)) (ref.null $Str))
+
+	(func $init
+	    (global.set $RAW_STR_EVAL
+			(call $rawStrFromMem (i32.const 0) (i32.const 4))))
+
+	(start $init)
+
+	(func $frameEval (export "frameEval")
+			(param $f (ref $Frame))
+			(param $v (ref $Val))
+			(result (ref null $Val))
+		(call $frameSend
+			(local.get $f)
+			(local.get $v)
+			(ref.as_non_null (global.get $RAW_STR_EVAL))
+			(call $newFrameVal (local.get $f))))
 )
