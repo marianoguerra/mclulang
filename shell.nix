@@ -5,6 +5,7 @@ pkgs.mkShell {
 	buildInputs = [
 		pkgs.glibcLocales
 		pkgs.nodejs
+		pkgs.binaryen
 		pkgs.vscode-langservers-extracted
 		pkgs.nodePackages.eslint
 		pkgs.nodePackages.prettier

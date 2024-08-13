@@ -1,6 +1,14 @@
 
-test:
+test: build
+    deno test -A --v8-flags="--experimental-wasm-jspi" fatt.test.js
+
+build:
     wasm-tools validate --features=gc,function-references fatt.wat
     wasm-tools parse fatt.wat -o fatt.wasm
     wasm-tools print fatt.wasm
-    deno test -A --v8-flags="--experimental-wasm-jspi" fatt.test.js
+
+opt:
+    wasm-opt -Os --enable-gc --enable-reference-types fatt.wasm -o fatto.wasm
+
+print-opt:
+    wasm-tools print fatto.wasm
