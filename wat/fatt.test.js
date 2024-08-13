@@ -1,5 +1,5 @@
 /*globals Deno*/
-import { assertEquals } from "jsr:@std/assert@1";
+import { assertStrictEquals as is } from "jsr:@std/assert@1";
 import { mkStrFns } from "./fatt.util.js";
 const bin = Deno.readFileSync("./fatt.wasm"),
   {
@@ -138,6 +138,10 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hSendEval,
 
         hBlockEval,
+
+        hArrayEval,
+        hArraySize,
+        hArrayGetItem,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -154,90 +158,87 @@ function newE() {
   return newFrame();
 }
 test("NIL", () => {
-  assertEquals(isNil(NIL), 1);
-  assertEquals(valGetTag(NIL), TYPE_NIL);
+  is(isNil(NIL), 1);
+  is(valGetTag(NIL), TYPE_NIL);
 });
 
 test("Int", () => {
-  assertEquals(isInt(newInt(42n)), 1);
-  assertEquals(valGetTag(newInt(42n)), TYPE_INT);
-  assertEquals(valGetI64(newInt(42n)), 42n);
+  is(isInt(newInt(42n)), 1);
+  is(valGetTag(newInt(42n)), TYPE_INT);
+  is(valGetI64(newInt(42n)), 42n);
 });
 
 test("Float", () => {
-  assertEquals(isFloat(newFloat(42)), 1);
-  assertEquals(valGetTag(newFloat(42)), TYPE_FLOAT);
-  assertEquals(valGetF64(newFloat(42)), 42);
+  is(isFloat(newFloat(42)), 1);
+  is(valGetTag(newFloat(42)), TYPE_FLOAT);
+  is(valGetF64(newFloat(42)), 42);
 });
 
 test("Str", () => {
-  assertEquals(isStr(mkStr("hi!")), 1);
-  assertEquals(valGetTag(mkStr("hi!")), TYPE_STR);
-  assertEquals(strLen(mkStr("hi!")), 3);
-  assertEquals(strGetChar(mkStr("abc"), 0), 97);
-  assertEquals(strEquals(mkStr("hell"), mkStr("hello")), 0);
-  assertEquals(strEquals(mkStr("hell"), mkStr("hell")), 1);
+  is(isStr(mkStr("hi!")), 1);
+  is(valGetTag(mkStr("hi!")), TYPE_STR);
+  is(strLen(mkStr("hi!")), 3);
+  is(strGetChar(mkStr("abc"), 0), 97);
+  is(strEquals(mkStr("hell"), mkStr("hello")), 0);
+  is(strEquals(mkStr("hell"), mkStr("hell")), 1);
 });
 
 test("Pair", () => {
-  assertEquals(isPair(newPair(NIL, NIL)), 1);
-  assertEquals(valGetTag(newPair(NIL, NIL)), TYPE_PAIR);
-  assertEquals(valGetI64(pairGetA(newPair(newInt(10n), newFloat(15)))), 10n);
-  assertEquals(valGetF64(pairGetB(newPair(newInt(10n), newFloat(15)))), 15);
+  is(isPair(newPair(NIL, NIL)), 1);
+  is(valGetTag(newPair(NIL, NIL)), TYPE_PAIR);
+  is(valGetI64(pairGetA(newPair(newInt(10n), newFloat(15)))), 10n);
+  is(valGetF64(pairGetB(newPair(newInt(10n), newFloat(15)))), 15);
 });
 
 test("Name", () => {
-  assertEquals(isName(newName(mkRawStr("foo"))), 1);
-  assertEquals(valGetTag(newName(mkRawStr("foo"))), TYPE_NAME);
-  assertEquals(isStr(valGetNameStr(newName(mkRawStr("foo")))), 1);
-  assertEquals(
-    strEquals(valGetNameStr(newName(mkRawStr("foo"))), mkStr("foo")),
-    1,
-  );
+  is(isName(newName(mkRawStr("foo"))), 1);
+  is(valGetTag(newName(mkRawStr("foo"))), TYPE_NAME);
+  is(isStr(valGetNameStr(newName(mkRawStr("foo")))), 1);
+  is(strEquals(valGetNameStr(newName(mkRawStr("foo"))), mkStr("foo")), 1);
 });
 
 test("Later", () => {
-  assertEquals(isLater(newLater(NIL)), 1);
-  assertEquals(valGetTag(newLater(NIL)), TYPE_LATER);
-  assertEquals(laterUnwrap(newLater(NIL)), NIL);
+  is(isLater(newLater(NIL)), 1);
+  is(valGetTag(newLater(NIL)), TYPE_LATER);
+  is(laterUnwrap(newLater(NIL)), NIL);
 });
 
 test("Msg", () => {
-  assertEquals(isMsg(newMsg(mkRawStr("+"), newInt(5n))), 1);
-  assertEquals(valGetTag(newMsg(mkRawStr("+"), newInt(5n))), TYPE_MSG);
-  assertEquals(
+  is(isMsg(newMsg(mkRawStr("+"), newInt(5n))), 1);
+  is(valGetTag(newMsg(mkRawStr("+"), newInt(5n))), TYPE_MSG);
+  is(
     strEquals(valGetMsgVerb(newMsg(mkRawStr("+"), newInt(5n))), mkStr("+")),
     1,
   );
-  assertEquals(valGetI64(valGetMsgObj(newMsg(mkRawStr("+"), newInt(5n)))), 5n);
+  is(valGetI64(valGetMsgObj(newMsg(mkRawStr("+"), newInt(5n)))), 5n);
 });
 
 test("Send", () => {
   const send = newSend(newInt(4n), newRawMsg(mkRawStr("+"), newInt(5n)));
-  assertEquals(isSend(send), 1);
-  assertEquals(valGetTag(send), TYPE_SEND);
-  assertEquals(valGetI64(valGetSendSubj(send)), 4n);
-  assertEquals(isMsg(valGetSendMsg(send)), 1);
+  is(isSend(send), 1);
+  is(valGetTag(send), TYPE_SEND);
+  is(valGetI64(valGetSendSubj(send)), 4n);
+  is(isMsg(valGetSendMsg(send)), 1);
 });
 
 test("Block", () => {
   const b = newBlock(3);
-  assertEquals(isBlock(b), 1);
-  assertEquals(valGetTag(b), TYPE_BLOCK);
-  assertEquals(blockLen(b), 3);
-  assertEquals(isNil(blockGetItem(b, 0)), 1);
+  is(isBlock(b), 1);
+  is(valGetTag(b), TYPE_BLOCK);
+  is(blockLen(b), 3);
+  is(isNil(blockGetItem(b, 0)), 1);
   blockSetItem(b, 0, newInt(40n));
-  assertEquals(valGetI64(blockGetItem(b, 0)), 40n);
+  is(valGetI64(blockGetItem(b, 0)), 40n);
 });
 
 test("Array", () => {
   const b = newArray(3);
-  assertEquals(isArray(b), 1);
-  assertEquals(valGetTag(b), TYPE_ARRAY);
-  assertEquals(arrayLen(b), 3);
-  assertEquals(isNil(arrayGetItem(b, 0)), 1);
+  is(isArray(b), 1);
+  is(valGetTag(b), TYPE_ARRAY);
+  is(arrayLen(b), 3);
+  is(isNil(arrayGetItem(b, 0)), 1);
   arraySetItem(b, 0, newInt(40n));
-  assertEquals(valGetI64(arrayGetItem(b, 0)), 40n);
+  is(valGetI64(arrayGetItem(b, 0)), 40n);
 });
 
 test("BindEntry", () => {
@@ -249,11 +250,11 @@ test("BindEntry", () => {
     b1 = newBindEntry(sFoo, v, bn),
     b2 = newBindEntry(sBar, v1, b1);
 
-  assertEquals(bindFind(bn, sFoo), null);
-  assertEquals(valGetI64(bindFind(b1, sFoo)), 100n);
-  assertEquals(bindFind(b1, sBar), null);
-  assertEquals(valGetF64(bindFind(b2, sBar)), 42);
-  assertEquals(valGetI64(bindFind(b2, sFoo)), 100n);
+  is(bindFind(bn, sFoo), null);
+  is(valGetI64(bindFind(b1, sFoo)), 100n);
+  is(bindFind(b1, sBar), null);
+  is(valGetF64(bindFind(b2, sBar)), 42);
+  is(valGetI64(bindFind(b2, sFoo)), 100n);
 });
 
 function fnToHandler(fn) {
@@ -280,16 +281,16 @@ test("HandlerEntry", () => {
     intAdd,
     newHandlerEntryNull(),
   );
-  assertEquals(handlerFind(handlerEntry, mkRawStr("+")), intAdd);
+  is(handlerFind(handlerEntry, mkRawStr("+")), intAdd);
 
-  assertEquals(
+  is(
     valGetI64(
       callHandler(intAdd, newInt(100n), mkRawStr("+"), newInt(33n), newE()),
     ),
     133n,
   );
 
-  assertEquals(
+  is(
     valGetI64(
       callHandler(
         handlerFind(handlerEntry, mkRawStr("+")),
@@ -302,7 +303,7 @@ test("HandlerEntry", () => {
     134n,
   );
 
-  assertEquals(
+  is(
     valGetI64(intAddJs(newInt(100n), mkRawStr("+"), newInt(32n), newFrame())),
     132n,
   );
@@ -313,7 +314,7 @@ test("HandlerEntry", () => {
     newHandlerEntryNull(),
   );
 
-  assertEquals(
+  is(
     valGetI64(
       callHandler(
         handlerFind(intAddJsEntry, mkRawStr("+")),
@@ -329,37 +330,37 @@ test("HandlerEntry", () => {
 
 test("Handlers", () => {
   const h = newHandlers();
-  assertEquals(handlersGetForType(h, TYPE_NIL), null); // 0
-  assertEquals(handlersGetForType(h, TYPE_INT), null); // 1
-  assertEquals(handlersGetForType(h, TYPE_FLOAT), null); // 2
-  assertEquals(handlersGetForType(h, TYPE_STR), null); // 3
-  assertEquals(handlersGetForType(h, TYPE_PAIR), null); // 4
-  assertEquals(handlersGetForType(h, TYPE_NAME), null); // 5
-  assertEquals(handlersGetForType(h, TYPE_LATER), null); // 6
-  assertEquals(handlersGetForType(h, TYPE_MSG), null); // 7
-  assertEquals(handlersGetForType(h, TYPE_SEND), null); // 8
-  assertEquals(handlersGetForType(h, TYPE_BLOCK), null); // 9
-  assertEquals(handlersGetForType(h, TYPE_ARRAY), null); // 10
+  is(handlersGetForType(h, TYPE_NIL), null); // 0
+  is(handlersGetForType(h, TYPE_INT), null); // 1
+  is(handlersGetForType(h, TYPE_FLOAT), null); // 2
+  is(handlersGetForType(h, TYPE_STR), null); // 3
+  is(handlersGetForType(h, TYPE_PAIR), null); // 4
+  is(handlersGetForType(h, TYPE_NAME), null); // 5
+  is(handlersGetForType(h, TYPE_LATER), null); // 6
+  is(handlersGetForType(h, TYPE_MSG), null); // 7
+  is(handlersGetForType(h, TYPE_SEND), null); // 8
+  is(handlersGetForType(h, TYPE_BLOCK), null); // 9
+  is(handlersGetForType(h, TYPE_ARRAY), null); // 10
 
   const hIntAdd = fnToHandler(intAddJs),
     hIntSub = fnToHandler(intSubJs);
 
   handlersBind(h, TYPE_INT, mkRawStr("+"), hIntAdd);
-  assertEquals(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
+  is(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
   handlersBind(h, TYPE_INT, mkRawStr("-"), hIntSub);
-  assertEquals(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
-  assertEquals(handlersFind(h, TYPE_INT, mkRawStr("-")), hIntSub);
+  is(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
+  is(handlersFind(h, TYPE_INT, mkRawStr("-")), hIntSub);
 });
 
 test("Frame", () => {
   const f1 = newFrame(),
     vFoo = newInt(15n),
     sFoo = mkRawStr("foo");
-  assertEquals(frameFind(f1, sFoo), null);
+  is(frameFind(f1, sFoo), null);
   frameBind(f1, sFoo, vFoo);
-  assertEquals(valGetI64(frameFind(f1, sFoo)), 15n);
+  is(valGetI64(frameFind(f1, sFoo)), 15n);
   const f2 = frameDown(f1);
-  assertEquals(valGetI64(frameFind(f2, sFoo)), 15n);
+  is(valGetI64(frameFind(f2, sFoo)), 15n);
 });
 
 test("frameBindHandler", () => {
@@ -367,17 +368,11 @@ test("frameBindHandler", () => {
     hIntAdd = fnToHandler(intAddJs),
     hIntSub = fnToHandler(intSubJs);
 
-  assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("+")), null);
-  assertEquals(
-    frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd),
-    undefined,
-  );
-  assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("+")), hIntAdd);
-  assertEquals(
-    frameBindHandler(f, TYPE_INT, mkRawStr("-"), hIntSub),
-    undefined,
-  );
-  assertEquals(frameFindHandler(f, TYPE_INT, mkRawStr("-")), hIntSub);
+  is(frameFindHandler(f, TYPE_INT, mkRawStr("+")), null);
+  is(frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd), undefined);
+  is(frameFindHandler(f, TYPE_INT, mkRawStr("+")), hIntAdd);
+  is(frameBindHandler(f, TYPE_INT, mkRawStr("-"), hIntSub), undefined);
+  is(frameFindHandler(f, TYPE_INT, mkRawStr("-")), hIntSub);
 });
 
 test("frameSend", () => {
@@ -385,10 +380,7 @@ test("frameSend", () => {
     hIntAdd = fnToHandler(intAddJs);
 
   frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd);
-  assertEquals(
-    valGetI64(frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n), f)),
-    52n,
-  );
+  is(valGetI64(frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n), f)), 52n);
 });
 
 function nilEval(s, _v, _o, _e) {
@@ -405,36 +397,27 @@ test("frameEval", () => {
     hIntEval = fnToHandler(intEval);
 
   frameBindHandler(f, TYPE_NIL, mkRawStr("eval"), hNilEval);
-  assertEquals(frameEval(f, NIL), NIL);
+  is(frameEval(f, NIL), NIL);
 
   frameBindHandler(f, TYPE_INT, mkRawStr("eval"), hIntEval);
-  assertEquals(valGetI64(frameEval(f, newInt(42n))), 42n);
+  is(valGetI64(frameEval(f, newInt(42n))), 42n);
 });
 
 test("frameVal", () => {
-  assertEquals(valGetTag(newFrameVal(newFrame())), TYPE_FRAME);
-  assertEquals(isFrame(newFrameVal(newFrame())), 1);
+  is(valGetTag(newFrameVal(newFrame())), TYPE_FRAME);
+  is(isFrame(newFrameVal(newFrame())), 1);
 });
 
 test("nil handlers", () => {
-  assertEquals(
-    valGetI64(callHandler(nilEq, NIL, mkRawStr("="), NIL, newE())),
-    1n,
-  );
-  assertEquals(isNil(callHandler(nilEq, NIL, mkRawStr("="), TRUE, newE())), 1);
+  is(valGetI64(callHandler(nilEq, NIL, mkRawStr("="), NIL, newE())), 1n);
+  is(isNil(callHandler(nilEq, NIL, mkRawStr("="), TRUE, newE())), 1);
 
-  assertEquals(
-    isNil(callHandler(returnNil, NIL, mkRawStr("!"), TRUE, newE())),
-    1,
-  );
+  is(isNil(callHandler(returnNil, NIL, mkRawStr("!"), TRUE, newE())), 1);
 });
 
 test("int handlers", () => {
   function checkRaw(f, a, op, b, r, wrapFn = (f) => f) {
-    assertEquals(
-      wrapFn(callHandler(f, newInt(a), mkRawStr(op), newInt(b), newE())),
-      r,
-    );
+    is(wrapFn(callHandler(f, newInt(a), mkRawStr(op), newInt(b), newE())), r);
   }
 
   function check(f, a, op, b, r) {
@@ -452,7 +435,7 @@ test("int handlers", () => {
 
 test("float handlers", () => {
   function checkRaw(f, a, op, b, r, wrapFn = (f) => f) {
-    assertEquals(
+    is(
       wrapFn(callHandler(f, newFloat(a), mkRawStr(op), newFloat(b), newE())),
       r,
     );
@@ -473,27 +456,24 @@ test("float handlers", () => {
 });
 
 skip("str handlers", () => {
-  assertEquals(strLen(mkStr("hi!")), 3);
-  assertEquals(isStr(mkStr("hi!")), 1);
+  is(strLen(mkStr("hi!")), 3);
+  is(isStr(mkStr("hi!")), 1);
   const f = newFrame(),
     hStrSize = fnToHandler(strSize);
 
   frameBindHandler(f, TYPE_STR, mkRawStr("size"), hStrSize);
-  assertEquals(
-    frameEval(f, newSend(mkStr("hi!"), newRawMsg(mkRawStr("size"), NIL))),
-    3n,
-  );
-  assertEquals(
+  is(frameEval(f, newSend(mkStr("hi!"), newRawMsg(mkRawStr("size"), NIL))), 3n);
+  is(
     valGetI64(
       callHandler(strSize, mkStr("hi!"), mkRawStr("size"), NIL, newE()),
     ),
     1n,
   );
-  assertEquals(
+  is(
     isNil(callHandler(strEq, mkStr("hi!"), mkRawStr("="), mkStr("hi"), newE())),
     1,
   );
-  assertEquals(
+  is(
     valGetI64(
       callHandler(strEq, mkStr("hi"), mkRawStr("="), mkStr("hi"), newE()),
     ),
@@ -514,7 +494,7 @@ function mkEnv(handlers) {
 }
 
 test("pair handlers", () => {
-  assertEquals(
+  is(
     valGetI64(
       callHandler(
         hPairA,
@@ -526,7 +506,7 @@ test("pair handlers", () => {
     ),
     42n,
   );
-  assertEquals(
+  is(
     valGetI64(
       callHandler(
         hPairB,
@@ -544,11 +524,11 @@ test("pair handlers", () => {
     [TYPE_PAIR, { eval: hPairEval }],
   ]);
 
-  assertEquals(
+  is(
     valGetI64(pairGetA(frameEval(f, newPair(newInt(42n), newInt(100n))))),
     42n,
   );
-  assertEquals(
+  is(
     valGetI64(pairGetB(frameEval(f, newPair(newInt(42n), newInt(100n))))),
     100n,
   );
@@ -556,15 +536,15 @@ test("pair handlers", () => {
 
 test("later handlers", () => {
   const f = mkEnv([[TYPE_LATER, { eval: hLaterEval }]]);
-  assertEquals(valGetI64(frameEval(f, newLater(newInt(42n)))), 42n);
+  is(valGetI64(frameEval(f, newLater(newInt(42n)))), 42n);
 });
 
 test("name handlers", () => {
   const f = mkEnv([[TYPE_NAME, { eval: hNameEval }]]);
   frameBind(f, mkRawStr("foo"), newInt(42n));
-  assertEquals(valGetI64(frameEval(f, newName(mkRawStr("foo")))), 42n);
+  is(valGetI64(frameEval(f, newName(mkRawStr("foo")))), 42n);
 
-  assertEquals(
+  is(
     strEquals(
       callHandler(
         hNameStr,
@@ -580,7 +560,7 @@ test("name handlers", () => {
 });
 
 test("msg handlers", () => {
-  assertEquals(
+  is(
     strEquals(
       callHandler(
         hMsgVerb,
@@ -594,7 +574,7 @@ test("msg handlers", () => {
     1,
   );
 
-  assertEquals(
+  is(
     valGetI64(
       callHandler(
         hMsgObj,
@@ -612,7 +592,7 @@ test("msg handlers", () => {
     [TYPE_MSG, { eval: hMsgEval }],
   ]);
   frameBind(f, mkRawStr("foo"), newInt(43n));
-  assertEquals(
+  is(
     valGetI64(
       valGetMsgObj(
         frameEval(f, newMsg(mkRawStr("+"), newName(mkRawStr("foo")))),
@@ -623,7 +603,7 @@ test("msg handlers", () => {
 });
 
 test("send handlers", () => {
-  assertEquals(
+  is(
     valGetI64(
       callHandler(
         hSendSubj,
@@ -636,7 +616,7 @@ test("send handlers", () => {
     10n,
   );
 
-  assertEquals(
+  is(
     valGetI64(
       valGetMsgObj(
         callHandler(
@@ -658,7 +638,7 @@ test("send handlers", () => {
     [TYPE_SEND, { eval: hSendEval }],
   ]);
   frameBind(f, mkRawStr("foo"), newInt(43n));
-  assertEquals(
+  is(
     valGetI64(
       frameEval(
         f,
@@ -681,21 +661,57 @@ function mkBlock(...items) {
 }
 
 test("block handlers", () => {
-  assertEquals(
-    callHandler(hBlockEval, newBlock(), mkRawStr("eval"), NIL, newE()),
-    NIL,
-  );
-
   const f = mkEnv([
     [TYPE_INT, { eval: hReturnSubject }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_BLOCK, { eval: hBlockEval }],
   ]);
   frameBind(f, mkRawStr("foo"), newInt(44n));
-  assertEquals(
+  is(
     valGetI64(
       frameEval(f, mkBlock(newInt(10n), newInt(11n), newName(mkRawStr("foo")))),
     ),
+    44n,
+  );
+});
+
+function mkArray(...items) {
+  const b = newArray(items.length);
+  for (let i = 0; i < items.length; i++) {
+    arraySetItem(b, i, items[i]);
+  }
+  return b;
+}
+
+test("array handlers", () => {
+  const f = mkEnv([
+    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_NAME, { eval: hNameEval }],
+    [TYPE_ARRAY, { eval: hArrayEval }],
+  ]);
+  frameBind(f, mkRawStr("foo"), newInt(44n));
+  const r = frameEval(
+    f,
+    mkArray(newInt(10n), newInt(11n), newName(mkRawStr("foo"))),
+  );
+  is(valGetI64(arrayGetItem(r, 0)), 10n);
+  is(valGetI64(arrayGetItem(r, 1)), 11n);
+  is(valGetI64(arrayGetItem(r, 2)), 44n);
+
+  is(
+    valGetI64(
+      callHandler(hArraySize, newArray(0), mkRawStr("size"), NIL, newE()),
+    ),
+    0n,
+  );
+
+  is(valGetI64(callHandler(hArraySize, r, mkRawStr("size"), NIL, newE())), 3n);
+  is(
+    valGetI64(callHandler(hArrayGetItem, r, mkRawStr("."), newInt(0n), newE())),
+    10n,
+  );
+  is(
+    valGetI64(callHandler(hArrayGetItem, r, mkRawStr("."), newInt(2n), newE())),
     44n,
   );
 });
