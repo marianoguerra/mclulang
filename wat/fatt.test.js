@@ -123,6 +123,8 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hPairA,
         hPairB,
         hPairEval,
+
+        hLaterEval,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -537,4 +539,9 @@ test("pair handlers", () => {
     valGetI64(pairGetB(frameEval(f, newPair(newInt(42n), newInt(100n))))),
     100n,
   );
+});
+
+test("later handlers", () => {
+  const f = mkEnv([[TYPE_LATER, { eval: hLaterEval }]]);
+  assertEquals(valGetI64(frameEval(f, newLater(newInt(42n)))), 42n);
 });

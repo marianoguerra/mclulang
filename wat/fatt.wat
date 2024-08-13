@@ -884,4 +884,12 @@
 				 (call $pairGetA (local.get $pair)))
 			(call $anyEval (local.get $e)
 				 (call $pairGetB (local.get $pair)))))
+
+	;; later handlers
+
+	(func $hLaterEval (export "hLaterEval")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $laterUnwrap (ref.cast (ref $Val) (local.get $s))))
+
 )
