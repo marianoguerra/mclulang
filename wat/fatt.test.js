@@ -102,6 +102,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
 
         nilEq,
         returnNil,
+        hReturnSubject,
 
         intAdd,
         intSub,
@@ -121,6 +122,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
 
         hPairA,
         hPairB,
+        hPairEval,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -484,6 +486,18 @@ skip("str handlers", () => {
   );
 });
 
+function mkEnv(handlers) {
+  const f = newFrame();
+  for (const [type, typeHandlers] of handlers) {
+    for (const verb in typeHandlers) {
+      const handler = typeHandlers[verb];
+      frameBindHandler(f, type, mkRawStr(verb), handler);
+    }
+  }
+
+  return f;
+}
+
 test("pair handlers", () => {
   assertEquals(
     valGetI64(
@@ -507,6 +521,20 @@ test("pair handlers", () => {
         newE(),
       ),
     ),
+    100n,
+  );
+
+  const f = mkEnv([
+    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_PAIR, { eval: hPairEval }],
+  ]);
+
+  assertEquals(
+    valGetI64(pairGetA(frameEval(f, newPair(newInt(42n), newInt(100n))))),
+    42n,
+  );
+  assertEquals(
+    valGetI64(pairGetB(frameEval(f, newPair(newInt(42n), newInt(100n))))),
     100n,
   );
 });

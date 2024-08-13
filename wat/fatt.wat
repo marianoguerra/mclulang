@@ -199,7 +199,7 @@
 	(func $isPair (export "isPair") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_PAIR)))
 
-	(func $newNair (export "newPair")
+	(func $newPair (export "newPair")
 			(param $a (ref $Val)) (param $b (ref $Val))
 			(result (ref $Val))
 		(struct.new $Val
@@ -715,6 +715,12 @@
 
 	;; generic handlers
 
+	(func $anyEval (param $f eqref) (param $v eqref) (result (ref $Val))
+		(ref.as_non_null
+			(call $frameEval
+				(ref.cast (ref $Frame) (local.get $f))
+				(ref.cast (ref $Val) (local.get $v)))))
+
 	(func $hReturnSubject (export "hReturnSubject")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
@@ -867,4 +873,15 @@
 			(result eqref)
 		(call $pairGetB (ref.cast (ref $Val) (local.get $s))))
 
+	(func $hPairEval (export "hPairEval")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(local $pair (ref $Val))
+		(local.set $pair (ref.cast (ref $Val) (local.get $s)))
+
+		(call $newPair
+			(call $anyEval (local.get $e)
+				 (call $pairGetA (local.get $pair)))
+			(call $anyEval (local.get $e)
+				 (call $pairGetB (local.get $pair)))))
 )
