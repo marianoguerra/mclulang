@@ -583,6 +583,11 @@
 			(global.get $TYPE_FRAME)
 			(local.get $v)))
 
+	(func $valGetFrame (export "valGetFrame")
+			(param $v (ref $Val))
+			(result (ref $Frame))
+		(ref.cast (ref $Frame) (struct.get $Val $v (local.get $v))))
+
 	(func $isFrame (export "isFrame") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_FRAME)))
 
@@ -1119,4 +1124,31 @@
 
 		(struct.new $Val (global.get $TYPE_ARRAY) (local.get $result))
 	)
+
+	;; frame handlers
+
+	(func $anyGetFrame (param $v eqref) (result (ref $Frame))
+		(call $valGetFrame (ref.cast (ref $Val) (local.get $v))))
+
+	(func $hFrameUp (export "hFrameUp")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $newFrameVal
+			(ref.as_non_null
+				(call $frameUp (call $anyGetFrame (local.get $s))))))
+
+	(func $hFrameEvalIn (export "hFrameEvalIn")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $anyEval
+			(call $anyGetFrame (local.get $s))
+			(ref.cast (ref $Val) (local.get $o))))
+
+	(func $hGetObjType (export "hGetObjType")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $newInt
+			(i64.extend_i32_s
+				(call $valGetTag (ref.cast (ref $Val) (local.get $o))))))
+
 )

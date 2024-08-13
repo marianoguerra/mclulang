@@ -90,8 +90,9 @@ const bin = Deno.readFileSync("./fatt.wasm"),
 
         TYPE_FRAME: { value: TYPE_FRAME },
         newFrame,
-        newFrameVal,
         isFrame,
+        newFrameVal,
+        valGetFrame,
         frameBind,
         frameFind,
         frameDown,
@@ -143,6 +144,10 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hArrayEval,
         hArraySize,
         hArrayGetItem,
+
+        hFrameUp,
+        hFrameEvalIn,
+        hGetObjType,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -715,5 +720,48 @@ test("array handlers", () => {
   is(
     valGetI64(callHandler(hArrayGetItem, r, mkRawStr("."), newInt(2n), newE())),
     44n,
+  );
+});
+
+test("frame handlers", () => {
+  const f1 = newFrame(),
+    vFoo = newInt(15n),
+    sFoo = mkRawStr("foo");
+  is(frameFind(f1, sFoo), null);
+  frameBind(f1, sFoo, vFoo);
+  const f2 = frameDown(f1);
+  is(
+    valGetFrame(
+      callHandler(hFrameUp, newFrameVal(f2), mkRawStr("up"), NIL, newE()),
+    ),
+    f1,
+  );
+
+  const f = mkEnv([
+    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_NAME, { eval: hNameEval }],
+    [TYPE_ARRAY, { eval: hArrayEval }],
+  ]);
+  frameBind(f, mkRawStr("bar"), newInt(1000n));
+
+  const r = frameEval(
+    f,
+    callHandler(
+      hFrameEvalIn,
+      newFrameVal(f),
+      mkRawStr("eval-in"),
+      mkArray(newInt(10n), newInt(11n), newName(mkRawStr("bar"))),
+      newE(),
+    ),
+  );
+  is(valGetI64(arrayGetItem(r, 0)), 10n);
+  is(valGetI64(arrayGetItem(r, 1)), 11n);
+  is(valGetI64(arrayGetItem(r, 2)), 1000n);
+
+  is(
+    valGetI64(
+      callHandler(hGetObjType, NIL, mkRawStr("get-type"), newInt(10n), newE()),
+    ),
+    BigInt(TYPE_INT),
   );
 });
