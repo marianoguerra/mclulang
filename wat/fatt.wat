@@ -510,7 +510,7 @@
 		(ref.cast (ref $Val) (local.get $subj))
 		(ref.cast (ref $Str) (local.get $verb))
 		(ref.cast (ref $Val) (local.get $obj))
-		(ref.cast (ref $Val) (local.get $e))
+		(ref.cast (ref $Frame) (local.get $e))
 		(local.get $fn)
 		(call_ref $HandlerFn)
 		(ref.cast (ref $Val)))
@@ -672,7 +672,7 @@
 			(param $s (ref $Val))
 			(param $v (ref $Str))
 			(param $o (ref $Val))
-			(param $e (ref $Val))
+			(param $e (ref $Frame))
 			(result (ref null $Val))
 		(local $h (ref null $HandlerFn))
 		(local.set $h
@@ -711,7 +711,19 @@
 			(local.get $v)
 			(ref.as_non_null (global.get $RAW_STR_EVAL))
 			(local.get $e)
-			(local.get $e)))
+			(local.get $f)))
+
+	;; generic handlers
+
+	(func $hReturnSubject (export "hReturnSubject")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(local.get $s))
+
+	(func $returnNil (export "returnNil")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(global.get $NIL))
 
 	;; nil handlers
 
@@ -722,11 +734,6 @@
 			(call $isNil (ref.cast (ref $Val) (local.get $o)))
 			(then (global.get $TRUE))
 			(else (global.get $NIL))))
-
-	(func $returnNil (export "returnNil")
-			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
-			(result eqref)
-		(global.get $NIL))
 
 	;; int handlers
 
@@ -859,4 +866,5 @@
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $pairGetB (ref.cast (ref $Val) (local.get $s))))
+
 )

@@ -134,7 +134,7 @@ const memU8 = new Uint8Array(mem.buffer),
   { mkStr, mkRawStr } = mkStrFns(memU8, strFromMem, rawStrFromMem);
 
 function newE() {
-  return newFrameVal(newFrame());
+  return newFrame();
 }
 test("NIL", () => {
   assertEquals(isNil(NIL), 1);
@@ -369,9 +369,7 @@ test("frameSend", () => {
 
   frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd);
   assertEquals(
-    valGetI64(
-      frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n), newFrameVal(f)),
-    ),
+    valGetI64(frameSend(f, newInt(42n), mkRawStr("+"), newInt(10n), f)),
     52n,
   );
 });
