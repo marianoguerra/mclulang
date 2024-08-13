@@ -206,12 +206,14 @@ e reply @(1 add _) : @(it + that),
 
 test("full bootstrap", () => {
   const code = `{
-e find (e get-type e)
-  bind "reply" : @{
-    e find (e get-type (e eval-in (msg obj() a() subj())))
-      bind ((msg obj() a() msg() verb()) : (msg obj() b())),
+e bindHandler [(e get-type e), "reply", @{
+    e bindHandler [
+        (e get-type (e eval-in (msg obj() a() subj()))),
+        (msg obj() a() msg() verb()),
+        (msg obj() b())
+    ],
     ()
-  },
+  }],
 e reply @(@(subj verb obj) -> body) : @(e reply it : that),
 
 @(@a is _) -> @(e up () bind (it name ()) : that),

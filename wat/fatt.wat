@@ -34,12 +34,16 @@
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_INT)))
 
 	(func $valGetInt (export "valGetInt") (param $v (ref $Val)) (result (ref $Int))
-		(struct.get $Val $v (local.get $v))
-		(ref.cast (ref $Int)))
+		(ref.cast (ref $Int) (struct.get $Val $v (local.get $v))))
 
 	(func $valGetI64 (export "valGetI64") (param $v (ref $Val)) (result i64)
 	    (struct.get $Int $val
 			(call $valGetInt (local.get $v))))
+
+	(func $valGetI32 (export "valGetI32") (param $v (ref $Val)) (result i32)
+		(i32.wrap_i64
+		    (struct.get $Int $val
+				(call $valGetInt (local.get $v)))))
 
 	;; float
 
@@ -465,6 +469,7 @@
 		(struct
 			(field $key (ref $Str))
 			(field $val (ref $HandlerFn))
+			(field $impl (ref null $Val))
 			(field $up (ref null $HandlerEntry))))
 
 	(func $newHandlerEntryNull (export "newHandlerEntryNull")
@@ -479,6 +484,18 @@
 		(struct.new $HandlerEntry
 			(local.get $key)
 			(local.get $val)
+			(ref.null $Val)
+			(local.get $up)))
+
+	(func $newHandlerEntryImpl (export "newHandlerEntryImpl")
+			(param $key (ref $Str))
+			(param $impl (ref $Val))
+			(param $up (ref null $HandlerEntry))
+			(result (ref $HandlerEntry))
+		(struct.new $HandlerEntry
+			(local.get $key)
+			(ref.func $returnNil)
+			(local.get $impl)
 			(local.get $up)))
 
 	(func $handlerFind (export "handlerFind")
@@ -546,6 +563,21 @@
 			(struct.get $Handlers $entries (local.get $self))
 			(local.get $t)
 			(call $newHandlerEntry
+				(local.get $k)
+				(local.get $h)
+				(call $handlersGetForType
+					(local.get $self)
+					(local.get $t)))))
+
+	(func $handlersBindImpl (export "handlersBindImpl")
+			(param $self (ref $Handlers))
+			(param $t i32)
+			(param $k (ref $Str))
+			(param $h (ref $Val))
+		(array.set $NativeHandlers
+			(struct.get $Handlers $entries (local.get $self))
+			(local.get $t)
+			(call $newHandlerEntryImpl
 				(local.get $k)
 				(local.get $h)
 				(call $handlersGetForType
@@ -657,6 +689,17 @@
 			(param $k (ref $Str))
 			(param $h (ref $HandlerFn))
 		(call $handlersBind
+			(struct.get $Frame $handlers (local.get $f))
+			(local.get $t)
+			(local.get $k)
+			(local.get $h)))
+
+	(func $frameBindHandlerImpl (export "frameBindHandlerImpl")
+			(param $f (ref $Frame))
+			(param $t i32)
+			(param $k (ref $Str))
+			(param $h (ref $Val))
+		(call $handlersBindImpl
 			(struct.get $Frame $handlers (local.get $f))
 			(local.get $t)
 			(local.get $k)
@@ -1151,4 +1194,30 @@
 			(i64.extend_i32_s
 				(call $valGetTag (ref.cast (ref $Val) (local.get $o))))))
 
+	(func $hFrameBindHandler (export "hFrameBindHandler")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+
+		(local $items (ref $Array))
+		(local $type (ref $Val))
+		(local $verb (ref $Val))
+		(local $impl (ref $Val))
+
+		(local.set $items
+			(call $valGetArrayRaw (ref.cast (ref $Val) (local.get $o))))
+		(local.set $type
+			(array.get $Array (local.get $items) (i32.const 0)))
+		(local.set $verb
+			(array.get $Array (local.get $items) (i32.const 1)))
+		(local.set $impl
+			(array.get $Array (local.get $items) (i32.const 2)))
+
+		(call $frameBindHandlerImpl
+			(call $anyGetFrame (local.get $s))
+			(call $valGetI32 (local.get $type))
+			(call $valGetStr (local.get $verb))
+			(local.get $impl))
+
+		(global.get $NIL)
+	)
 )

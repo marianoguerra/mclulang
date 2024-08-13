@@ -163,6 +163,10 @@ function mkPrimFrame() {
       "eval-in": (s, m) => s.eval(m.obj),
       find: (s, m) => s.find(m.obj),
       bind: (s, m) => s.bind(m.obj.a, m.obj.b),
+      bindHandler: (s, m) => {
+        const [type, name, impl] = m.obj;
+        return s.find(type).bind(name, impl);
+      },
       "get-type": (_s, m) => getType(m.obj),
       "new-frame": () => new Frame(),
     },
