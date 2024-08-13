@@ -1008,4 +1008,50 @@
 				(local.get $that)
 				(local.get $frameForSend)))
 	)
+
+	;; block handlers
+
+	
+	(func $hBlockEval (export "hBlockEval")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+
+	    (local $i i32)
+	    (local $end i32)
+		(local $items (ref $Block))
+		(local $result (ref $Val))
+		(local $item (ref $Val))
+		(local $frame (ref $Frame))
+
+
+		(local.set $items
+			(call $valGetBlockRaw (ref.cast (ref $Val) (local.get $s))))
+	    (local.set $i (i32.const 0))
+		(local.set $end (array.len (local.get $items)))
+		(local.set $result (global.get $NIL))
+		(local.set $frame (ref.cast (ref $Frame) (local.get $e)))
+
+
+	    ;; while ($i < $end)
+	    block $loop_exit
+			loop $loop
+				;; Break the loop if $i >= $end
+				(i32.ge_s (local.get $i) (local.get $end))
+				br_if $loop_exit
+
+				(local.set $item
+					(array.get $Block (local.get $items) (local.get $i)))
+				(local.set $result
+					(ref.as_non_null
+						(call $frameEval (local.get $frame) (local.get $item))))
+
+				;; $i++
+				(local.set $i (i32.add (local.get $i) (i32.const 1)))
+
+				br $loop
+			end
+	    end
+
+		(local.get $result)
+	)
 )

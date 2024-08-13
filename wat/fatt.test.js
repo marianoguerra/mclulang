@@ -136,6 +136,8 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hSendSubj,
         hSendMsg,
         hSendEval,
+
+        hBlockEval,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -667,5 +669,33 @@ test("send handlers", () => {
       ),
     ),
     53n,
+  );
+});
+
+function mkBlock(...items) {
+  const b = newBlock(items.length);
+  for (let i = 0; i < items.length; i++) {
+    blockSetItem(b, i, items[i]);
+  }
+  return b;
+}
+
+test("block handlers", () => {
+  assertEquals(
+    callHandler(hBlockEval, newBlock(), mkRawStr("eval"), NIL, newE()),
+    NIL,
+  );
+
+  const f = mkEnv([
+    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_NAME, { eval: hNameEval }],
+    [TYPE_BLOCK, { eval: hBlockEval }],
+  ]);
+  frameBind(f, mkRawStr("foo"), newInt(44n));
+  assertEquals(
+    valGetI64(
+      frameEval(f, mkBlock(newInt(10n), newInt(11n), newName(mkRawStr("foo")))),
+    ),
+    44n,
   );
 });
