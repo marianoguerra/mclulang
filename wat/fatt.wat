@@ -908,4 +908,28 @@
 			(result eqref)
 		(call $strFromRawStr
 			(call $valGetNameRawStr (ref.cast (ref $Val) (local.get $s)))))
+
+	;; msg handlers
+
+	(func $hMsgVerb (export "hMsgVerb")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $valGetMsgVerb
+			(ref.cast (ref $Val) (local.get $s))))
+
+	(func $hMsgObj (export "hMsgObj")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $valGetMsgObj
+			(ref.cast (ref $Val) (local.get $s))))
+
+	(func $hMsgEval (export "hMsgEval")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $newMsg
+			(call $valGetMsgVerbRawStr (ref.cast (ref $Val) (local.get $s)))
+			(call $anyEval
+				(local.get $e)
+				(call $valGetMsgObj
+					(ref.cast (ref $Val) (local.get $s))))))
 )

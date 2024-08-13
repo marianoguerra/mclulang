@@ -128,6 +128,10 @@ const bin = Deno.readFileSync("./fatt.wasm"),
 
         hNameEval,
         hNameStr,
+
+        hMsgVerb,
+        hMsgObj,
+        hMsgEval,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -566,5 +570,48 @@ test("name handlers", () => {
       mkStr("bar"),
     ),
     1,
+  );
+});
+
+test("msg handlers", () => {
+  assertEquals(
+    strEquals(
+      callHandler(
+        hMsgVerb,
+        newMsg(mkRawStr("+"), NIL),
+        mkRawStr("verb"),
+        NIL,
+        newE(),
+      ),
+      mkStr("+"),
+    ),
+    1,
+  );
+
+  assertEquals(
+    valGetI64(
+      callHandler(
+        hMsgObj,
+        newMsg(mkRawStr("+"), newInt(100n)),
+        mkRawStr("verb"),
+        NIL,
+        newE(),
+      ),
+    ),
+    100n,
+  );
+
+  const f = mkEnv([
+    [TYPE_NAME, { eval: hNameEval }],
+    [TYPE_MSG, { eval: hMsgEval }],
+  ]);
+  frameBind(f, mkRawStr("foo"), newInt(43n));
+  assertEquals(
+    valGetI64(
+      valGetMsgObj(
+        frameEval(f, newMsg(mkRawStr("+"), newName(mkRawStr("foo")))),
+      ),
+    ),
+    43n,
   );
 });
