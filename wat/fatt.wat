@@ -60,8 +60,7 @@
 
 	(func $valGetFloat (export "valGetFloat")
 			(param $v (ref $Val)) (result (ref $Float))
-		(struct.get $Val $v (local.get $v))
-		(ref.cast (ref $Float)))
+		(ref.cast (ref $Float) (struct.get $Val $v (local.get $v))))
 
 	(func $valGetF64 (export "valGetF64") (param $v (ref $Val)) (result f64)
 	    (struct.get $Float $val
