@@ -777,6 +777,13 @@
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
+	(func $intDiv (export "intDiv")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $newFloat (f64.div
+			(f64.convert_i64_s (call $anyGetI64 (local.get $s)))
+			(f64.convert_i64_s (call $anyGetI64 (local.get $o))))))
+
 	(func $intEq (export "intEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)

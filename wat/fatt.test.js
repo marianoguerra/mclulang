@@ -107,6 +107,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         intAdd,
         intSub,
         intMul,
+        intDiv,
         intEq,
         intLt,
 
@@ -427,6 +428,7 @@ test("int handlers", () => {
   check(intAdd, 100n, "+", 20n, 120n);
   check(intSub, 100n, "-", 20n, 80n);
   check(intMul, 100n, "*", 20n, 2000n);
+  checkRaw(intDiv, 100n, "/", 20n, 5.0, valGetF64);
   check(intEq, 100n, "=", 100n, 100n);
   check(intLt, 100n, "<", 101n, 100n);
   checkRaw(intEq, 100n, "=", 1n, NIL);
