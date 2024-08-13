@@ -892,4 +892,20 @@
 			(result eqref)
 		(call $laterUnwrap (ref.cast (ref $Val) (local.get $s))))
 
+	;; name handlers
+
+	(func $hNameEval (export "hNameEval")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(ref.as_non_null
+			(call $frameFind
+				(ref.cast (ref $Frame) (local.get $e))
+				(call $valGetNameRawStr
+					(ref.cast (ref $Val) (local.get $s))))))
+
+	(func $hNameStr (export "hNameStr")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $strFromRawStr
+			(call $valGetNameRawStr (ref.cast (ref $Val) (local.get $s)))))
 )
