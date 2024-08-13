@@ -132,6 +132,10 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hMsgVerb,
         hMsgObj,
         hMsgEval,
+
+        hSendSubj,
+        hSendMsg,
+        hSendEval,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -613,5 +617,55 @@ test("msg handlers", () => {
       ),
     ),
     43n,
+  );
+});
+
+test("send handlers", () => {
+  assertEquals(
+    valGetI64(
+      callHandler(
+        hSendSubj,
+        newSend(newInt(10n), newRawMsg(mkRawStr("+"), newInt(20n))),
+        mkRawStr("subj"),
+        NIL,
+        newE(),
+      ),
+    ),
+    10n,
+  );
+
+  assertEquals(
+    valGetI64(
+      valGetMsgObj(
+        callHandler(
+          hSendMsg,
+          newSend(newInt(10n), newRawMsg(mkRawStr("+"), newInt(20n))),
+          mkRawStr("subj"),
+          NIL,
+          newE(),
+        ),
+      ),
+    ),
+    20n,
+  );
+
+  const f = mkEnv([
+    [TYPE_INT, { eval: hReturnSubject, "+": intAdd }],
+    [TYPE_NAME, { eval: hNameEval }],
+    [TYPE_MSG, { eval: hMsgEval }],
+    [TYPE_SEND, { eval: hSendEval }],
+  ]);
+  frameBind(f, mkRawStr("foo"), newInt(43n));
+  assertEquals(
+    valGetI64(
+      frameEval(
+        f,
+        newSend(
+          newInt(10n),
+          newRawMsg(mkRawStr("+"), newName(mkRawStr("foo"))),
+        ),
+      ),
+    ),
+    53n,
   );
 });

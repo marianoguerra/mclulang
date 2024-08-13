@@ -691,12 +691,22 @@
 						(local.get $e)))))
 
 
-	(data (i32.const 0) "eval")
+	(data (i32.const 0) "evalitmsgthat")
 	(global $RAW_STR_EVAL (export "RAW_STR_EVAL") (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_IT (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_MSG (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_THAT (mut (ref null $Str)) (ref.null $Str))
 
 	(func $init
 	    (global.set $RAW_STR_EVAL
-			(call $rawStrFromMem (i32.const 0) (i32.const 4))))
+			(call $rawStrFromMem (i32.const 0) (i32.const 4)))
+	    (global.set $RAW_STR_IT
+			(call $rawStrFromMem (i32.const 4) (i32.const 6)))
+	    (global.set $RAW_STR_MSG
+			(call $rawStrFromMem (i32.const 6) (i32.const 9)))
+	    (global.set $RAW_STR_THAT
+			(call $rawStrFromMem (i32.const 9) (i32.const 13)))
+	)
 
 	(start $init)
 
@@ -932,4 +942,70 @@
 				(local.get $e)
 				(call $valGetMsgObj
 					(ref.cast (ref $Val) (local.get $s))))))
+
+	;; send handlers
+
+	(func $hSendSubj (export "hSendSubj")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $valGetSendSubj
+			(ref.cast (ref $Val) (local.get $s))))
+
+	(func $hSendMsg (export "hSendMsg")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(call $valGetSendMsg
+			(ref.cast (ref $Val) (local.get $s))))
+
+	(func $hSendEval (export "hSendEval")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(local $self (ref $Val))
+		(local $frame (ref $Frame))
+		(local $subj (ref $Val))
+		(local $msg (ref $Val))
+		(local $that (ref $Val))
+		(local $frameForSend (ref $Frame))
+
+		(local.set $self (ref.cast (ref $Val) (local.get $s)))
+
+		(local.set $frame (ref.cast (ref $Frame) (local.get $e)))
+
+		(local.set $subj
+			(ref.as_non_null
+				(call $frameEval
+					(local.get $frame)
+					(call $valGetSendSubj (local.get $self)))))
+
+		(local.set $msg
+			(ref.as_non_null
+				(call $frameEval
+					(local.get $frame)
+					(call $valGetSendMsg (local.get $self)))))
+
+		(local.set $that (call $valGetMsgObj (local.get $msg)))
+
+		(local.set $frameForSend (call $frameDown (local.get $frame)))
+
+		(call $frameBind
+			(local.get $frameForSend)
+			(ref.as_non_null (global.get $RAW_STR_IT))
+			(local.get $subj))
+		(call $frameBind
+			(local.get $frameForSend)
+			(ref.as_non_null (global.get $RAW_STR_MSG))
+			(local.get $msg))
+		(call $frameBind
+			(local.get $frameForSend)
+			(ref.as_non_null (global.get $RAW_STR_THAT))
+			(local.get $that))
+
+		(ref.as_non_null
+			(call $frameSend
+				(local.get $frameForSend)
+				(local.get $subj)
+				(call $valGetMsgVerbRawStr (local.get $msg))
+				(local.get $that)
+				(local.get $frameForSend)))
+	)
 )
