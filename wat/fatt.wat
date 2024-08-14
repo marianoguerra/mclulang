@@ -464,11 +464,29 @@
 			(param $e eqref)
 			(result eqref)))
 
+	(type $Handler
+		(struct
+			(field $fn (ref null $HandlerFn))
+			(field $val (ref null $Val))))
+
+	(func $newFnHandler (param $fn (ref $HandlerFn)) (result (ref $Handler))
+		(struct.new $Handler (local.get $fn) (ref.null $Val)))
+
+	(func $newValHandler (param $val (ref $Val)) (result (ref $Handler))
+		(struct.new $Handler (ref.null $HandlerFn) (local.get $val)))
+
+	(func $handlerGetFn (export "handlerGetFn")
+			(param $self (ref $Handler)) (result (ref $HandlerFn))
+		(ref.as_non_null (struct.get $Handler $fn (local.get $self))))
+
+	(func $handlerGetVal (export "handlerGetVal")
+			(param $self (ref $Handler)) (result (ref $Val))
+		(ref.as_non_null (struct.get $Handler $val (local.get $self))))
+
 	(type $HandlerEntry
 		(struct
 			(field $key (ref $Str))
-			(field $val (ref $HandlerFn))
-			(field $impl (ref null $Val))
+			(field $val (ref $Handler))
 			(field $up (ref null $HandlerEntry))))
 
 	(func $newHandlerEntryNull (export "newHandlerEntryNull")
@@ -477,35 +495,33 @@
 
 	(func $newHandlerEntry (export "newHandlerEntry")
 			(param $key (ref $Str))
-			(param $val (ref $HandlerFn))
+			(param $fn (ref $HandlerFn))
 			(param $up (ref null $HandlerEntry))
 			(result (ref $HandlerEntry))
 		(struct.new $HandlerEntry
 			(local.get $key)
-			(local.get $val)
-			(ref.null $Val)
+			(call $newFnHandler (local.get $fn))
 			(local.get $up)))
 
-	(func $newHandlerEntryImpl (export "newHandlerEntryImpl")
+	(func $newHandlerEntryVal (export "newHandlerEntryVal")
 			(param $key (ref $Str))
-			(param $impl (ref $Val))
+			(param $val (ref $Val))
 			(param $up (ref null $HandlerEntry))
 			(result (ref $HandlerEntry))
 		(struct.new $HandlerEntry
 			(local.get $key)
-			(ref.func $returnNil)
-			(local.get $impl)
+			(call $newValHandler (local.get $val))
 			(local.get $up)))
 
 	(func $handlerFind (export "handlerFind")
 			(param $he (ref null $HandlerEntry))
 			(param $key (ref $Str))
-			(result (ref null $HandlerFn))
+			(result (ref null $Handler))
 
-		(if (result (ref null $HandlerFn))
+		(if (result (ref null $Handler))
 				(ref.is_null (local.get $he))
-		(then (ref.null $HandlerFn))
-		(else (if (result (ref null $HandlerFn))
+		(then (ref.null $Handler))
+		(else (if (result (ref null $Handler))
 				(call $rawStrEquals
 					(local.get $key)
 					(struct.get $HandlerEntry $key (local.get $he)))
@@ -515,8 +531,8 @@
 					(struct.get $HandlerEntry $up (local.get $he))
 					(local.get $key)))))))
 
-	(func $callHandler (export "callHandler")
-			(param $fn (ref null $HandlerFn))
+	(func $callHandlerFn (export "callHandlerFn")
+			(param $h (ref null $HandlerFn))
 			(param $subj eqref)
 			(param $verb eqref)
 			(param $obj eqref)
@@ -527,9 +543,35 @@
 		(ref.cast (ref $Str) (local.get $verb))
 		(ref.cast (ref $Val) (local.get $obj))
 		(ref.cast (ref $Frame) (local.get $e))
-		(local.get $fn)
+		(local.get $h)
 		(call_ref $HandlerFn)
 		(ref.cast (ref $Val)))
+
+	(func $callHandler
+			(param $h (ref $Handler))
+			(param $s (ref $Val))
+			(param $v (ref $Str))
+			(param $o (ref $Val))
+			(param $e (ref $Frame))
+			(result (ref $Val))
+
+		(local $fn (ref null $HandlerFn))
+		(local.set $fn (struct.get $Handler $fn (local.get $h)))
+		(if (result (ref $Val)) (ref.is_null (local.get $fn))
+			(then
+				(ref.as_non_null
+					(call $frameEval
+						(local.get $e)
+						(ref.as_non_null
+							(struct.get $Handler $val (local.get $h))))))
+			(else
+				(local.get $s)
+				(local.get $v)
+				(local.get $o)
+				(local.get $e)
+				(call $handlerGetFn (local.get $h))
+				(call_ref $HandlerFn)
+				(ref.cast (ref $Val)))))
 
 	;; handlers
 
@@ -568,7 +610,7 @@
 					(local.get $self)
 					(local.get $t)))))
 
-	(func $handlersBindImpl (export "handlersBindImpl")
+	(func $handlersBindVal (export "handlersBindVal")
 			(param $self (ref $Handlers))
 			(param $t i32)
 			(param $k (ref $Str))
@@ -576,7 +618,7 @@
 		(array.set $NativeHandlers
 			(struct.get $Handlers $entries (local.get $self))
 			(local.get $t)
-			(call $newHandlerEntryImpl
+			(call $newHandlerEntryVal
 				(local.get $k)
 				(local.get $h)
 				(call $handlersGetForType
@@ -587,7 +629,7 @@
 			(param $self (ref $Handlers))
 			(param $t i32)
 			(param $k (ref $Str))
-			(result (ref null $HandlerFn))
+			(result (ref null $Handler))
 		(call $handlerFind
 			(call $handlersGetForType
 				(local.get $self)
@@ -693,12 +735,12 @@
 			(local.get $k)
 			(local.get $h)))
 
-	(func $frameBindHandlerImpl (export "frameBindHandlerImpl")
+	(func $frameBindHandlerVal (export "frameBindHandlerVal")
 			(param $f (ref $Frame))
 			(param $t i32)
 			(param $k (ref $Str))
 			(param $h (ref $Val))
-		(call $handlersBindImpl
+		(call $handlersBindVal
 			(struct.get $Frame $handlers (local.get $f))
 			(local.get $t)
 			(local.get $k)
@@ -708,7 +750,7 @@
 			(param $f (ref $Frame))
 			(param $t i32)
 			(param $k (ref $Str))
-			(result (ref null $HandlerFn))
+			(result (ref null $Handler))
 		(call $handlersFind
 			(struct.get $Frame $handlers (local.get $f))
 			(local.get $t)
@@ -721,7 +763,7 @@
 			(param $o (ref $Val))
 			(param $e (ref $Frame))
 			(result (ref null $Val))
-		(local $h (ref null $HandlerFn))
+		(local $h (ref null $Handler))
 		(local.set $h
 			(call $frameFindHandler
 				(local.get $f)
@@ -731,7 +773,7 @@
 		(if (result (ref null $Val)) (ref.is_null (local.get $h))
 			(then (ref.null $Val))
 			(else (call $callHandler
-				  		(local.get $h)
+						(ref.as_non_null (local.get $h))
 						(local.get $s)
 						(local.get $v)
 						(local.get $o)
@@ -1211,12 +1253,12 @@
 		(local.set $impl
 			(array.get $Array (local.get $items) (i32.const 2)))
 
-		(call $frameBindHandlerImpl
+		(call $frameBindHandlerVal
 			(call $anyGetFrame (local.get $s))
 			(call $valGetI32 (local.get $type))
 			(call $valGetStr (local.get $verb))
 			(local.get $impl))
 
-		(global.get $NIL)
+		(local.get $s)
 	)
 )

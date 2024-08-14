@@ -81,7 +81,9 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         newHandlerEntryNull,
         newHandlerEntry,
         handlerFind,
-        callHandler,
+        handlerGetFn,
+        handlerGetVal,
+        callHandlerFn: callHandler,
 
         newHandlers,
         handlersGetForType,
@@ -148,6 +150,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hFrameUp,
         hFrameEvalIn,
         hGetObjType,
+        hFrameBindHandler,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -287,7 +290,7 @@ test("HandlerEntry", () => {
     intAdd,
     newHandlerEntryNull(),
   );
-  is(handlerFind(handlerEntry, mkRawStr("+")), intAdd);
+  is(handlerGetFn(handlerFind(handlerEntry, mkRawStr("+"))), intAdd);
 
   is(
     valGetI64(
@@ -299,7 +302,7 @@ test("HandlerEntry", () => {
   is(
     valGetI64(
       callHandler(
-        handlerFind(handlerEntry, mkRawStr("+")),
+        handlerGetFn(handlerFind(handlerEntry, mkRawStr("+"))),
         newInt(100n),
         mkRawStr("+"),
         newInt(34n),
@@ -323,7 +326,7 @@ test("HandlerEntry", () => {
   is(
     valGetI64(
       callHandler(
-        handlerFind(intAddJsEntry, mkRawStr("+")),
+        handlerGetFn(handlerFind(intAddJsEntry, mkRawStr("+"))),
         newInt(10n),
         mkRawStr("+"),
         newInt(34n),
@@ -352,10 +355,10 @@ test("Handlers", () => {
     hIntSub = fnToHandler(intSubJs);
 
   handlersBind(h, TYPE_INT, mkRawStr("+"), hIntAdd);
-  is(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
+  is(handlerGetFn(handlersFind(h, TYPE_INT, mkRawStr("+"))), hIntAdd);
   handlersBind(h, TYPE_INT, mkRawStr("-"), hIntSub);
-  is(handlersFind(h, TYPE_INT, mkRawStr("+")), hIntAdd);
-  is(handlersFind(h, TYPE_INT, mkRawStr("-")), hIntSub);
+  is(handlerGetFn(handlersFind(h, TYPE_INT, mkRawStr("+"))), hIntAdd);
+  is(handlerGetFn(handlersFind(h, TYPE_INT, mkRawStr("-"))), hIntSub);
 });
 
 test("Frame", () => {
@@ -376,9 +379,9 @@ test("frameBindHandler", () => {
 
   is(frameFindHandler(f, TYPE_INT, mkRawStr("+")), null);
   is(frameBindHandler(f, TYPE_INT, mkRawStr("+"), hIntAdd), undefined);
-  is(frameFindHandler(f, TYPE_INT, mkRawStr("+")), hIntAdd);
+  is(handlerGetFn(frameFindHandler(f, TYPE_INT, mkRawStr("+"))), hIntAdd);
   is(frameBindHandler(f, TYPE_INT, mkRawStr("-"), hIntSub), undefined);
-  is(frameFindHandler(f, TYPE_INT, mkRawStr("-")), hIntSub);
+  is(handlerGetFn(frameFindHandler(f, TYPE_INT, mkRawStr("-"))), hIntSub);
 });
 
 test("frameSend", () => {
@@ -763,5 +766,40 @@ test("frame handlers", () => {
       callHandler(hGetObjType, NIL, mkRawStr("get-type"), newInt(10n), newE()),
     ),
     BigInt(TYPE_INT),
+  );
+});
+
+test("frameBindHandler", () => {
+  const f = mkEnv([
+    [TYPE_NIL, { eval: hReturnSubject }],
+    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_FLOAT, { eval: hReturnSubject }],
+    [TYPE_STR, { eval: hReturnSubject }],
+    [TYPE_NAME, { eval: hNameEval }],
+    [TYPE_ARRAY, { eval: hArrayEval }],
+    [TYPE_MSG, { eval: hMsgEval }],
+    [TYPE_SEND, { eval: hSendEval }],
+  ]);
+
+  const fv = newFrameVal(f);
+  is(
+    callHandler(
+      hFrameBindHandler,
+      fv,
+      mkRawStr("bindHandler"),
+      mkArray(newInt(BigInt(TYPE_INT)), mkStr("answer"), newInt(42n)),
+      newE(),
+    ),
+    fv,
+  );
+  is(
+    valGetI64(handlerGetVal(frameFindHandler(f, TYPE_INT, mkRawStr("answer")))),
+    42n,
+  );
+  is(
+    valGetI64(
+      frameEval(f, newSend(newInt(0n), newRawMsg(mkRawStr("answer"), NIL))),
+    ),
+    42n,
   );
 });
