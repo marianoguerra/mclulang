@@ -128,7 +128,6 @@ function mkPrimFrame() {
   const prim = new Frame().mergeObj({
     [TYPE_NIL]: {
       eval: (s) => s,
-      "<": () => NIL,
       "=": (s, m) => (s === m.obj ? 1n : NIL),
     },
     [TYPE_INT]: {
@@ -160,15 +159,15 @@ function mkPrimFrame() {
     [TYPE_FRAME]: {
       eval: (s) => s,
       up: (s) => s.up,
-      "eval-in": (s, m) => s.eval(m.obj),
+      evalIn: (s, m) => s.eval(m.obj),
       find: (s, m) => s.find(m.obj),
       bind: (s, m) => s.bind(m.obj.a, m.obj.b),
       bindHandler: (s, m) => {
         const [type, name, impl] = m.obj;
         return s.find(type).bind(name, impl);
       },
-      "get-type": (_s, m) => getType(m.obj),
-      "new-frame": () => new Frame(),
+      getType: (_s, m) => getType(m.obj),
+      newFrame: () => new Frame(),
     },
     [TYPE_NAME]: {
       name: (s) => s.value,

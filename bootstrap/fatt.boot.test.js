@@ -78,14 +78,14 @@ test("pair a & b", () => {
   expect(runPrim("1 : 2 a ()")).toBe(1n);
   expect(runPrim("1 : 2 b ()")).toBe(2n);
 });
-test("`e new-frame ()` creates a frame", () => {
-  expect(getType(runPrim("e new-frame ()"))).toBe(TYPE_FRAME);
+test("`e newFrame ()` creates a frame", () => {
+  expect(getType(runPrim("e newFrame ()"))).toBe(TYPE_FRAME);
 });
 test('`e bind "a" : 42` binds', () => {
   expect(runPrim('{e bind "a" : 42, a}')).toBe(42n);
 });
-test('`e get-type "a"', () => {
-  expect(runPrim('e get-type "a"')).toBe(TYPE_STR);
+test('`e getType "a"', () => {
+  expect(runPrim('e getType "a"')).toBe(TYPE_STR);
 });
 
 test("can define not for nil", () => {
@@ -98,7 +98,7 @@ test("can define not for int, float, str", () => {
 });
 test("can define or", () => {
   const code = `{
-e $reply (@(() or _) : @(e eval-in that)),
+e $reply (@(() or _) : @(e evalIn that)),
 e $reply (@(1 or _) : @(it)),
 
 [() or 2, 3 or (), 4 or 5, () or ()]
@@ -112,7 +112,7 @@ e $reply (@(1 or _) : @(it)),
 test("can define and", () => {
   const code = `{
 e $reply (@(() and _) : ()),
-e $reply (@(1 and _) : @(e eval-in that)),
+e $reply (@(1 and _) : @(e evalIn that)),
 
 [() and 2, 3 and (), 4 and 5]
   }`,
@@ -124,8 +124,8 @@ e $reply (@(1 and _) : @(e eval-in that)),
 
 test("can define ternary op", () => {
   const code = `{
-e $reply (@(() ? _) : @(e eval-in (that b ()))),
-e $reply (@(1 ? _) : @(e eval-in (that a ()))),
+e $reply (@(() ? _) : @(e evalIn (that b ()))),
+e $reply (@(1 ? _) : @(e evalIn (that a ()))),
 
 [() ? 1 : 2, 3 ? 4 : 5]
   }`,
@@ -136,8 +136,8 @@ e $reply (@(1 ? _) : @(e eval-in (that a ()))),
 
 test("can define 1 >= 2 in terms of <", () => {
   const code = `{
-e $reply (@(() ? _) : @(e eval-in (that b ()))),
-e $reply (@(1 ? _) : @(e eval-in (that a ()))),
+e $reply (@(() ? _) : @(e evalIn (that b ()))),
+e $reply (@(1 ? _) : @(e evalIn (that a ()))),
 
 e $reply (@(1 >= _) : @(that < it ? it : ())),
 
@@ -162,7 +162,7 @@ test("can bare bootstrap $reply", () => {
 e bind "m" : @(1 add _) : @(it + that),
 e bind "send" : (m a()),
 e bind "sub" : (send subj()),
-e bind "subType" : (e get-type sub),
+e bind "subType" : (e getType sub),
 e find subType
   bind ((send msg() verb()) : (m b())),
 
@@ -171,13 +171,13 @@ e find subType
   expect(runPrim(code)).toBe(21n);
 });
 
-test("can bootstrap reply in terms of bind, eval-in, get-type and find", () => {
+test("can bootstrap reply in terms of bind, evalIn, getType and find", () => {
   const code = `{
-e find (e get-type e)
+e find (e getType e)
   bind "reply" : @{
     e bind "send" : (msg obj() a()),
-    e bind "sub" : (e eval-in (send subj())),
-    e bind "subType" : (e get-type sub),
+    e bind "sub" : (e evalIn (send subj())),
+    e bind "subType" : (e getType sub),
     e find subType
       bind ((send msg() verb()) : (msg obj() b())),
     ()
@@ -187,8 +187,8 @@ e reply @(@a is _) : @(e up () bind (it name ()) : that),
 
 e reply @(e reply _) : @{
   @send is (msg obj() a()),
-  @sub is (e eval-in (send subj())),
-  @subType is (e get-type sub),
+  @sub is (e evalIn (send subj())),
+  @subType is (e getType sub),
   e find subType
     bind ((send msg() verb()) : (msg obj() b())),
   ()
@@ -198,17 +198,17 @@ e reply @(1 add _) : @(it + that),
 
   1 add 20
   }`;
-  expect(runPrim("e get-type e")).toBe(TYPE_FRAME);
-  expect(getType(runPrim("e find (e get-type e)"))).toBe(TYPE_FRAME);
-  expect(runPrim('e find (e get-type e) bind "a" : 42 find "a"')).toBe(42n);
+  expect(runPrim("e getType e")).toBe(TYPE_FRAME);
+  expect(getType(runPrim("e find (e getType e)"))).toBe(TYPE_FRAME);
+  expect(runPrim('e find (e getType e) bind "a" : 42 find "a"')).toBe(42n);
   expect(runPrim(code)).toBe(21n);
 });
 
 test("full bootstrap", () => {
   const code = `{
-e bindHandler [(e get-type e), "reply", @{
+e bindHandler [(e getType e), "reply", @{
     e bindHandler [
-        (e get-type (e eval-in (msg obj() a() subj()))),
+        (e getType (e evalIn (msg obj() a() subj()))),
         (msg obj() a() msg() verb()),
         (msg obj() b())
     ],
@@ -218,25 +218,28 @@ e reply @(@(subj verb obj) -> body) : @(e reply it : that),
 
 @(@a is _) -> @(e up () bind (it name ()) : that),
 
+@(() < _) -> (),
+@(@a = _) -> @((it name()) = (it name())),
+
 @(()  not _) -> 1,
 @(0   not _) -> (),
 @(0.0 not _) -> (),
 @(""  not _) -> (),
 
-@(()  or _) -> @(e eval-in that),
+@(()  or _) -> @(e evalIn that),
 @(0   or _) -> @it,
 @(0.0 or _) -> @it,
 @(""  or _) -> @it,
 
 @(()  and _) -> (),
-@(0   and _) -> @(e eval-in that),
-@(0.0 and _) -> @(e eval-in that),
-@(""  and _) -> @(e eval-in that),
+@(0   and _) -> @(e evalIn that),
+@(0.0 and _) -> @(e evalIn that),
+@(""  and _) -> @(e evalIn that),
 
-@(()  ? _) -> @(e eval-in (that b ())),
-@(0   ? _) -> @(e eval-in (that a ())),
-@(0.0 ? _) -> @(e eval-in (that a ())),
-@(""  ? _) -> @(e eval-in (that a ())),
+@(()  ? _) -> @(e evalIn (that b ())),
+@(0   ? _) -> @(e evalIn (that a ())),
+@(0.0 ? _) -> @(e evalIn (that a ())),
+@(""  ? _) -> @(e evalIn (that a ())),
 
 @(()  != _) -> @(it = that not()),
 @(0   != _) -> @(it = that not()),

@@ -780,21 +780,89 @@
 						(local.get $e)))))
 
 
-	(data (i32.const 0) "evalitmsgthat")
+	(data (i32.const 0) "evalitmsgthat<=+-*/.absizenameobjverbsubjupevalIngetTypebindHandler")
 	(global $RAW_STR_EVAL (export "RAW_STR_EVAL") (mut (ref null $Str)) (ref.null $Str))
 	(global $RAW_STR_IT (mut (ref null $Str)) (ref.null $Str))
 	(global $RAW_STR_MSG (mut (ref null $Str)) (ref.null $Str))
 	(global $RAW_STR_THAT (mut (ref null $Str)) (ref.null $Str))
 
+	(global $RAW_STR_EQ (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_LT (mut (ref null $Str)) (ref.null $Str))
+
+	(global $RAW_STR_ADD (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_SUB (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_MUL (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_DIV (mut (ref null $Str)) (ref.null $Str))
+
+	(global $RAW_STR_DOT (mut (ref null $Str)) (ref.null $Str))
+
+	(global $RAW_STR_A (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_B (mut (ref null $Str)) (ref.null $Str))
+
+	(global $RAW_STR_SIZE (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_NAME (mut (ref null $Str)) (ref.null $Str))
+
+	(global $RAW_STR_OBJ (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_VERB (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_SUBJ (mut (ref null $Str)) (ref.null $Str))
+
+	(global $RAW_STR_UP (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_EVAL_IN (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_GET_TYPE (mut (ref null $Str)) (ref.null $Str))
+	(global $RAW_STR_BIND_HANDLER (mut (ref null $Str)) (ref.null $Str))
+
 	(func $init
 	    (global.set $RAW_STR_EVAL
 			(call $rawStrFromMem (i32.const 0) (i32.const 4)))
+
 	    (global.set $RAW_STR_IT
 			(call $rawStrFromMem (i32.const 4) (i32.const 6)))
 	    (global.set $RAW_STR_MSG
 			(call $rawStrFromMem (i32.const 6) (i32.const 9)))
 	    (global.set $RAW_STR_THAT
 			(call $rawStrFromMem (i32.const 9) (i32.const 13)))
+
+	    (global.set $RAW_STR_LT
+			(call $rawStrFromMem (i32.const 13) (i32.const 14)))
+	    (global.set $RAW_STR_EQ
+			(call $rawStrFromMem (i32.const 14) (i32.const 15)))
+
+	    (global.set $RAW_STR_ADD
+			(call $rawStrFromMem (i32.const 15) (i32.const 16)))
+	    (global.set $RAW_STR_SUB
+			(call $rawStrFromMem (i32.const 16) (i32.const 17)))
+	    (global.set $RAW_STR_MUL
+			(call $rawStrFromMem (i32.const 17) (i32.const 18)))
+	    (global.set $RAW_STR_DIV
+			(call $rawStrFromMem (i32.const 18) (i32.const 19)))
+
+	    (global.set $RAW_STR_DOT
+			(call $rawStrFromMem (i32.const 19) (i32.const 20)))
+
+	    (global.set $RAW_STR_A
+			(call $rawStrFromMem (i32.const 20) (i32.const 21)))
+	    (global.set $RAW_STR_B
+			(call $rawStrFromMem (i32.const 21) (i32.const 22)))
+	    (global.set $RAW_STR_SIZE
+			(call $rawStrFromMem (i32.const 22) (i32.const 26)))
+	    (global.set $RAW_STR_NAME
+			(call $rawStrFromMem (i32.const 26) (i32.const 30)))
+
+	    (global.set $RAW_STR_OBJ
+			(call $rawStrFromMem (i32.const 30) (i32.const 33)))
+	    (global.set $RAW_STR_VERB
+			(call $rawStrFromMem (i32.const 33) (i32.const 37)))
+	    (global.set $RAW_STR_SUBJ
+			(call $rawStrFromMem (i32.const 37) (i32.const 41)))
+
+	    (global.set $RAW_STR_UP
+			(call $rawStrFromMem (i32.const 41) (i32.const 43)))
+	    (global.set $RAW_STR_EVAL_IN
+			(call $rawStrFromMem (i32.const 43) (i32.const 49)))
+	    (global.set $RAW_STR_GET_TYPE
+			(call $rawStrFromMem (i32.const 49) (i32.const 56)))
+	    (global.set $RAW_STR_BIND_HANDLER
+			(call $rawStrFromMem (i32.const 56) (i32.const 67)))
 	)
 
 	(start $init)
@@ -832,7 +900,7 @@
 
 	;; nil handlers
 
-	(func $nilEq (export "nilEq")
+	(func $hNilEq (export "nilEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -845,35 +913,35 @@
 	(func $anyGetI64 (param $v eqref) (result i64)
 		(call $valGetI64 (ref.cast (ref $Val) (local.get $v))))
 
-	(func $intAdd (export "intAdd")
+	(func $hIntAdd (export "intAdd")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt (i64.add
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
-	(func $intSub (export "intSub")
+	(func $hIntSub (export "intSub")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt (i64.sub
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
-	(func $intMul (export "intMul")
+	(func $hIntMul (export "intMul")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt (i64.mul
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
-	(func $intDiv (export "intDiv")
+	(func $hIntDiv (export "intDiv")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.div
 			(f64.convert_i64_s (call $anyGetI64 (local.get $s)))
 			(f64.convert_i64_s (call $anyGetI64 (local.get $o))))))
 
-	(func $intEq (export "intEq")
+	(func $hIntEq (export "intEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -883,7 +951,7 @@
 			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
 
-	(func $intLt (export "intLt")
+	(func $hIntLt (export "intLt")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -898,35 +966,35 @@
 	(func $anyGetF64 (param $v eqref) (result f64)
 		(call $valGetF64 (ref.cast (ref $Val) (local.get $v))))
 
-	(func $floatAdd (export "floatAdd")
+	(func $hFloatAdd (export "floatAdd")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.add
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $floatSub (export "floatSub")
+	(func $hFloatSub (export "floatSub")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.sub
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $floatMul (export "floatMul")
+	(func $hFloatMul (export "floatMul")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.mul
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $floatDiv (export "floatDiv")
+	(func $hFloatDiv (export "floatDiv")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.div
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $floatEq (export "floatEq")
+	(func $hFloatEq (export "floatEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -936,7 +1004,7 @@
 			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
 
-	(func $floatLt (export "floatLt")
+	(func $hFloatLt (export "floatLt")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -951,13 +1019,13 @@
 	(func $anyGetStr (param $v eqref) (result (ref $Str))
 		(call $valGetStr (ref.cast (ref $Val) (local.get $v))))
 
-	(func $strSize (export "strSize")
+	(func $hStrSize (export "strSize")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt
 			(i64.extend_i32_s (call $strLen (ref.cast (ref $Val) (local.get $s))))))
 
-	(func $strEq (export "strEq")
+	(func $hStrEq (export "strEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -1261,4 +1329,159 @@
 
 		(local.get $s)
 	)
+
+	;; util
+
+	(func $newPrimFrame (export "newPrimFrame")
+			(result (ref $Frame))
+		(local $f (ref $Frame))
+		(local $sEval (ref $Str))
+		(local $sEq  (ref $Str))
+		(local $sAdd (ref $Str))
+		(local $sSub (ref $Str))
+		(local $sMul (ref $Str))
+		(local $sDiv (ref $Str))
+		(local $sDot (ref $Str))
+		(local $sSize (ref $Str))
+
+		(local.set $f (call $newFrame))
+		(local.set $sEval (ref.as_non_null (global.get $RAW_STR_EVAL)))
+		(local.set $sEq (ref.as_non_null (global.get $RAW_STR_EQ)))
+
+		(local.set $sAdd (ref.as_non_null (global.get $RAW_STR_ADD)))
+		(local.set $sSub (ref.as_non_null (global.get $RAW_STR_SUB)))
+		(local.set $sMul (ref.as_non_null (global.get $RAW_STR_MUL)))
+		(local.set $sDiv (ref.as_non_null (global.get $RAW_STR_DIV)))
+
+		(local.set $sDot (ref.as_non_null (global.get $RAW_STR_DOT)))
+
+		(local.set $sSize (ref.as_non_null (global.get $RAW_STR_SIZE)))
+
+		;; eval
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_NIL)
+			 (local.get $sEval) (ref.func $hReturnSubject))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sEval) (ref.func $hReturnSubject))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sEval) (ref.func $hReturnSubject))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_STR)
+			 (local.get $sEval) (ref.func $hReturnSubject))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FRAME)
+			 (local.get $sEval) (ref.func $hReturnSubject))
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_NAME)
+			 (local.get $sEval) (ref.func $hNameEval))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_LATER)
+			 (local.get $sEval) (ref.func $hLaterEval))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_PAIR)
+			 (local.get $sEval) (ref.func $hPairEval))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_MSG)
+			 (local.get $sEval) (ref.func $hMsgEval))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_SEND)
+			 (local.get $sEval) (ref.func $hSendEval))
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_BLOCK)
+			 (local.get $sEval) (ref.func $hBlockEval))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_ARRAY)
+			 (local.get $sEval) (ref.func $hArrayEval))
+
+		;; =
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_NIL)
+			 (local.get $sEq) (ref.func $hNilEq))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sEq) (ref.func $hIntEq))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sEq) (ref.func $hFloatEq))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_STR)
+			 (local.get $sEq) (ref.func $hStrEq))
+
+		;; <
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_NIL)
+			 (local.get $sEq) (ref.func $hNilEq))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sEq) (ref.func $hIntEq))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sEq) (ref.func $hFloatEq))
+
+		;; +
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sAdd) (ref.func $hIntAdd))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sAdd) (ref.func $hFloatAdd))
+
+		;; -
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sSub) (ref.func $hIntSub))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sSub) (ref.func $hFloatSub))
+
+		;; *
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sMul) (ref.func $hIntMul))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sMul) (ref.func $hFloatMul))
+
+		;; /
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
+			 (local.get $sDiv) (ref.func $hIntDiv))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
+			 (local.get $sDiv) (ref.func $hFloatDiv))
+
+		;; .
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_ARRAY)
+			 (local.get $sDot) (ref.func $hArrayGetItem))
+
+		;; size
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_STR)
+			 (local.get $sSize) (ref.func $hStrSize))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_ARRAY)
+			 (local.get $sSize) (ref.func $hArraySize))
+
+		;; pair methods
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_PAIR)
+			 (ref.as_non_null (global.get $RAW_STR_A)) (ref.func $hPairA))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_PAIR)
+			 (ref.as_non_null (global.get $RAW_STR_B)) (ref.func $hPairB))
+
+		;; name methods
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_NAME)
+			 (ref.as_non_null (global.get $RAW_STR_NAME)) (ref.func $hNameStr))
+
+		;; msg methods
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_MSG)
+			 (ref.as_non_null (global.get $RAW_STR_VERB)) (ref.func $hMsgVerb))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_MSG)
+			 (ref.as_non_null (global.get $RAW_STR_OBJ)) (ref.func $hMsgObj))
+
+		;; send methods
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_SEND)
+			 (ref.as_non_null (global.get $RAW_STR_SUBJ)) (ref.func $hSendSubj))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_SEND)
+			 (ref.as_non_null (global.get $RAW_STR_MSG)) (ref.func $hSendMsg))
+
+		;; frame methods
+
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FRAME)
+			 (ref.as_non_null (global.get $RAW_STR_UP)) (ref.func $hFrameUp))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FRAME)
+			 (ref.as_non_null (global.get $RAW_STR_EVAL_IN)) (ref.func $hFrameEvalIn))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FRAME)
+			 (ref.as_non_null (global.get $RAW_STR_BIND_HANDLER)) (ref.func $hFrameBindHandler))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_FRAME)
+			 (ref.as_non_null (global.get $RAW_STR_GET_TYPE)) (ref.func $hGetObjType))
+
+		(local.get $f))
 )

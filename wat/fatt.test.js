@@ -151,6 +151,8 @@ const bin = Deno.readFileSync("./fatt.wasm"),
         hFrameEvalIn,
         hGetObjType,
         hFrameBindHandler,
+
+        newPrimFrame,
       },
     },
   } = await WebAssembly.instantiate(bin);
@@ -800,6 +802,14 @@ test("frameBindHandler", () => {
     valGetI64(
       frameEval(f, newSend(newInt(0n), newRawMsg(mkRawStr("answer"), NIL))),
     ),
+    42n,
+  );
+});
+
+test("newPrimFrame", () => {
+  const f = newPrimFrame();
+  is(
+    valGetI64(pairGetA(frameEval(f, newPair(newInt(42n), newInt(100n))))),
     42n,
   );
 });
