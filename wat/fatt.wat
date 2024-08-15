@@ -276,38 +276,34 @@
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_MSG)))
 
 	(func $newRawMsg (export "newRawMsg")
-			(param $verb (ref $Str)) (param $obj (ref $Val))
-			(result (ref $Msg))
+			(param $verb (ref $Str)) (param $obj (ref $Val)) (result (ref $Msg))
 		(struct.new $Msg
 			(local.get $verb)
 			(local.get $obj)))
 
 	(func $newMsg (export "newMsg")
-			(param $verb (ref $Str)) (param $obj (ref $Val))
-			(result (ref $Val))
+			(param $verb (ref $Str)) (param $obj (ref $Val)) (result (ref $Val))
 		(struct.new $Val
 			(global.get $TYPE_MSG)
 			(struct.new $Msg
 				(local.get $verb)
 				(local.get $obj))))
 
+	(func $valGetMsgRaw (export "valGetMsgRaw")
+			(param $v (ref $Val)) (result (ref $Msg))
+		(ref.cast (ref $Msg)
+			(struct.get $Val $v (local.get $v))))
+
 	(func $valGetMsgVerbRawStr (param $v (ref $Val)) (result (ref $Str))
-		(struct.get $Msg $verb
-			(ref.cast (ref $Msg)
-				(struct.get $Val $v (local.get $v)))))
+		(struct.get $Msg $verb (call $valGetMsgRaw (local.get $v))))
 
 	(func $valGetMsgVerb (export "valGetMsgVerb")
-			(param $v (ref $Val))
-			(result (ref $Val))
-		(call $strFromRawStr
-			(call $valGetMsgVerbRawStr (local.get $v))))
+			(param $v (ref $Val)) (result (ref $Val))
+		(call $strFromRawStr (call $valGetMsgVerbRawStr (local.get $v))))
 
 	(func $valGetMsgObj (export "valGetMsgObj")
-			(param $v (ref $Val))
-			(result (ref $Val))
-		(struct.get $Msg $obj
-			(ref.cast (ref $Msg)
-				(struct.get $Val $v (local.get $v)))))
+			(param $v (ref $Val)) (result (ref $Val))
+		(struct.get $Msg $obj (call $valGetMsgRaw (local.get $v))))
 
 	;; send
 
@@ -816,53 +812,53 @@
 			(call $rawStrFromMem (i32.const 0) (i32.const 4)))
 
 	    (global.set $RAW_STR_IT
-			(call $rawStrFromMem (i32.const 4) (i32.const 6)))
+			(call $rawStrFromMem (i32.const 4) (i32.const 2)))
 	    (global.set $RAW_STR_MSG
-			(call $rawStrFromMem (i32.const 6) (i32.const 9)))
+			(call $rawStrFromMem (i32.const 6) (i32.const 3)))
 	    (global.set $RAW_STR_THAT
-			(call $rawStrFromMem (i32.const 9) (i32.const 13)))
+			(call $rawStrFromMem (i32.const 9) (i32.const 4)))
 
 	    (global.set $RAW_STR_LT
-			(call $rawStrFromMem (i32.const 13) (i32.const 14)))
+			(call $rawStrFromMem (i32.const 13) (i32.const 1)))
 	    (global.set $RAW_STR_EQ
-			(call $rawStrFromMem (i32.const 14) (i32.const 15)))
+			(call $rawStrFromMem (i32.const 14) (i32.const 1)))
 
 	    (global.set $RAW_STR_ADD
-			(call $rawStrFromMem (i32.const 15) (i32.const 16)))
+			(call $rawStrFromMem (i32.const 15) (i32.const 1)))
 	    (global.set $RAW_STR_SUB
-			(call $rawStrFromMem (i32.const 16) (i32.const 17)))
+			(call $rawStrFromMem (i32.const 16) (i32.const 1)))
 	    (global.set $RAW_STR_MUL
-			(call $rawStrFromMem (i32.const 17) (i32.const 18)))
+			(call $rawStrFromMem (i32.const 17) (i32.const 1)))
 	    (global.set $RAW_STR_DIV
-			(call $rawStrFromMem (i32.const 18) (i32.const 19)))
+			(call $rawStrFromMem (i32.const 18) (i32.const 1)))
 
 	    (global.set $RAW_STR_DOT
-			(call $rawStrFromMem (i32.const 19) (i32.const 20)))
+			(call $rawStrFromMem (i32.const 19) (i32.const 1)))
 
 	    (global.set $RAW_STR_A
-			(call $rawStrFromMem (i32.const 20) (i32.const 21)))
+			(call $rawStrFromMem (i32.const 20) (i32.const 1)))
 	    (global.set $RAW_STR_B
-			(call $rawStrFromMem (i32.const 21) (i32.const 22)))
+			(call $rawStrFromMem (i32.const 21) (i32.const 1)))
 	    (global.set $RAW_STR_SIZE
-			(call $rawStrFromMem (i32.const 22) (i32.const 26)))
+			(call $rawStrFromMem (i32.const 22) (i32.const 4)))
 	    (global.set $RAW_STR_NAME
-			(call $rawStrFromMem (i32.const 26) (i32.const 30)))
+			(call $rawStrFromMem (i32.const 26) (i32.const 4)))
 
 	    (global.set $RAW_STR_OBJ
-			(call $rawStrFromMem (i32.const 30) (i32.const 33)))
+			(call $rawStrFromMem (i32.const 30) (i32.const 3)))
 	    (global.set $RAW_STR_VERB
-			(call $rawStrFromMem (i32.const 33) (i32.const 37)))
+			(call $rawStrFromMem (i32.const 33) (i32.const 4)))
 	    (global.set $RAW_STR_SUBJ
-			(call $rawStrFromMem (i32.const 37) (i32.const 41)))
+			(call $rawStrFromMem (i32.const 37) (i32.const 4)))
 
 	    (global.set $RAW_STR_UP
-			(call $rawStrFromMem (i32.const 41) (i32.const 43)))
+			(call $rawStrFromMem (i32.const 41) (i32.const 2)))
 	    (global.set $RAW_STR_EVAL_IN
-			(call $rawStrFromMem (i32.const 43) (i32.const 49)))
+			(call $rawStrFromMem (i32.const 43) (i32.const 6)))
 	    (global.set $RAW_STR_GET_TYPE
-			(call $rawStrFromMem (i32.const 49) (i32.const 56)))
+			(call $rawStrFromMem (i32.const 49) (i32.const 7)))
 	    (global.set $RAW_STR_BIND_HANDLER
-			(call $rawStrFromMem (i32.const 56) (i32.const 67)))
+			(call $rawStrFromMem (i32.const 56) (i32.const 11)))
 	)
 
 	(start $init)

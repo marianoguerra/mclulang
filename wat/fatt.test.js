@@ -1,169 +1,165 @@
 /*globals Deno*/
 import { assertStrictEquals as is } from "jsr:@std/assert@1";
-import { mkStrFns } from "./fatt.util.js";
+import { mkUtils } from "./fatt.util.js";
 const bin = Deno.readFileSync("./fatt.wasm"),
   {
-    instance: {
-      exports: {
-        mem,
-        valGetTag,
+    instance: { exports },
+  } = await WebAssembly.instantiate(bin),
+  {
+    valGetTag,
 
-        NIL: { value: NIL },
-        TYPE_NIL: { value: TYPE_NIL },
-        isNil,
+    NIL: { value: NIL },
+    TYPE_NIL: { value: TYPE_NIL },
+    isNil,
 
-        TYPE_INT: { value: TYPE_INT },
-        TRUE: { value: TRUE },
-        isInt,
-        newInt,
-        valGetI64,
+    TYPE_INT: { value: TYPE_INT },
+    TRUE: { value: TRUE },
+    isInt,
+    newInt,
+    valGetI64,
 
-        TYPE_FLOAT: { value: TYPE_FLOAT },
-        isFloat,
-        newFloat,
-        valGetF64,
+    TYPE_FLOAT: { value: TYPE_FLOAT },
+    isFloat,
+    newFloat,
+    valGetF64,
 
-        TYPE_STR: { value: TYPE_STR },
-        isStr,
-        strLen,
-        strFromMem,
-        strGetChar,
-        strEquals,
-        rawStrFromMem,
+    TYPE_STR: { value: TYPE_STR },
+    isStr,
+    strLen,
+    strGetChar,
+    strEquals,
 
-        TYPE_PAIR: { value: TYPE_PAIR },
-        isPair,
-        newPair,
-        pairGetA,
-        pairGetB,
+    TYPE_PAIR: { value: TYPE_PAIR },
+    isPair,
+    newPair,
+    pairGetA,
+    pairGetB,
 
-        TYPE_NAME: { value: TYPE_NAME },
-        isName,
-        newName,
-        valGetNameStr,
+    TYPE_NAME: { value: TYPE_NAME },
+    isName,
+    newName,
+    valGetNameStr,
 
-        TYPE_LATER: { value: TYPE_LATER },
-        isLater,
-        newLater,
-        laterUnwrap,
+    TYPE_LATER: { value: TYPE_LATER },
+    isLater,
+    newLater,
+    laterUnwrap,
 
-        TYPE_MSG: { value: TYPE_MSG },
-        isMsg,
-        newRawMsg,
-        newMsg,
-        valGetMsgVerb,
-        valGetMsgObj,
+    TYPE_MSG: { value: TYPE_MSG },
+    isMsg,
+    newRawMsg,
+    newMsg,
+    valGetMsgVerb,
+    valGetMsgObj,
 
-        TYPE_SEND: { value: TYPE_SEND },
-        isSend,
-        newSend,
-        valGetSendSubj,
-        valGetSendMsg,
+    TYPE_SEND: { value: TYPE_SEND },
+    isSend,
+    newSend,
+    valGetSendSubj,
+    valGetSendMsg,
 
-        TYPE_BLOCK: { value: TYPE_BLOCK },
-        isBlock,
-        newBlock,
-        blockLen,
-        blockGetItem,
-        blockSetItem,
+    TYPE_BLOCK: { value: TYPE_BLOCK },
+    isBlock,
+    newBlock,
+    blockLen,
+    blockGetItem,
+    blockSetItem,
 
-        TYPE_ARRAY: { value: TYPE_ARRAY },
-        isArray,
-        newArray,
-        arrayLen,
-        arrayGetItem,
-        arraySetItem,
+    TYPE_ARRAY: { value: TYPE_ARRAY },
+    isArray,
+    newArray,
+    arrayLen,
+    arrayGetItem,
+    arraySetItem,
 
-        newBindNull,
-        newBindEntry,
-        bindFind,
+    newBindNull,
+    newBindEntry,
+    bindFind,
 
-        newHandlerEntryNull,
-        newHandlerEntry,
-        handlerFind,
-        handlerGetFn,
-        handlerGetVal,
-        callHandlerFn: callHandler,
+    newHandlerEntryNull,
+    newHandlerEntry,
+    handlerFind,
+    handlerGetFn,
+    handlerGetVal,
+    callHandlerFn: callHandler,
 
-        newHandlers,
-        handlersGetForType,
-        handlersBind,
-        handlersFind,
+    newHandlers,
+    handlersGetForType,
+    handlersBind,
+    handlersFind,
 
-        TYPE_FRAME: { value: TYPE_FRAME },
-        newFrame,
-        isFrame,
-        newFrameVal,
-        valGetFrame,
-        frameBind,
-        frameFind,
-        frameDown,
-        frameBindHandler,
-        frameFindHandler,
-        frameSend,
-        frameEval,
+    TYPE_FRAME: { value: TYPE_FRAME },
+    newFrame,
+    isFrame,
+    newFrameVal,
+    valGetFrame,
+    frameBind,
+    frameFind,
+    frameDown,
+    frameBindHandler,
+    frameFindHandler,
+    frameSend,
+    frameEval,
 
-        nilEq,
-        returnNil,
-        hReturnSubject,
+    nilEq,
+    returnNil,
+    hReturnSubject,
 
-        intAdd,
-        intSub,
-        intMul,
-        intDiv,
-        intEq,
-        intLt,
+    intAdd,
+    intSub,
+    intMul,
+    intDiv,
+    intEq,
+    intLt,
 
-        floatAdd,
-        floatSub,
-        floatMul,
-        floatDiv,
-        floatEq,
-        floatLt,
+    floatAdd,
+    floatSub,
+    floatMul,
+    floatDiv,
+    floatEq,
+    floatLt,
 
-        strSize,
-        strEq,
+    strSize,
+    strEq,
 
-        hPairA,
-        hPairB,
-        hPairEval,
+    hPairA,
+    hPairB,
+    hPairEval,
 
-        hLaterEval,
+    hLaterEval,
 
-        hNameEval,
-        hNameStr,
+    hNameEval,
+    hNameStr,
 
-        hMsgVerb,
-        hMsgObj,
-        hMsgEval,
+    hMsgVerb,
+    hMsgObj,
+    hMsgEval,
 
-        hSendSubj,
-        hSendMsg,
-        hSendEval,
+    hSendSubj,
+    hSendMsg,
+    hSendEval,
 
-        hBlockEval,
+    hBlockEval,
 
-        hArrayEval,
-        hArraySize,
-        hArrayGetItem,
+    hArrayEval,
+    hArraySize,
+    hArrayGetItem,
 
-        hFrameUp,
-        hFrameEvalIn,
-        hGetObjType,
-        hFrameBindHandler,
+    hFrameUp,
+    hFrameEvalIn,
+    hGetObjType,
+    hFrameBindHandler,
 
-        newPrimFrame,
-      },
-    },
-  } = await WebAssembly.instantiate(bin);
+    newPrimFrame,
+  } = exports;
 
 const { test } = Deno;
 
 function skip(name, _fn) {
   console.warn("skipping", name);
 }
-const memU8 = new Uint8Array(mem.buffer),
-  { mkStr, mkRawStr } = mkStrFns(memU8, strFromMem, rawStrFromMem);
+
+const { mkStr, mkRawStr, parse, run } = mkUtils(exports);
 
 function newE() {
   return newFrame();
@@ -812,4 +808,73 @@ test("newPrimFrame", () => {
     valGetI64(pairGetA(frameEval(f, newPair(newInt(42n), newInt(100n))))),
     42n,
   );
+});
+
+//
+
+test("parse NIL", () => {
+  is(isNil(parse("()")), 1);
+});
+
+test("parse Int", () => {
+  is(isInt(parse("42")), 1);
+});
+
+test("parse Float", () => {
+  is(isFloat(parse("42.0")), 1);
+});
+
+test("parse Str", () => {
+  is(isStr(parse('"hi!"')), 1);
+});
+
+test("parse Pair", () => {
+  is(isPair(parse("() : ()")), 1);
+});
+
+test("parse Name", () => {
+  is(isName(parse("foo")), 1);
+});
+
+test("parse Later", () => {
+  is(isLater(parse("@a")), 1);
+});
+
+test("parse Msg", () => {
+  is(isMsg(parse("\\ + 1")), 1);
+});
+
+test("parse Send", () => {
+  is(isSend(parse("1 + 2")), 1);
+});
+
+test("parse Block", () => {
+  is(isBlock(parse("{1}")), 1);
+});
+
+test("parse Array", () => {
+  is(isArray(parse("[]")), 1);
+  is(isArray(parse("[1]")), 1);
+});
+
+test("parse and run", () => {
+  const f = newPrimFrame(),
+    r = (code) => run(f, code);
+
+  is(r("1"), 1n);
+  is(r("1.2"), 1.2);
+  is(r("()"), NIL);
+  is(r("1 + 5 - 2"), 4n);
+  is(r('""'), "");
+  is(r('"a"'), "a");
+  is(r('"abc"'), "abc");
+  is(r("[1] . 0"), 1n);
+  is(r("[1, 1.2, ()] size ()"), 3n);
+  is(r("[1, 1.2, ()] . 1"), 1.2);
+  is(r("[] size ()"), 0n);
+  is(r('"" size ()'), 0n);
+  is(r('"" = "a"'), NIL);
+  is(r("() = ()"), 1n);
+
+  is(r("@(1)"), 1n);
 });
