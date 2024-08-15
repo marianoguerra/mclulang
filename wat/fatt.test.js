@@ -101,9 +101,9 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     frameSend,
     frameEval,
 
-    nilEq,
-    returnNil,
-    hReturnSubject,
+    hNilEq,
+    hReturnNil,
+    hReturnSubj,
 
     hIntAdd,
     hIntSub,
@@ -412,10 +412,10 @@ test("frameVal", () => {
 });
 
 test("nil handlers", () => {
-  is(valGetI64(callHandler(nilEq, NIL, mkRawStr("="), NIL, newE())), 1n);
-  is(isNil(callHandler(nilEq, NIL, mkRawStr("="), TRUE, newE())), 1);
+  is(valGetI64(callHandler(hNilEq, NIL, mkRawStr("="), NIL, newE())), 1n);
+  is(isNil(callHandler(hNilEq, NIL, mkRawStr("="), TRUE, newE())), 1);
 
-  is(isNil(callHandler(returnNil, NIL, mkRawStr("!"), TRUE, newE())), 1);
+  is(isNil(callHandler(hReturnNil, NIL, mkRawStr("!"), TRUE, newE())), 1);
 });
 
 test("int handlers", () => {
@@ -520,7 +520,7 @@ test("pair handlers", () => {
   );
 
   const f = mkEnv([
-    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_INT, { eval: hReturnSubj }],
     [TYPE_PAIR, { eval: hPairEval }],
   ]);
 
@@ -640,7 +640,7 @@ test("send handlers", () => {
   );
 
   const f = mkEnv([
-    [TYPE_INT, { eval: hReturnSubject, "+": hIntAdd }],
+    [TYPE_INT, { eval: hReturnSubj, "+": hIntAdd }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_MSG, { eval: hMsgEval }],
     [TYPE_SEND, { eval: hSendEval }],
@@ -670,7 +670,7 @@ function mkBlock(...items) {
 
 test("block handlers", () => {
   const f = mkEnv([
-    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_INT, { eval: hReturnSubj }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_BLOCK, { eval: hBlockEval }],
   ]);
@@ -693,7 +693,7 @@ function mkArray(...items) {
 
 test("array handlers", () => {
   const f = mkEnv([
-    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_INT, { eval: hReturnSubj }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_ARRAY, { eval: hArrayEval }],
   ]);
@@ -739,7 +739,7 @@ test("frame handlers", () => {
   );
 
   const f = mkEnv([
-    [TYPE_INT, { eval: hReturnSubject }],
+    [TYPE_INT, { eval: hReturnSubj }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_ARRAY, { eval: hArrayEval }],
   ]);
@@ -769,10 +769,10 @@ test("frame handlers", () => {
 
 test("frameBindHandler", () => {
   const f = mkEnv([
-    [TYPE_NIL, { eval: hReturnSubject }],
-    [TYPE_INT, { eval: hReturnSubject }],
-    [TYPE_FLOAT, { eval: hReturnSubject }],
-    [TYPE_STR, { eval: hReturnSubject }],
+    [TYPE_NIL, { eval: hReturnSubj }],
+    [TYPE_INT, { eval: hReturnSubj }],
+    [TYPE_FLOAT, { eval: hReturnSubj }],
+    [TYPE_STR, { eval: hReturnSubj }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_ARRAY, { eval: hArrayEval }],
     [TYPE_MSG, { eval: hMsgEval }],
