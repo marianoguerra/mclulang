@@ -162,8 +162,8 @@
 		(local.set $aLen (array.len (local.get $aStr)))
 		(local.set $bLen (array.len (local.get $bStr)))
 
-		(if (result i32) (i32.eq (local.get $aLen) (local.get $bLen))
-		(then
+		(i32.eq (local.get $aLen) (local.get $bLen))
+		if (result i32)
 		    ;; while ($i < $end)
 		    block $loop_exit
 		      loop $loop
@@ -188,10 +188,54 @@
 		    end
 
 			(local.get $isEqual)
-		)
-		(else
+		else
 			(i32.const 0)
-		))
+		end
+	)
+
+	(func $rawStrLt (export "rawStrLt")
+			(param $aStr (ref $Str))
+			(param $bStr (ref $Str))
+			(result i32)
+
+		(local $i i32)
+		(local $r i32)
+		(local $aLen i32)
+		(local $bLen i32)
+
+		(local.set $aLen (array.len (local.get $aStr)))
+		(local.set $bLen (array.len (local.get $bStr)))
+
+
+		(i32.eq (local.get $aLen) (local.get $bLen))
+		if (result i32)
+		    ;; while ($i < $end)
+		    block $loop_exit
+		      loop $loop
+		        ;; Break the loop if $i >= $aLen
+		        (i32.ge_s (local.get $i) (local.get $aLen))
+				(local.set $r (i32.const 1))
+		        br_if $loop_exit
+				(local.set $r (i32.const 0))
+
+				(i32.ge_u
+					(array.get_u $Str (local.get $aStr) (local.get $i))
+					(array.get_u $Str (local.get $bStr) (local.get $i)))
+				;; if aStr[i] >= bStr[i]: break
+				(br_if $loop_exit)
+
+		        ;; $i++
+		        (local.set $i (i32.add (local.get $i) (i32.const 1)))
+
+		        ;; Continue the loop
+		        br $loop
+		      end
+		    end
+
+			(local.get $r)
+		else
+			(i32.const 0)
+		end
 	)
 
 	;; pair
@@ -437,18 +481,21 @@
 			(param $key (ref $Str))
 			(result (ref null $Val))
 
-		(if (result (ref null $Val)) (ref.is_null (local.get $be))
-		(then (ref.null $Val))
-		(else (if (result (ref null $Val))
-				(call $rawStrEquals
-					(local.get $key)
-					(struct.get $BindEntry $key (local.get $be)))
-
-			(then (struct.get $BindEntry $val (local.get $be)))
-			(else (call $bindFind
-						(struct.get $BindEntry $up (local.get $be))
-						(local.get $key))))))
-	)
+		(ref.is_null (local.get $be))
+		if (result (ref null $Val))
+			(ref.null $Val)
+		else
+			(call $rawStrEquals
+				(local.get $key)
+				(struct.get $BindEntry $key (local.get $be)))
+			if (result (ref null $Val))
+				(struct.get $BindEntry $val (local.get $be))
+			else
+				(call $bindFind
+					(struct.get $BindEntry $up (local.get $be))
+					(local.get $key))
+			end
+		end)
 
 	;; handler
 
@@ -1035,7 +1082,17 @@
 			(call $rawStrEquals
 				(call $anyGetStr (local.get $s))
 				(call $anyGetStr (local.get $o)))
-			(then (global.get $TRUE))
+			(then (ref.cast (ref $Val) (local.get $s)))
+			(else (global.get $NIL))))
+
+	(func $hStrLt (export "hStrLt")
+			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
+			(result eqref)
+		(if (result (ref $Val))
+			(call $rawStrLt
+				(call $anyGetStr (local.get $s))
+				(call $anyGetStr (local.get $o)))
+			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
 
 	;; pair handlers
@@ -1364,6 +1421,7 @@
 		(local $f (ref $Frame))
 		(local $sEval (ref $Str))
 		(local $sEq  (ref $Str))
+		(local $sLt  (ref $Str))
 		(local $sAdd (ref $Str))
 		(local $sSub (ref $Str))
 		(local $sMul (ref $Str))
@@ -1374,6 +1432,7 @@
 		(local.set $f (call $newFrame))
 		(local.set $sEval (ref.as_non_null (global.get $RAW_STR_EVAL)))
 		(local.set $sEq (ref.as_non_null (global.get $RAW_STR_EQ)))
+		(local.set $sLt (ref.as_non_null (global.get $RAW_STR_LT)))
 
 		(local.set $sAdd (ref.as_non_null (global.get $RAW_STR_ADD)))
 		(local.set $sSub (ref.as_non_null (global.get $RAW_STR_SUB)))
@@ -1427,11 +1486,13 @@
 		;; <
 
 		(call $frameBindHandler (local.get $f) (global.get $TYPE_NIL)
-			 (local.get $sEq) (ref.func $hNilEq))
+			 (local.get $sLt) (ref.func $returnNil))
 		(call $frameBindHandler (local.get $f) (global.get $TYPE_INT)
-			 (local.get $sEq) (ref.func $hIntEq))
+			 (local.get $sLt) (ref.func $hIntLt))
 		(call $frameBindHandler (local.get $f) (global.get $TYPE_FLOAT)
-			 (local.get $sEq) (ref.func $hFloatEq))
+			 (local.get $sLt) (ref.func $hFloatLt))
+		(call $frameBindHandler (local.get $f) (global.get $TYPE_STR)
+			 (local.get $sLt) (ref.func $hStrLt))
 
 		;; +
 

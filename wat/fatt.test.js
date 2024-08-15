@@ -886,3 +886,254 @@ test("parse and run", () => {
 
   is(r("@(1)"), 1n);
 });
+
+test("full bootstrap", () => {
+  const f = newPrimFrame(),
+    r = (code) => run(f, code),
+    code = `{
+e bindHandler [(e getType e), "reply", @{
+    e bindHandler [
+        (e getType (e evalIn (msg obj() a() subj()))),
+        (msg obj() a() msg() verb()),
+        (msg obj() b())
+    ],
+    ()
+  }],
+e reply @(@(subj verb obj) -> body) : @(e reply it : that),
+
+@(@a is _) -> @(e up () bind (it name ()) : that),
+
+@(() < _) -> (),
+@(@a = _) -> @((it name()) = (it name())),
+
+@(()  not _) -> 1,
+@(0   not _) -> (),
+@(0.0 not _) -> (),
+@(""  not _) -> (),
+
+@(()  or _) -> @(e evalIn that),
+@(0   or _) -> @it,
+@(0.0 or _) -> @it,
+@(""  or _) -> @it,
+
+@(()  and _) -> (),
+@(0   and _) -> @(e evalIn that),
+@(0.0 and _) -> @(e evalIn that),
+@(""  and _) -> @(e evalIn that),
+
+@(()  ? _) -> @(e evalIn (that b ())),
+@(0   ? _) -> @(e evalIn (that a ())),
+@(0.0 ? _) -> @(e evalIn (that a ())),
+@(""  ? _) -> @(e evalIn (that a ())),
+
+@(()  != _) -> @(it = that not()),
+@(0   != _) -> @(it = that not()),
+@(0.0 != _) -> @(it = that not()),
+@(""  != _) -> @(it = that not()),
+
+@(()  >= _) -> @(that = it),
+@(0   >= _) -> @((it = that) or (that < it) and it),
+@(0.0 >= _) -> @((it = that) or (that < it) and it),
+@(""  >= _) -> @((it = that) or (that < it) and it),
+
+@(()  <= _) -> @(that = it),
+@(0   <= _) -> @((it < that) or (it = that)),
+@(0.0 <= _) -> @((it < that) or (it = that)),
+@(""  <= _) -> @((it < that) or (it = that)),
+
+@(()  > _) -> (),
+@(0   > _) -> @((it <= that not()) and it),
+@(0.0 > _) -> @((it <= that not()) and it),
+@(""  > _) -> @((it <= that not()) and it),
+
+@("" empty?()) -> @(it size () = 0),
+@([] empty?()) -> @(it size () = 0),
+
+[
+  () not(), 1 not(), 1.0 not(), "" not(),
+
+  () or 10, 10 or 11, 1.5 or 2, "" or 1,
+
+  () and 1, 1 and 2, 2.5 and 3, "" and 4,
+
+  ()  ? 1 : 2,
+  1   ? 3 : 4,
+  1.1 ? 5 : 6,
+  "!" ? 7 : 8,
+
+  () != (), 1 != 1, 1.1 != 1.1, "" != "",
+  () != 0, 1 != 2, 1.1 != 1.2, "" != ".",
+
+  () >= (), 1 >= 1, 1.1 >= 1.1, "a" >= "a",
+  3 >= 2, 1.3 >= 1.2, "c" >= "b",
+  1 >= 2, 1.1 >= 1.2, "a" >= "b",
+
+  () <= (), 1 <= 1, 1.1 <= 1.1, "a" <= "a",
+  3 <= 2, 1.3 <= 1.2, "c" <= "b",
+  1 <= 2, 1.1 <= 1.2, "a" <= "b",
+
+  () > (), 1 > 1, 1.1 > 1.1, "a" > "a",
+  3 > 2, 1.3 > 1.2, "c" > "b",
+  1 > 2, 1.1 > 1.2, "a" > "b",
+
+  "" empty?(),
+  [] empty?(),
+  "1" empty?(),
+  [1] empty?(),
+
+  3 > 2 > 1,
+  3 >= 2 >= 1
+]
+  }`;
+
+  const [
+    nilNot,
+    intNot,
+    floatNot,
+    strNot,
+    nilOr,
+    intOr,
+    floatOr,
+    strOr,
+    nilAnd,
+    intAnd,
+    floatAnd,
+    strAnd,
+    nilCond,
+    intCond,
+    floatCond,
+    strCond,
+    nilNeF,
+    intNeF,
+    floatNeF,
+    strNeF,
+    nilNeT,
+    intNeT,
+    floatNeT,
+    strNeT,
+
+    nilGeE,
+    intGeE,
+    floatGeE,
+    strGeE,
+
+    intGeG,
+    floatGeG,
+    strGeG,
+
+    intGeL,
+    floatGeL,
+    strGeL,
+
+    nilLeE,
+    intLeE,
+    floatLeE,
+    strLeE,
+
+    intLeG,
+    floatLeG,
+    strLeG,
+
+    intLeL,
+    floatLeL,
+    strLeL,
+
+    nilGtE,
+    intGtE,
+    floatGtE,
+    strGtE,
+
+    intGtG,
+    floatGtG,
+    strGtG,
+
+    intGtL,
+    floatGtL,
+    strGtL,
+
+    strEmpty,
+    arrayEmpty,
+    strNotEmpty,
+    arrayNotEmpty,
+
+    chainGt,
+    chainGe,
+  ] = r(code);
+
+  is(nilNot, 1n);
+  is(intNot, NIL);
+  is(floatNot, NIL);
+  is(strNot, NIL);
+
+  is(nilOr, 10n);
+  is(intOr, 10n);
+  is(floatOr, 1.5);
+  is(strOr, "");
+
+  is(nilAnd, NIL);
+  is(intAnd, 2n);
+  is(floatAnd, 3n);
+  is(strAnd, 4n);
+
+  is(nilCond, 2n);
+  is(intCond, 3n);
+  is(floatCond, 5n);
+  is(strCond, 7n);
+
+  is(nilNeF, NIL);
+  is(intNeF, NIL);
+  is(floatNeF, NIL);
+  is(strNeF, NIL);
+
+  is(nilNeT, 1n);
+  is(intNeT, 1n);
+  is(floatNeT, 1n);
+  is(strNeT, 1n);
+
+  is(nilGeE, 1n);
+  is(intGeE, 1n);
+  is(floatGeE, 1.1);
+  is(strGeE, "a");
+
+  is(intGeG, 3n);
+  is(floatGeG, 1.3);
+  is(strGeG, "c");
+
+  is(intGeL, NIL);
+  is(floatGeL, NIL);
+  is(strGeL, NIL);
+
+  is(nilLeE, 1n);
+  is(intLeE, 1n);
+  is(floatLeE, 1.1);
+  is(strLeE, "a");
+
+  is(intLeG, NIL);
+  is(floatLeG, NIL);
+  is(strLeG, NIL);
+
+  is(intLeL, 1n);
+  is(floatLeL, 1.1);
+  is(strLeL, "a");
+
+  is(nilGtE, NIL);
+  is(intGtE, NIL);
+  is(floatGtE, NIL);
+  is(strGtE, NIL);
+
+  is(intGtG, 3n);
+  is(floatGtG, 1.3);
+  is(strGtG, "c");
+
+  is(intGtL, NIL);
+  is(floatGtL, NIL);
+  is(strGtL, NIL);
+
+  is(strEmpty, 0n);
+  is(arrayEmpty, 0n);
+  is(strNotEmpty, NIL);
+  is(arrayNotEmpty, NIL);
+
+  is(chainGt, 3n);
+  is(chainGe, 3n);
+});
