@@ -41,9 +41,7 @@
 			(call $valGetInt (local.get $v))))
 
 	(func $valGetI32 (export "valGetI32") (param $v (ref $Val)) (result i32)
-		(i32.wrap_i64
-		    (struct.get $Int $val
-				(call $valGetInt (local.get $v)))))
+		(i32.wrap_i64 (struct.get $Int $val (call $valGetInt (local.get $v)))))
 
 	;; float
 
@@ -63,8 +61,7 @@
 		(ref.cast (ref $Float) (struct.get $Val $v (local.get $v))))
 
 	(func $valGetF64 (export "valGetF64") (param $v (ref $Val)) (result f64)
-	    (struct.get $Float $val
-			(call $valGetFloat (local.get $v))))
+	    (struct.get $Float $val (call $valGetFloat (local.get $v))))
 
 	;; str
 
@@ -85,19 +82,13 @@
 	(func $rawStrFromMem (export "rawStrFromMem")
 			(param $start i32) (param $len i32) (result (ref $Str))
 
-		;; let $i: i32, $end: i32, str: Str
 	    (local $i i32)
 	    (local $end i32)
 		(local $arr_i i32)
 		(local $str (ref $Str))
 
-	    ;; $end = $start + $len
 	    (local.set $end (i32.add (local.get $start) (local.get $len)))
-
-	    ;; $i = $start
 	    (local.set $i (local.get $start))
-
-		;; $str = new Str($len)
 		(local.set $str (array.new_default $Str (local.get $len)))
 
 	    ;; while ($i < $end)
@@ -110,19 +101,14 @@
 			(array.set $Str
 				(local.get $str) (local.get $arr_i) (i32.load8_u (local.get $i)))
 
-	        ;; $i++
 	        (local.set $i (i32.add (local.get $i) (i32.const 1)))
-
-			;; $arr_i++
 			(local.set $arr_i (i32.add (local.get $arr_i) (i32.const 1)))
 
-	        ;; Continue the loop
 	        br $loop
 	      end
 	    end
 
-		(local.get $str)
-	)
+		(local.get $str))
 
 	(func $valGetStr (export "valGetStr") (param $v (ref $Val)) (result (ref $Str))
 		(ref.cast (ref $Str) (struct.get $Val $v (local.get $v))))
@@ -142,7 +128,6 @@
 
 	(func $rawStrEquals (export "rawStrEquals")
 			(param $aStr (ref $Str)) (param $bStr (ref $Str)) (result i32)
-
 		(local $i i32)
 		(local $isEqual i32)
 		(local $aLen i32)
@@ -168,10 +153,8 @@
 				;; if aStr[i] != bStr[i]: break
 				(br_if $loop_exit)
 
-		        ;; $i++
 		        (local.set $i (i32.add (local.get $i) (i32.const 1)))
 
-		        ;; Continue the loop
 		        br $loop
 		      end
 		    end
@@ -183,7 +166,6 @@
 
 	(func $rawStrLt (export "rawStrLt")
 			(param $aStr (ref $Str)) (param $bStr (ref $Str)) (result i32)
-
 		(local $i i32)
 		(local $r i32)
 		(local $aLen i32)
@@ -191,7 +173,6 @@
 
 		(local.set $aLen (array.len (local.get $aStr)))
 		(local.set $bLen (array.len (local.get $bStr)))
-
 
 		(i32.eq (local.get $aLen) (local.get $bLen))
 		if (result i32)
@@ -210,10 +191,8 @@
 				;; if aStr[i] >= bStr[i]: break
 				(br_if $loop_exit)
 
-		        ;; $i++
 		        (local.set $i (i32.add (local.get $i) (i32.const 1)))
 
-		        ;; Continue the loop
 		        br $loop
 		      end
 		    end
@@ -258,8 +237,7 @@
 	(func $valGetNameRawStr (export "valGetNameRawStr")
 			(param $v (ref $Val)) (result (ref $Str))
 		(struct.get $Name $name
-			(ref.cast (ref $Name)
-				(struct.get $Val $v (local.get $v)))))
+			(ref.cast (ref $Name) (struct.get $Val $v (local.get $v)))))
 
 	(func $valGetNameStr (export "valGetNameStr")
 			(param $v (ref $Val)) (result (ref $Val))
@@ -360,12 +338,10 @@
 			(array.new $Block (global.get $NIL) (local.get $size))))
 
 	(func $valGetBlockRaw (param $v (ref $Val)) (result (ref $Block))
-		(ref.cast (ref $Block)
-			(struct.get $Val $v (local.get $v))))
+		(ref.cast (ref $Block) (struct.get $Val $v (local.get $v))))
 
 	(func $blockLen (export "blockLen") (param $v (ref $Val)) (result i32)
-		(array.len
-			(call $valGetBlockRaw (local.get $v))))
+		(array.len (call $valGetBlockRaw (local.get $v))))
 	
 	(func $blockGetItem (export "blockGetItem")
 			(param $v (ref $Val)) (param $i i32) (result (ref $Val))
@@ -420,18 +396,14 @@
 		(ref.null $BindEntry))
 
 	(func $newBindEntry (export "newBindEntry")
-			(param $key (ref $Str))
-			(param $val (ref $Val))
+			(param $k (ref $Str))
+			(param $v (ref $Val))
 			(param $up (ref null $BindEntry))
 			(result (ref $BindEntry))
-		(struct.new $BindEntry
-			(local.get $key)
-			(local.get $val)
-			(local.get $up)))
+		(struct.new $BindEntry (local.get $k) (local.get $v) (local.get $up)))
 
 	(func $bindFind (export "bindFind")
-			(param $be (ref null $BindEntry))
-			(param $key (ref $Str))
+			(param $be (ref null $BindEntry)) (param $key (ref $Str))
 			(result (ref null $Val))
 
 		(ref.is_null (local.get $be))
@@ -461,9 +433,7 @@
 			(result eqref)))
 
 	(type $Handler
-		(struct
-			(field $fn (ref null $HandlerFn))
-			(field $val (ref null $Val))))
+		(struct (field $fn (ref null $HandlerFn)) (field $val (ref null $Val))))
 
 	(func $newFnHandler (param $fn (ref $HandlerFn)) (result (ref $Handler))
 		(struct.new $Handler (local.get $fn) (ref.null $Val)))
@@ -577,19 +547,16 @@
 	;; handlers
 
 	(type $NativeHandlers (array (mut (ref null $HandlerEntry))))
-	(type $Handlers
-		(struct (field $entries (ref $NativeHandlers))))
+	(type $Handlers (struct (field $entries (ref $NativeHandlers))))
 
 	(func $newNativeHandlers (result (ref $NativeHandlers))
 		(array.new $NativeHandlers (call $newHandlerEntryNull) (i32.const 12)))
 
 	(func $newHandlers (export "newHandlers") (result (ref $Handlers))
-		(struct.new $Handlers
-			(call $newNativeHandlers)))
+		(struct.new $Handlers (call $newNativeHandlers)))
 
 	(func $handlersGetForType (export "handlersGetForType")
-			(param $self (ref $Handlers))
-			(param $t i32)
+			(param $self (ref $Handlers)) (param $t i32)
 			(result (ref null $HandlerEntry))
 		(array.get $NativeHandlers
 			(struct.get $Handlers $entries (local.get $self))
@@ -626,9 +593,7 @@
 					(local.get $t)))))
 
 	(func $handlersFind (export "handlersFind")
-			(param $self (ref $Handlers))
-			(param $t i32)
-			(param $k (ref $Str))
+			(param $self (ref $Handlers)) (param $t i32) (param $k (ref $Str))
 			(result (ref null $Handler))
 		(call $handlerFind
 			(call $handlersGetForType
@@ -651,9 +616,7 @@
 
 	(func $newFrameVal (export "newFrameVal")
 			(param $v (ref $Frame)) (result (ref $Val))
-		(struct.new $Val
-			(global.get $TYPE_FRAME)
-			(local.get $v)))
+		(struct.new $Val (global.get $TYPE_FRAME) (local.get $v)))
 
 	(func $valGetFrame (export "valGetFrame")
 			(param $v (ref $Val)) (result (ref $Frame))
@@ -685,28 +648,23 @@
 			(struct.get $Frame $handlers (local.get $f))))
 
 	(func $frameUp (export "frameUp")
-			(param $f (ref null $Frame)) ;; doesn't check if ref.null
-			(result (ref null $Frame))
+			(param $f (ref null $Frame)) (result (ref null $Frame))
 		(struct.get $Frame $up (local.get $f)))
 
 	(func $frameBind (export "frameBind")
-			(param $f (ref $Frame))
-			(param $key (ref $Str))
-			(param $val (ref $Val))
+			(param $f (ref $Frame)) (param $k (ref $Str)) (param $v (ref $Val))
 		(struct.set $Frame $binds
 			(local.get $f)
 			(call $newBindEntry
-				(local.get $key)
-				(local.get $val)
+				(local.get $k)
+				(local.get $v)
 				(struct.get $Frame $binds (local.get $f)))))
 
 	(func $frameFind (export "frameFind")
-			(param $f (ref null $Frame))
-			(param $key (ref $Str))
+			(param $f (ref null $Frame)) (param $key (ref $Str))
 			(result (ref null $Val))
 
 		(local $r (ref null $Val))
-
 
 		(ref.is_null (local.get $f))
 		if (result (ref null $Val)) 
@@ -716,7 +674,6 @@
 				(call $bindFind
 					(struct.get $Frame $binds (local.get $f))
 					(local.get $key)))
-
 
 			(ref.is_null (local.get $r))
 			if (result (ref null $Val))
@@ -771,7 +728,6 @@
 				(local.get $f)
 				(call $valGetTag (local.get $s))
 				(local.get $v)))
-
 
 		(ref.is_null (local.get $h))
 		if (result (ref null $Val))
@@ -914,10 +870,12 @@
 	(func $hNilEq (export "hNilEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
-		(if (result (ref $Val))
-			(call $isNil (ref.cast (ref $Val) (local.get $o)))
-			(then (global.get $TRUE))
-			(else (global.get $NIL))))
+		(call $isNil (ref.cast (ref $Val) (local.get $o)))
+		if (result (ref $Val))
+			(global.get $TRUE)
+		else
+			(global.get $NIL)
+		end)
 
 	;; int handlers
 
@@ -1087,10 +1045,8 @@
 		(local.set $pair (ref.cast (ref $Val) (local.get $s)))
 
 		(call $newPair
-			(call $anyEval (local.get $e)
-				 (call $pairGetA (local.get $pair)))
-			(call $anyEval (local.get $e)
-				 (call $pairGetB (local.get $pair)))))
+			(call $anyEval (local.get $e) (call $pairGetA (local.get $pair)))
+			(call $anyEval (local.get $e) (call $pairGetB (local.get $pair)))))
 
 	;; later handlers
 
@@ -1145,8 +1101,7 @@
 			(call $valGetMsgVerbRawStr (ref.cast (ref $Val) (local.get $s)))
 			(call $anyEval
 				(local.get $e)
-				(call $valGetMsgObj
-					(ref.cast (ref $Val) (local.get $s))))))
+				(call $valGetMsgObj (ref.cast (ref $Val) (local.get $s))))))
 
 	;; send handlers
 
@@ -1299,7 +1254,6 @@
 					(ref.as_non_null
 						(call $frameEval (local.get $frame) (local.get $item))))
 
-				;; $i++
 				(local.set $i (i32.add (local.get $i) (i32.const 1)))
 
 				br $loop
@@ -1336,7 +1290,6 @@
 	(func $hFrameBind (export "hFrameBind")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
-
 		(local $pair (ref $Val))
 		(local.set $pair (ref.cast (ref $Val) (local.get $o)))
 
@@ -1350,7 +1303,6 @@
 	(func $hFrameBindHandler (export "hFrameBindHandler")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
-
 		(local $items (ref $Array))
 		(local $type (ref $Val))
 		(local $verb (ref $Val))
@@ -1358,12 +1310,9 @@
 
 		(local.set $items
 			(call $valGetArrayRaw (ref.cast (ref $Val) (local.get $o))))
-		(local.set $type
-			(array.get $Array (local.get $items) (i32.const 0)))
-		(local.set $verb
-			(array.get $Array (local.get $items) (i32.const 1)))
-		(local.set $impl
-			(array.get $Array (local.get $items) (i32.const 2)))
+		(local.set $type (array.get $Array (local.get $items) (i32.const 0)))
+		(local.set $verb (array.get $Array (local.get $items) (i32.const 1)))
+		(local.set $impl (array.get $Array (local.get $items) (i32.const 2)))
 
 		(call $frameBindHandlerVal
 			(call $anyGetFrame (local.get $s))
@@ -1399,7 +1348,6 @@
 		(local.set $sDiv (ref.as_non_null (global.get $RAW_STR_DIV)))
 
 		(local.set $sDot (ref.as_non_null (global.get $RAW_STR_DOT)))
-
 		(local.set $sSize (ref.as_non_null (global.get $RAW_STR_SIZE)))
 
 		;; eval
