@@ -105,22 +105,22 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     returnNil,
     hReturnSubject,
 
-    intAdd,
-    intSub,
-    intMul,
-    intDiv,
-    intEq,
-    intLt,
+    hIntAdd,
+    hIntSub,
+    hIntMul,
+    hIntDiv,
+    hIntEq,
+    hIntLt,
 
-    floatAdd,
-    floatSub,
-    floatMul,
-    floatDiv,
-    floatEq,
-    floatLt,
+    hFloatAdd,
+    hFloatSub,
+    hFloatMul,
+    hFloatDiv,
+    hFloatEq,
+    hFloatLt,
 
-    strSize,
-    strEq,
+    hStrSize,
+    hStrEq,
 
     hPairA,
     hPairB,
@@ -154,10 +154,6 @@ const bin = Deno.readFileSync("./fatt.wasm"),
   } = exports;
 
 const { test } = Deno;
-
-function skip(name, _fn) {
-  console.warn("skipping", name);
-}
 
 const { mkStr, mkRawStr, parse, run } = mkUtils(exports);
 
@@ -285,14 +281,14 @@ function intSubJs(s, _v, o, _e) {
 test("HandlerEntry", () => {
   const handlerEntry = newHandlerEntry(
     mkRawStr("+"),
-    intAdd,
+    hIntAdd,
     newHandlerEntryNull(),
   );
-  is(handlerGetFn(handlerFind(handlerEntry, mkRawStr("+"))), intAdd);
+  is(handlerGetFn(handlerFind(handlerEntry, mkRawStr("+"))), hIntAdd);
 
   is(
     valGetI64(
-      callHandler(intAdd, newInt(100n), mkRawStr("+"), newInt(33n), newE()),
+      callHandler(hIntAdd, newInt(100n), mkRawStr("+"), newInt(33n), newE()),
     ),
     133n,
   );
@@ -431,14 +427,14 @@ test("int handlers", () => {
     checkRaw(f, a, op, b, r, valGetI64);
   }
 
-  check(intAdd, 100n, "+", 20n, 120n);
-  check(intSub, 100n, "-", 20n, 80n);
-  check(intMul, 100n, "*", 20n, 2000n);
-  checkRaw(intDiv, 100n, "/", 20n, 5.0, valGetF64);
-  check(intEq, 100n, "=", 100n, 100n);
-  check(intLt, 100n, "<", 101n, 100n);
-  checkRaw(intEq, 100n, "=", 1n, NIL);
-  checkRaw(intLt, 100n, "<", 1n, NIL);
+  check(hIntAdd, 100n, "+", 20n, 120n);
+  check(hIntSub, 100n, "-", 20n, 80n);
+  check(hIntMul, 100n, "*", 20n, 2000n);
+  checkRaw(hIntDiv, 100n, "/", 20n, 5.0, valGetF64);
+  check(hIntEq, 100n, "=", 100n, 100n);
+  check(hIntLt, 100n, "<", 101n, 100n);
+  checkRaw(hIntEq, 100n, "=", 1n, NIL);
+  checkRaw(hIntLt, 100n, "<", 1n, NIL);
 });
 
 test("float handlers", () => {
@@ -453,39 +449,35 @@ test("float handlers", () => {
     checkRaw(f, a, op, b, r, valGetF64);
   }
 
-  check(floatAdd, 100.5, "+", 20.3, 120.8);
-  check(floatSub, 100.5, "-", 20.3, 80.2);
-  check(floatMul, 100.5, "*", 20.3, 2040.15);
-  check(floatDiv, 100.5, "/", 2, 50.25);
-  check(floatEq, 100.5, "=", 100.5, 100.5);
-  check(floatLt, 100.5, "<", 101, 100.5);
-  checkRaw(floatEq, 100.5, "=", 1.2, NIL);
-  checkRaw(floatLt, 100.5, "<", 1, NIL);
+  check(hFloatAdd, 100.5, "+", 20.3, 120.8);
+  check(hFloatSub, 100.5, "-", 20.3, 80.2);
+  check(hFloatMul, 100.5, "*", 20.3, 2040.15);
+  check(hFloatDiv, 100.5, "/", 2, 50.25);
+  check(hFloatEq, 100.5, "=", 100.5, 100.5);
+  check(hFloatLt, 100.5, "<", 101, 100.5);
+  checkRaw(hFloatEq, 100.5, "=", 1.2, NIL);
+  checkRaw(hFloatLt, 100.5, "<", 1, NIL);
 });
 
-skip("str handlers", () => {
+test("str handlers", () => {
   is(strLen(mkStr("hi!")), 3);
   is(isStr(mkStr("hi!")), 1);
-  const f = newFrame(),
-    hStrSize = fnToHandler(strSize);
 
-  frameBindHandler(f, TYPE_STR, mkRawStr("size"), hStrSize);
-  is(frameEval(f, newSend(mkStr("hi!"), newRawMsg(mkRawStr("size"), NIL))), 3n);
   is(
     valGetI64(
-      callHandler(strSize, mkStr("hi!"), mkRawStr("size"), NIL, newE()),
+      callHandler(hStrSize, mkStr("hi!"), mkRawStr("size"), NIL, newE()),
     ),
-    1n,
+    3n,
   );
   is(
-    isNil(callHandler(strEq, mkStr("hi!"), mkRawStr("="), mkStr("hi"), newE())),
+    isNil(
+      callHandler(hStrEq, mkStr("hi!"), mkRawStr("="), mkStr("hi"), newE()),
+    ),
     1,
   );
   is(
-    valGetI64(
-      callHandler(strEq, mkStr("hi"), mkRawStr("="), mkStr("hi"), newE()),
-    ),
-    1n,
+    isNil(callHandler(hStrEq, mkStr("hi"), mkRawStr("="), mkStr("hi"), newE())),
+    0,
   );
 });
 
@@ -648,7 +640,7 @@ test("send handlers", () => {
   );
 
   const f = mkEnv([
-    [TYPE_INT, { eval: hReturnSubject, "+": intAdd }],
+    [TYPE_INT, { eval: hReturnSubject, "+": hIntAdd }],
     [TYPE_NAME, { eval: hNameEval }],
     [TYPE_MSG, { eval: hMsgEval }],
     [TYPE_SEND, { eval: hSendEval }],

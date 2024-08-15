@@ -963,35 +963,35 @@
 	(func $anyGetI64 (param $v eqref) (result i64)
 		(call $valGetI64 (ref.cast (ref $Val) (local.get $v))))
 
-	(func $hIntAdd (export "intAdd")
+	(func $hIntAdd (export "hIntAdd")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt (i64.add
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
-	(func $hIntSub (export "intSub")
+	(func $hIntSub (export "hIntSub")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt (i64.sub
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
-	(func $hIntMul (export "intMul")
+	(func $hIntMul (export "hIntMul")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt (i64.mul
 			(call $anyGetI64 (local.get $s))
 			(call $anyGetI64 (local.get $o)))))
 
-	(func $hIntDiv (export "intDiv")
+	(func $hIntDiv (export "hIntDiv")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.div
 			(f64.convert_i64_s (call $anyGetI64 (local.get $s)))
 			(f64.convert_i64_s (call $anyGetI64 (local.get $o))))))
 
-	(func $hIntEq (export "intEq")
+	(func $hIntEq (export "hIntEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -1001,7 +1001,7 @@
 			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
 
-	(func $hIntLt (export "intLt")
+	(func $hIntLt (export "hIntLt")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -1016,35 +1016,35 @@
 	(func $anyGetF64 (param $v eqref) (result f64)
 		(call $valGetF64 (ref.cast (ref $Val) (local.get $v))))
 
-	(func $hFloatAdd (export "floatAdd")
+	(func $hFloatAdd (export "hFloatAdd")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.add
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $hFloatSub (export "floatSub")
+	(func $hFloatSub (export "hFloatSub")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.sub
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $hFloatMul (export "floatMul")
+	(func $hFloatMul (export "hFloatMul")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.mul
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $hFloatDiv (export "floatDiv")
+	(func $hFloatDiv (export "hFloatDiv")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newFloat (f64.div
 			(call $anyGetF64 (local.get $s))
 			(call $anyGetF64 (local.get $o)))))
 
-	(func $hFloatEq (export "floatEq")
+	(func $hFloatEq (export "hFloatEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -1054,7 +1054,7 @@
 			(then (ref.cast (ref $Val) (local.get $s)))
 			(else (global.get $NIL))))
 
-	(func $hFloatLt (export "floatLt")
+	(func $hFloatLt (export "hFloatLt")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
@@ -1069,13 +1069,13 @@
 	(func $anyGetStr (param $v eqref) (result (ref $Str))
 		(call $valGetStr (ref.cast (ref $Val) (local.get $v))))
 
-	(func $hStrSize (export "strSize")
+	(func $hStrSize (export "hStrSize")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(call $newInt
 			(i64.extend_i32_s (call $strLen (ref.cast (ref $Val) (local.get $s))))))
 
-	(func $hStrEq (export "strEq")
+	(func $hStrEq (export "hStrEq")
 			(param $s eqref) (param $v eqref) (param $o eqref) (param $e eqref)
 			(result eqref)
 		(if (result (ref $Val))
