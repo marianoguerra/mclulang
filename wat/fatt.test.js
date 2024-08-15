@@ -565,6 +565,14 @@ test("name handlers", () => {
     ),
     1,
   );
+
+  const e = newE();
+  is(
+    valGetFrame(
+      callHandler(hNameEval, newName(mkRawStr("e")), mkRawStr("eval"), NIL, e),
+    ),
+    e,
+  );
 });
 
 test("msg handlers", () => {
