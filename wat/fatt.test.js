@@ -161,6 +161,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     sPushF64,
     sNewPair,
     sPushSymAdd,
+    sNewMsg,
     sNewSend,
     sEvalTop,
     sNewName,
@@ -1163,51 +1164,43 @@ class VM {
     this.stack = fn(this.stack, v);
     return this;
   }
-
   pushNil() {
     return this._push(sPushNil);
   }
-
   pushInt(v) {
     return this._push(sPushI64, BigInt(v));
   }
-
   pushFloat(v) {
     return this._push(sPushF64, Number(v));
   }
-
   newName() {
     return this._push(sNewName);
   }
   newLater() {
     return this._push(sNewLater);
   }
-
   newPair() {
     return this._push(sNewPair);
   }
-
+  newMsg() {
+    return this._push(sNewMsg);
+  }
   newSend() {
     return this._push(sNewSend);
   }
-
   evalTop(f = newPrimFrame()) {
     return this._push(sEvalTop, f);
   }
-
   pop() {
     this.stack = sPop(this.stack);
     return this;
   }
-
   peek() {
     return sPeek(this.stack);
   }
-
   isStackEmpty() {
     return sIsEmpty(this.stack);
   }
-
   pushSymAdd() {
     return this._push(sPushSymAdd);
   }
@@ -1228,6 +1221,7 @@ test("vm", () => {
   is(valGetI64(pairGetA(vm().pushInt(10).pushInt(20).newPair().peek())), 20n);
   is(valGetI64(pairGetB(vm().pushInt(10).pushInt(20).newPair().peek())), 10n);
 
+  is(isMsg(vm().pushInt(20).pushSymAdd().newMsg().peek()), 1);
   is(isSend(vm().pushInt(10).pushSymAdd().pushInt(20).newSend().peek()), 1);
   is(
     valGetI64(
