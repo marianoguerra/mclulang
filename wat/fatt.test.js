@@ -164,6 +164,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     sNewMsg,
     sNewSend,
     sNewArray,
+    sNewBlock,
     sEvalTop,
     sNewName,
     sNewLater,
@@ -1192,6 +1193,9 @@ class VM {
   newArray() {
     return this._push(sNewArray);
   }
+  newBlock() {
+    return this._push(sNewBlock);
+  }
   evalTop(f = newPrimFrame()) {
     return this._push(sEvalTop, f);
   }
@@ -1241,4 +1245,17 @@ test("vm", () => {
   is(arr[0], 30n);
   is(arr[1], 20n);
   is(arr[2], 10n);
+  is(
+    toJS(
+      vm()
+        .pushInt(10)
+        .pushInt(20)
+        .pushInt(30)
+        .pushInt(3)
+        .newBlock()
+        .evalTop()
+        .peek(),
+    ),
+    10n,
+  );
 });

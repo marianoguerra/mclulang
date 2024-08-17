@@ -1666,6 +1666,42 @@
 				(local.get $sr)
 				(local.get $arr)))
 
+		(func $sNewBlock (export "sNewBlock")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(local $arr (ref $Val))
+			(local $len (ref $Val))
+			(local $sr (ref null $Pair))
+			(local $i i32)
+			(local $end i32)
+
+			(local.set $len (call $sPeekFail (local.get $s)))
+			(local.set $sr (call $sPop (local.get $s)))
+
+			(local.set $i (i32.const 0))
+			(local.set $end (call $valGetI32 (local.get $len)))
+			(local.set $arr (call $newBlock (local.get $end)))
+
+			block $loop_exit
+			  loop $loop
+			    (i32.ge_s (local.get $i) (local.get $end))
+			    br_if $loop_exit
+
+				(call $blockSetItem
+					(local.get $arr)
+					(local.get $i)
+					(call $sPeekFail (local.get $sr)))
+				(local.set $sr (call $sPop (local.get $sr)))
+
+			    (local.set $i (i32.add (local.get $i) (i32.const 1)))
+
+			    br $loop
+			  end
+			end
+
+			(call $sPushVal
+				(local.get $sr)
+				(local.get $arr)))
+
 		(func $sEvalTop (export "sEvalTop")
 				(param $s (ref null $Pair)) (param $f (ref $Frame))
 				(result (ref null $Pair))
