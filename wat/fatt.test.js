@@ -163,6 +163,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     sPushSymAdd,
     sNewMsg,
     sNewSend,
+    sNewArray,
     sEvalTop,
     sNewName,
     sNewLater,
@@ -170,7 +171,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
 
 const { test } = Deno;
 
-const { mkStr, mkRawStr, parse, run } = mkUtils(exports);
+const { mkStr, mkRawStr, parse, run, toJS } = mkUtils(exports);
 
 function newE() {
   return newFrame();
@@ -1188,6 +1189,9 @@ class VM {
   newSend() {
     return this._push(sNewSend);
   }
+  newArray() {
+    return this._push(sNewArray);
+  }
   evalTop(f = newPrimFrame()) {
     return this._push(sEvalTop, f);
   }
@@ -1231,4 +1235,10 @@ test("vm", () => {
   );
   is(isLater(vm().pushNil().newLater().peek()), 1);
   is(isName(vm().pushSymAdd().newName().peek()), 1);
+  const arr = toJS(
+    vm().pushInt(10).pushInt(20).pushInt(30).pushInt(3).newArray().peek(),
+  );
+  is(arr[0], 30n);
+  is(arr[1], 20n);
+  is(arr[2], 10n);
 });
