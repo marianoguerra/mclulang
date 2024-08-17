@@ -1544,6 +1544,30 @@
 				(param $s (ref null $Pair)) (param $v f64) (result (ref null $Pair))
 			(call $sPushVal (local.get $s) (call $newFloat (local.get $v))))
 
+		(func $sNewName (export "sNewName")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(local $v (ref $Str))
+			(local $s1 (ref null $Pair))
+
+			(local.set $v (call $valGetStr (call $sPeekFail (local.get $s))))
+			(local.set $s1 (call $sPop (local.get $s)))
+
+			(call $sPushVal
+				(local.get $s1)
+				(call $newName (local.get $v))))
+
+		(func $sNewLater (export "sNewLater")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(local $v (ref $Val))
+			(local $s1 (ref null $Pair))
+
+			(local.set $v (call $sPeekFail (local.get $s)))
+			(local.set $s1 (call $sPop (local.get $s)))
+
+			(call $sPushVal
+				(local.get $s1)
+				(call $newLater (local.get $v))))
+
 		(func $sNewPair (export "sNewPair")
 				(param $s (ref null $Pair)) (result (ref null $Pair))
 			(local $a (ref $Val))

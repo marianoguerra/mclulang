@@ -163,6 +163,8 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     sPushSymAdd,
     sNewSend,
     sEvalTop,
+    sNewName,
+    sNewLater,
   } = exports;
 
 const { test } = Deno;
@@ -1174,6 +1176,13 @@ class VM {
     return this._push(sPushF64, Number(v));
   }
 
+  newName() {
+    return this._push(sNewName);
+  }
+  newLater() {
+    return this._push(sNewLater);
+  }
+
   newPair() {
     return this._push(sNewPair);
   }
@@ -1226,4 +1235,6 @@ test("vm", () => {
     ),
     30n,
   );
+  is(isLater(vm().pushNil().newLater().peek()), 1);
+  is(isName(vm().pushSymAdd().newName().peek()), 1);
 });
