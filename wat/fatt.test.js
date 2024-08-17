@@ -151,6 +151,18 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     hFrameBindHandler,
 
     newPrimFrame,
+
+    sEmpty,
+    sIsEmpty,
+    sPeek,
+    sPop,
+    sPushNil,
+    sPushI64,
+    sPushF64,
+    sNewPair,
+    sPushSymAdd,
+    sNewSend,
+    sEvalTop,
   } = exports;
 
 const { test } = Deno;
@@ -1128,4 +1140,90 @@ e reply @(@(subj verb obj) -> body) : @(e reply it : that),
 
   is(chainGt, 3n);
   is(chainGe, 3n);
+});
+
+test("stack", () => {
+  is(sIsEmpty(sEmpty()), 1);
+  is(sIsEmpty(sPushNil(sEmpty())), 0);
+  is(sIsEmpty(sPop(sPushNil(sEmpty()))), 1);
+  is(isNil(sPeek(sPushNil(sEmpty()))), 1);
+  is(isNil(sPeek(sPushI64(sEmpty(), 42n))), 0);
+  is(isInt(sPeek(sPushI64(sEmpty(), 42n))), 1);
+  is(isFloat(sPeek(sPushF64(sEmpty(), 42.5))), 1);
+});
+
+class VM {
+  constructor() {
+    this.stack = sEmpty();
+  }
+
+  _push(fn, v) {
+    this.stack = fn(this.stack, v);
+    return this;
+  }
+
+  pushNil() {
+    return this._push(sPushNil);
+  }
+
+  pushInt(v) {
+    return this._push(sPushI64, BigInt(v));
+  }
+
+  pushFloat(v) {
+    return this._push(sPushF64, Number(v));
+  }
+
+  newPair() {
+    return this._push(sNewPair);
+  }
+
+  newSend() {
+    return this._push(sNewSend);
+  }
+
+  evalTop(f = newPrimFrame()) {
+    return this._push(sEvalTop, f);
+  }
+
+  pop() {
+    this.stack = sPop(this.stack);
+    return this;
+  }
+
+  peek() {
+    return sPeek(this.stack);
+  }
+
+  isStackEmpty() {
+    return sIsEmpty(this.stack);
+  }
+
+  pushSymAdd() {
+    return this._push(sPushSymAdd);
+  }
+}
+
+test("vm", () => {
+  let vm = () => new VM();
+  is(vm().isStackEmpty(), 1);
+  is(vm().pushNil().isStackEmpty(), 0);
+  is(vm().pushNil().pop().isStackEmpty(), 1);
+  is(isNil(vm().pushNil().peek()), 1);
+  is(isNil(vm().pushInt(42).peek()), 0);
+  is(isInt(vm().pushInt(42).peek()), 1);
+  is(isFloat(vm().pushFloat(42).peek()), 1);
+
+  is(isPair(vm().pushInt(10).pushInt(20).newPair().peek()), 1);
+  // top of stack (tos) is a, then b
+  is(valGetI64(pairGetA(vm().pushInt(10).pushInt(20).newPair().peek())), 20n);
+  is(valGetI64(pairGetB(vm().pushInt(10).pushInt(20).newPair().peek())), 10n);
+
+  is(isSend(vm().pushInt(10).pushSymAdd().pushInt(20).newSend().peek()), 1);
+  is(
+    valGetI64(
+      vm().pushInt(10).pushSymAdd().pushInt(20).newSend().evalTop().peek(),
+    ),
+    30n,
+  );
 });

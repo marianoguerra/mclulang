@@ -210,10 +210,15 @@
 	(func $isPair (export "isPair") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_PAIR)))
 
-	(func $newPair (export "newPair")
-			(param $a (ref $Val)) (param $b (ref $Val)) (result (ref $Val))
+	(func $newPairFromRaw
+			(param $p (ref $Pair)) (result (ref $Val))
 		(struct.new $Val
 			(global.get $TYPE_PAIR)
+			(local.get $p)))
+
+	(func $newPair (export "newPair")
+			(param $a (ref $Val)) (param $b (ref $Val)) (result (ref $Val))
+		(call $newPairFromRaw
 			(struct.new $Pair (local.get $a) (local.get $b))))
 
 	(func $valGetPair (export "valGetPair")
@@ -1481,4 +1486,128 @@
 			 (ref.as_non_null (global.get $RAW_STR_GET_TYPE)) (ref.func $hGetObjType))
 
 		(local.get $f))
+
+		;; vm
+
+		(func $sEmpty (export "sEmpty") (result (ref null $Pair))
+			(ref.null $Pair))
+
+		(func $sIsEmpty (export "sIsEmpty") (param $s (ref null $Pair)) (result i32)
+			(ref.is_null (local.get $s)))
+
+		(func $sPushVal
+				(param $s (ref null $Pair)) (param $v (ref $Val)) (result (ref $Pair))
+			(ref.is_null (local.get $s))
+			if (result (ref $Pair))
+
+				(struct.new $Pair (local.get $v) (global.get $NIL))
+			else
+				(struct.new $Pair
+					(local.get $v)
+					(call $newPairFromRaw (ref.as_non_null (local.get $s))))
+			end)
+
+		(func $sPeek (export "sPeek")
+				(param $s (ref null $Pair)) (result (ref null $Val))
+			(ref.is_null (local.get $s))
+			if (result (ref null $Val))
+				(ref.null $Val)
+			else
+				(struct.get $Pair $a (ref.as_non_null (local.get $s)))
+			end)
+
+		(func $sPeekFail (export "sPeekFail")
+				(param $s (ref null $Pair)) (result (ref $Val))
+			(ref.as_non_null (call $sPeek (local.get $s))))
+
+		(func $sPop (export "sPop")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(local $b (ref $Val))
+			(local.set $b (struct.get $Pair $b (ref.as_non_null (local.get $s))))
+
+			(call $isNil (local.get $b))
+			if (result (ref null $Pair))
+				(call $sEmpty)
+			else
+				(ref.cast (ref $Pair) (struct.get $Val $v (local.get $b)))
+			end)
+
+		(func $sPushNil (export "sPushNil")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(call $sPushVal (local.get $s) (global.get $NIL)))
+
+		(func $sPushI64 (export "sPushI64")
+				(param $s (ref null $Pair)) (param $v i64) (result (ref null $Pair))
+			(call $sPushVal (local.get $s) (call $newInt (local.get $v))))
+
+		(func $sPushF64 (export "sPushF64")
+				(param $s (ref null $Pair)) (param $v f64) (result (ref null $Pair))
+			(call $sPushVal (local.get $s) (call $newFloat (local.get $v))))
+
+		(func $sNewPair (export "sNewPair")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(local $a (ref $Val))
+			(local $b (ref $Val))
+			(local $s1 (ref null $Pair))
+			(local $s2 (ref null $Pair))
+
+			(local.set $a (call $sPeekFail (local.get $s)))
+			(local.set $s1 (call $sPop (local.get $s)))
+			(local.set $b (call $sPeekFail (local.get $s1)))
+			(local.set $s2 (call $sPop (local.get $s1)))
+
+			(call $sPushVal
+				(local.get $s2)
+				(call $newPair (local.get $a) (local.get $b))))
+
+		(func $sPushStrRawN
+				(param $s (ref null $Pair)) (param $v (ref null $Str))
+				(result (ref null $Pair))
+			(call $sPushVal
+				(local.get $s)
+				(call $strFromRawStr (ref.as_non_null (local.get $v)))))
+ 
+		(func $sPushSymAdd (export "sPushSymAdd")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(call $sPushStrRawN (local.get $s) (global.get $RAW_STR_ADD)))
+
+		(func $sNewSend (export "sNewSend")
+				(param $s (ref null $Pair)) (result (ref null $Pair))
+			(local $subj (ref $Val))
+			(local $verb (ref $Str))
+			(local $obj (ref $Val))
+
+			(local $s1 (ref null $Pair))
+			(local $s2 (ref null $Pair))
+			(local $s3 (ref null $Pair))
+
+			(local.set $subj (call $sPeekFail (local.get $s)))
+			(local.set $s1 (call $sPop (local.get $s)))
+
+			(local.set $verb (call $valGetStr (call $sPeekFail (local.get $s1))))
+			(local.set $s2 (call $sPop (local.get $s1)))
+
+			(local.set $obj (call $sPeekFail (local.get $s2)))
+			(local.set $s3 (call $sPop (local.get $s2)))
+
+			(call $sPushVal
+				(local.get $s3)
+				(call $newSend
+					(local.get $subj)
+					(call $newRawMsg
+						(local.get $verb) (local.get $obj)))))
+
+		(func $sEvalTop (export "sEvalTop")
+				(param $s (ref null $Pair)) (param $f (ref $Frame))
+				(result (ref null $Pair))
+			(local $v (ref $Val))
+			(local $s1 (ref null $Pair))
+
+			(local.set $v (call $sPeekFail (local.get $s)))
+			(local.set $s1 (call $sPop (local.get $s)))
+
+			(call $sPushVal
+				(local.get $s1)
+				(ref.as_non_null
+					(call $frameEval (local.get $f) (local.get $v)))))
 )
