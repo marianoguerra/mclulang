@@ -1800,4 +1800,76 @@
 		(func $sPushSymBindHandler (export "sPushSymBindHandler")
 				(param $s (ref null $Pair)) (result (ref null $Pair))
 			(call $sPushStrRawN (local.get $s) (global.get $RAW_STR_BIND_HANDLER)))
+
+	(func $vmEvalInstr (export "vmEvalInstr")
+			(param $s (ref null $Pair)) (param $instr i32) (param $pc i32)
+			(result (ref null $Pair))
+
+		block $out
+		block $pop_send   ;; 11
+		block $pop_msg    ;; 10
+		block $pop_name   ;; 9
+		block $pop_later  ;; 8
+		block $pop_block  ;; 7
+		block $pop_array  ;; 6
+		block $pop_pair   ;; 5
+		block $push_f64   ;; 4
+		block $push_i64   ;; 3
+		block $push_int_1 ;; 2
+		block $push_int_0 ;; 1
+		block $push_nil ;; 0
+			(br_table
+				$push_nil
+				$push_int_0
+				$push_int_1
+				$push_i64
+				$push_f64
+				$pop_pair
+				$pop_array
+				$pop_block
+				$pop_later
+				$pop_name
+				$pop_msg
+				$pop_send
+				$out
+				(local.get $instr))
+		end
+		;; 0 push nil
+		(return (call $sPushNil (local.get $s)))
+		end
+		;; 1 push int 0
+		(return (call $sPushI64 (local.get $s) (i64.const 0)))
+		end
+		;; 2 push int 1
+		(return (call $sPushI64 (local.get $s) (i64.const 1)))
+		end
+		;; 3 push i64
+		(return (call $sPushI64 (local.get $s) (i64.load (local.get $pc))))
+		end
+		;; 4 push f64
+		(return (call $sPushF64 (local.get $s) (f64.load (local.get $pc))))
+		end
+		;; 5 pop pair
+		(return (call $sNewPair (local.get $s)))
+		end
+		;; 6 pop array
+		(return (call $sNewArray (local.get $s)))
+		end
+		;; 7 pop block
+		(return (call $sNewBlock (local.get $s)))
+		end
+		;; 8 pop later
+		(return (call $sNewLater (local.get $s)))
+		end
+		;; 9 pop name
+		(return (call $sNewName (local.get $s)))
+		end
+		;; 10 pop msg
+		(return (call $sNewMsg (local.get $s)))
+		end
+		;; 11 pop send
+		(return (call $sNewSend (local.get $s)))
+		end
+		(local.get $s))
+
 )

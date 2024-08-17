@@ -23,7 +23,9 @@ export function mkUtils(exports) {
       arrayLen,
       arrayGetItem,
     } = exports,
-    memU8 = new Uint8Array(mem.buffer);
+    memU8 = new Uint8Array(mem.buffer),
+    memF64 = new Float64Array(mem.buffer),
+    memI64 = new BigInt64Array(mem.buffer);
 
   function copyStringToMem(s, start = 0) {
     const buf = new TextEncoder().encode(s),
@@ -106,5 +108,15 @@ export function mkUtils(exports) {
     return toJS(frameEval(f, parse(code)));
   }
 
-  return { parse, toJS, run, mkStr, mkRawStr, mkArray, mkBlock };
+  return {
+    parse,
+    toJS,
+    run,
+    mkStr,
+    mkRawStr,
+    mkArray,
+    mkBlock,
+    memI64,
+    memF64,
+  };
 }
