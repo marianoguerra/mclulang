@@ -173,7 +173,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
 
 const { test } = Deno;
 
-const { mkStr, mkRawStr, parse, run, toJS, memI64, memF64 } = mkUtils(exports);
+const { mkStr, mkRawStr, parse, run, toJS, copyStringToMem } = mkUtils(exports);
 
 function newE() {
   return newFrame();
@@ -1213,8 +1213,8 @@ class VM {
   pushSymAdd() {
     return this._push(sPushSymAdd);
   }
-  evalInstr(instr, pc = 0) {
-    this.stack = vmEvalInstr(this.stack, instr, pc);
+  evalInstr(instr, imm = 0n) {
+    this.stack = vmEvalInstr(this.stack, instr, imm);
     return this;
   }
 }
@@ -1265,17 +1265,28 @@ test("vm", () => {
   );
 });
 
+const _doubleToBigIntU8Array = new ArrayBuffer(8),
+  _doubleToBigIntInt64Array = new BigInt64Array(_doubleToBigIntU8Array),
+  _doubleToBigIntFloat64Array = new Float64Array(_doubleToBigIntU8Array);
+function doubleToBigInt(v) {
+  _doubleToBigIntFloat64Array[0] = v;
+  return _doubleToBigIntInt64Array[0];
+}
+
+function encodeStrStartLen(start, len) {
+  return BigInt(start) | (BigInt(len) << 32n);
+}
+
 test("vm instructions", () => {
   let vm = () => new VM();
   is(isNil(vm().evalInstr(0).peek()), 1);
-  is(toJS(vm().evalInstr(1).peek()), 0n);
-  is(toJS(vm().evalInstr(2).peek()), 1n);
+  is(toJS(vm().evalInstr(1).peek()), 1n);
+  copyStringToMem("hello!!?", 0);
+  is(toJS(vm().evalInstr(2, encodeStrStartLen(0, 7)).peek()), "hello!!");
 
-  memI64[0] = 42n;
-  is(toJS(vm().evalInstr(3, 0).peek()), 42n);
-  memF64[0] = 12.5;
-  is(toJS(vm().evalInstr(4, 0).peek()), 12.5);
-  const p = vm().evalInstr(1).evalInstr(2).evalInstr(5).peek();
+  is(toJS(vm().evalInstr(3, 42n).peek()), 42n);
+  is(toJS(vm().evalInstr(4, doubleToBigInt(12.5)).peek()), 12.5);
+  const p = vm().evalInstr(3, 0n).evalInstr(1).evalInstr(5).peek();
   is(isPair(p), 1);
   is(toJS(pairGetA(p)), 1n);
   is(toJS(pairGetB(p)), 0n);

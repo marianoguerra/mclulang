@@ -118,5 +118,6 @@ export function mkUtils(exports) {
     mkBlock,
     memI64,
     memF64,
+    copyStringToMem,
   };
 }

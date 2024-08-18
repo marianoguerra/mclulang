@@ -1802,10 +1802,10 @@
 			(call $sPushStrRawN (local.get $s) (global.get $RAW_STR_BIND_HANDLER)))
 
 	(func $vmEvalInstr (export "vmEvalInstr")
-			(param $s (ref null $Pair)) (param $instr i32) (param $pc i32)
+			(param $s (ref null $Pair)) (param $instr i32) (param $imm i64)
 			(result (ref null $Pair))
 
-		block $out
+		block $out        ;; default
 		block $pop_send   ;; 11
 		block $pop_msg    ;; 10
 		block $pop_name   ;; 9
@@ -1815,13 +1815,13 @@
 		block $pop_pair   ;; 5
 		block $push_f64   ;; 4
 		block $push_i64   ;; 3
-		block $push_int_1 ;; 2
-		block $push_int_0 ;; 1
-		block $push_nil ;; 0
+		block $push_str   ;; 2
+		block $push_int_1 ;; 1
+		block $push_nil   ;; 0
 			(br_table
 				$push_nil
-				$push_int_0
 				$push_int_1
+				$push_str
 				$push_i64
 				$push_f64
 				$pop_pair
@@ -1833,43 +1833,41 @@
 				$pop_send
 				$out
 				(local.get $instr))
-		end
-		;; 0 push nil
+		end ;; 0 push nil
 		(return (call $sPushNil (local.get $s)))
-		end
-		;; 1 push int 0
-		(return (call $sPushI64 (local.get $s) (i64.const 0)))
-		end
-		;; 2 push int 1
+		end ;; 1 push int 1
 		(return (call $sPushI64 (local.get $s) (i64.const 1)))
-		end
-		;; 3 push i64
-		(return (call $sPushI64 (local.get $s) (i64.load (local.get $pc))))
-		end
-		;; 4 push f64
-		(return (call $sPushF64 (local.get $s) (f64.load (local.get $pc))))
-		end
-		;; 5 pop pair
+		end ;; 2 push str
+		(return (call $sPushVal
+			(local.get $s)
+			(call $strFromMem
+				(i32.wrap_i64 (local.get $imm))
+				(i32.wrap_i64
+					(i64.shr_u
+						(local.get $imm)
+						(i64.const 32)
+						)))))
+		end ;; 3 push i64
+		(return (call $sPushI64 (local.get $s) (local.get $imm)))
+		end ;; 4 push f64
+		(return (call $sPushF64
+			(local.get $s)
+			(f64.reinterpret_i64 (local.get $imm))))
+		end ;; 5 pop pair
 		(return (call $sNewPair (local.get $s)))
-		end
-		;; 6 pop array
+		end ;; 6 pop array
 		(return (call $sNewArray (local.get $s)))
-		end
-		;; 7 pop block
+		end ;; 7 pop block
 		(return (call $sNewBlock (local.get $s)))
-		end
-		;; 8 pop later
+		end ;; 8 pop later
 		(return (call $sNewLater (local.get $s)))
-		end
-		;; 9 pop name
+		end ;; 9 pop name
 		(return (call $sNewName (local.get $s)))
-		end
-		;; 10 pop msg
+		end ;; 10 pop msg
 		(return (call $sNewMsg (local.get $s)))
-		end
-		;; 11 pop send
+		end ;; 11 pop send
 		(return (call $sNewSend (local.get $s)))
-		end
+		end ;; default
 		(local.get $s))
 
 )
