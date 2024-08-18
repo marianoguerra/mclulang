@@ -1810,18 +1810,55 @@
 
 		(local.set $instr (i32.load8_u (local.get $pc)))
 
-		(i32.and
-			(i32.ge_u (local.get $instr) (i32.const 2))
-			(i32.le_u (local.get $instr) (i32.const 4)))
-		if
-			(local.set $imm (i64.load (i32.add (local.get $pc) (i32.const 1))))
-			(local.set $newPc (i32.add (local.get $pc) (i32.const 9)))
+		(i32.lt_u (local.get $instr) (i32.const 12))
+		if (result (ref null $Pair) i32)
+			(i32.and
+				(i32.ge_u (local.get $instr) (i32.const 2))
+				(i32.le_u (local.get $instr) (i32.const 4)))
+			if
+				(local.set $imm (i64.load (i32.add (local.get $pc) (i32.const 1))))
+				(local.set $newPc (i32.add (local.get $pc) (i32.const 9)))
+			else
+				(local.set $imm (i64.const 0))
+				(local.set $newPc (i32.add (local.get $pc) (i32.const 1)))
+			end
+
+			(call $vmEvalInstr (local.get $s) (local.get $instr) (local.get $imm))
+			(local.get $newPc)
 		else
-			(local.set $imm (i64.const 0))
-			(local.set $newPc (i32.add (local.get $pc) (i32.const 1)))
+			(local.get $s)
+			(local.get $pc)
+		end)
+
+	(func $vmEvalRun (export "vmEvalRun")
+			(param $s (ref null $Pair)) (param $pc i32)
+			(result (ref null $Pair) i32)
+
+		(local $newS (ref null $Pair))
+		(local $curPc i32)
+		(local $newPc i32)
+
+		(local.set $curPc (local.get $pc))
+		(local.set $newPc (local.get $pc))
+		(local.set $newS (local.get $s))
+
+		block $loop_exit
+		  loop $loop
+			(call $vmEvalNextInstr (local.get $newS) (local.get $curPc))
+			(local.set $newPc)
+			(local.set $newS)
+
+			(i32.eq (local.get $curPc) (local.get $newPc))
+			if
+			    br $loop_exit
+			else
+				(local.set $curPc (local.get $newPc))
+			end
+		    br $loop
+		  end
 		end
 
-		(call $vmEvalInstr (local.get $s) (local.get $instr) (local.get $imm))
+		(local.get $newS)
 		(local.get $newPc))
 
 	(func $vmEvalInstr (export "vmEvalInstr")

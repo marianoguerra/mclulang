@@ -170,6 +170,7 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     sNewLater,
     vmEvalInstr,
     vmEvalNextInstr,
+    vmEvalRun,
   } = exports;
 
 const { test } = Deno;
@@ -1361,6 +1362,25 @@ test("vm eval next instr", () => {
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   [s, pc] = vmEvalNextInstr(s, pc);
   [s, pc] = vmEvalNextInstr(s, pc);
+  is(isPair(sPeek(s)), 1);
+  is(toJS(pairGetA(sPeek(s))), 1n);
+  is(isNil(pairGetB(sPeek(s))), 1);
+  is(pc, 3);
+
+  const pcIn = pc;
+  memU8[pc] = 255; // halt
+  const sIn = sEmpty();
+  [s, pc] = vmEvalNextInstr(sIn, pc);
+  is(pc, pcIn);
+  is(s, sIn);
+});
+
+test("vm eval run", () => {
+  memU8[0] = 0; // push nil
+  memU8[1] = 1; // push 1
+  memU8[2] = 5; // pop pair
+  memU8[3] = 255; // halt
+  const [s, pc] = vmEvalRun(sEmpty(), 0);
   is(isPair(sPeek(s)), 1);
   is(toJS(pairGetA(sPeek(s))), 1n);
   is(isNil(pairGetB(sPeek(s))), 1);
