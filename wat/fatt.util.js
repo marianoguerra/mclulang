@@ -116,6 +116,7 @@ export function mkUtils(exports) {
     mkRawStr,
     mkArray,
     mkBlock,
+    memU8,
     memI64,
     memF64,
     copyStringToMem,

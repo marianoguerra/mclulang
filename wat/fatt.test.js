@@ -169,11 +169,13 @@ const bin = Deno.readFileSync("./fatt.wasm"),
     sNewName,
     sNewLater,
     vmEvalInstr,
+    vmEvalNextInstr,
   } = exports;
 
 const { test } = Deno;
 
-const { mkStr, mkRawStr, parse, run, toJS, copyStringToMem } = mkUtils(exports);
+const { mkStr, mkRawStr, parse, run, toJS, copyStringToMem, memU8 } =
+  mkUtils(exports);
 
 function newE() {
   return newFrame();
@@ -1265,9 +1267,10 @@ test("vm", () => {
   );
 });
 
-const _doubleToBigIntU8Array = new ArrayBuffer(8),
-  _doubleToBigIntInt64Array = new BigInt64Array(_doubleToBigIntU8Array),
-  _doubleToBigIntFloat64Array = new Float64Array(_doubleToBigIntU8Array);
+const _doubleToBigIntBuffer = new ArrayBuffer(8),
+  _doubleToBigIntInt8Array = new Uint8Array(_doubleToBigIntBuffer),
+  _doubleToBigIntInt64Array = new BigInt64Array(_doubleToBigIntBuffer),
+  _doubleToBigIntFloat64Array = new Float64Array(_doubleToBigIntBuffer);
 function doubleToBigInt(v) {
   _doubleToBigIntFloat64Array[0] = v;
   return _doubleToBigIntInt64Array[0];
@@ -1303,4 +1306,63 @@ test("vm instructions", () => {
   is(isName(vm().pushSymAdd().evalInstr(9).peek()), 1);
   is(isMsg(vm().pushInt(20).pushSymAdd().evalInstr(10).peek()), 1);
   is(isSend(vm().pushInt(10).pushSymAdd().pushInt(20).evalInstr(11).peek()), 1);
+});
+
+function writeI64(memU8, v, start) {
+  _doubleToBigIntInt64Array[0] = BigInt(v);
+  for (let i = 0; i < 8; i++) {
+    memU8[start + i] = _doubleToBigIntInt8Array[i];
+  }
+}
+
+function writeF64(memU8, v, start) {
+  _doubleToBigIntFloat64Array[0] = v;
+  for (let i = 0; i < 8; i++) {
+    memU8[start + i] = _doubleToBigIntInt8Array[i];
+  }
+}
+
+test("vm eval next instr", () => {
+  let s, pc;
+
+  memU8[0] = 0; // push nil
+  [s, pc] = vmEvalNextInstr(sEmpty(), pc);
+  is(isNil(sPeek(s)), 1);
+  is(pc, 1);
+
+  memU8[pc] = 1; // push 1
+  [s, pc] = vmEvalNextInstr(sEmpty(), pc);
+  is(toJS(sPeek(s)), 1n);
+  is(pc, 2);
+
+  memU8[pc] = 3; // push int
+  writeI64(memU8, 42n, pc + 1);
+  [s, pc] = vmEvalNextInstr(sEmpty(), pc);
+  is(toJS(sPeek(s)), 42n);
+  is(pc, 11);
+
+  memU8[pc] = 4; // push float
+  writeF64(memU8, 12.5, pc + 1);
+  [s, pc] = vmEvalNextInstr(sEmpty(), pc);
+  is(toJS(sPeek(s)), 12.5);
+  is(pc, 20);
+
+  copyStringToMem("hello!!?", 0);
+  memU8[pc] = 2; // push str
+  writeI64(memU8, encodeStrStartLen(0, 7), pc + 1);
+  [s, pc] = vmEvalNextInstr(sEmpty(), pc);
+  is(toJS(sPeek(s)), "hello!!");
+  is(pc, 29);
+
+  memU8[0] = 0; // push nil
+  memU8[1] = 1; // push 1
+  memU8[2] = 5; // pop pair
+  pc = 0;
+  [s, pc] = vmEvalNextInstr(sEmpty(), pc);
+  [s, pc] = vmEvalNextInstr(s, pc);
+  [s, pc] = vmEvalNextInstr(s, pc);
+  is(isPair(sPeek(s)), 1);
+  is(toJS(pairGetA(sPeek(s))), 1n);
+  is(isNil(pairGetB(sPeek(s))), 1);
+  is(pc, 3);
 });

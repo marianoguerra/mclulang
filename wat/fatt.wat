@@ -1801,6 +1801,29 @@
 				(param $s (ref null $Pair)) (result (ref null $Pair))
 			(call $sPushStrRawN (local.get $s) (global.get $RAW_STR_BIND_HANDLER)))
 
+	(func $vmEvalNextInstr (export "vmEvalNextInstr")
+			(param $s (ref null $Pair)) (param $pc i32)
+			(result (ref null $Pair) i32)
+		(local $newPc i32)
+		(local $instr i32)
+		(local $imm i64)
+
+		(local.set $instr (i32.load8_u (local.get $pc)))
+
+		(i32.and
+			(i32.ge_u (local.get $instr) (i32.const 2))
+			(i32.le_u (local.get $instr) (i32.const 4)))
+		if
+			(local.set $imm (i64.load (i32.add (local.get $pc) (i32.const 1))))
+			(local.set $newPc (i32.add (local.get $pc) (i32.const 9)))
+		else
+			(local.set $imm (i64.const 0))
+			(local.set $newPc (i32.add (local.get $pc) (i32.const 1)))
+		end
+
+		(call $vmEvalInstr (local.get $s) (local.get $instr) (local.get $imm))
+		(local.get $newPc))
+
 	(func $vmEvalInstr (export "vmEvalInstr")
 			(param $s (ref null $Pair)) (param $instr i32) (param $imm i64)
 			(result (ref null $Pair))
