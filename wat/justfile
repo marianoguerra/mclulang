@@ -8,7 +8,7 @@ build:
     wasm-tools print fatt.wasm
 
 opt:
-    wasm-opt -Os --enable-gc --enable-reference-types fatt.wasm -o fatto.wasm
+    wasm-opt -Os --enable-multivalue --enable-gc --enable-reference-types fatt.wasm -o fatto.wasm
 
 print-opt:
     wasm-tools print fatto.wasm
