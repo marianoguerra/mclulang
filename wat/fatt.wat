@@ -1873,17 +1873,17 @@
 		block $pop_block  ;; 7
 		block $pop_array  ;; 6
 		block $pop_pair   ;; 5
-		block $push_f64   ;; 4
-		block $push_i64   ;; 3
-		block $push_str   ;; 2
+		block $push_str   ;; 4
+		block $push_f64   ;; 3
+		block $push_i64   ;; 2
 		block $push_int_1 ;; 1
 		block $push_nil   ;; 0
 			(br_table
 				$push_nil
 				$push_int_1
-				$push_str
 				$push_i64
 				$push_f64
+				$push_str
 				$pop_pair
 				$pop_array
 				$pop_block
@@ -1897,7 +1897,13 @@
 		(return (call $sPushNil (local.get $s)))
 		end ;; 1 push int 1
 		(return (call $sPushI64 (local.get $s) (i64.const 1)))
-		end ;; 2 push str
+		end ;; 2 push i64
+		(return (call $sPushI64 (local.get $s) (local.get $imm)))
+		end ;; 3 push f64
+		(return (call $sPushF64
+			(local.get $s)
+			(f64.reinterpret_i64 (local.get $imm))))
+		end ;; 4 push str
 		(return (call $sPushVal
 			(local.get $s)
 			(call $strFromMem
@@ -1905,14 +1911,7 @@
 				(i32.wrap_i64
 					(i64.shr_u
 						(local.get $imm)
-						(i64.const 32)
-						)))))
-		end ;; 3 push i64
-		(return (call $sPushI64 (local.get $s) (local.get $imm)))
-		end ;; 4 push f64
-		(return (call $sPushF64
-			(local.get $s)
-			(f64.reinterpret_i64 (local.get $imm))))
+						(i64.const 32))))))
 		end ;; 5 pop pair
 		(return (call $sNewPair (local.get $s)))
 		end ;; 6 pop array

@@ -1298,9 +1298,9 @@ function encodeStrStartLen(start, len) {
 
 const PUSH_NIL = 0,
   PUSH_1 = 1,
-  PUSH_INT = 3,
-  PUSH_FLOAT = 4,
-  PUSH_STR = 2,
+  PUSH_INT = 2,
+  PUSH_FLOAT = 3,
+  PUSH_STR = 4,
   POP_PAIR = 5,
   POP_ARRAY = 6,
   POP_BLOCK = 7,
@@ -1396,7 +1396,7 @@ test("vm eval next instr", () => {
   is(pc, 20);
 
   copyStringToMem("hello!!?", 0);
-  memU8[pc] = 2;
+  memU8[pc] = PUSH_STR;
   writeI64(memU8, encodeStrStartLen(0, 7), pc + 1);
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   is(toJS(sPeek(s)), "hello!!");
