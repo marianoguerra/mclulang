@@ -12,7 +12,6 @@ export function makeParser({
   newPair,
   newMsg,
   newSend,
-  valGetMsgRaw,
   mkNil,
 }) {
   const grammar = ohm.grammar(`McLulang {

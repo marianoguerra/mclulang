@@ -1,6 +1,21 @@
 /*globals Deno*/
 import { assertStrictEquals as is } from "jsr:@std/assert@1";
 import { mkUtils } from "./fatt.util.js";
+import {
+  parse as parseAst,
+  NIL as ANIL,
+  Int,
+  Float,
+  Str,
+  Name,
+  Later,
+  Pair,
+  Msg,
+  Send,
+  Arr,
+  Block,
+} from "./fatt.ast.js";
+
 const bin = Deno.readFileSync("./fatt.wasm"),
   {
     instance: { exports },
@@ -1281,32 +1296,64 @@ function encodeStrStartLen(start, len) {
   return BigInt(start) | (BigInt(len) << 32n);
 }
 
+const PUSH_NIL = 0,
+  PUSH_1 = 1,
+  PUSH_INT = 3,
+  PUSH_FLOAT = 4,
+  PUSH_STR = 2,
+  POP_PAIR = 5,
+  POP_ARRAY = 6,
+  POP_BLOCK = 7,
+  POP_LATER = 8,
+  POP_NAME = 9,
+  POP_MSG = 10,
+  POP_SEND = 11,
+  HALT = 255;
 test("vm instructions", () => {
   let vm = () => new VM();
-  is(isNil(vm().evalInstr(0).peek()), 1);
-  is(toJS(vm().evalInstr(1).peek()), 1n);
+  is(isNil(vm().evalInstr(PUSH_NIL).peek()), 1);
+  is(toJS(vm().evalInstr(PUSH_1).peek()), 1n);
   copyStringToMem("hello!!?", 0);
-  is(toJS(vm().evalInstr(2, encodeStrStartLen(0, 7)).peek()), "hello!!");
+  is(toJS(vm().evalInstr(PUSH_STR, encodeStrStartLen(0, 7)).peek()), "hello!!");
 
-  is(toJS(vm().evalInstr(3, 42n).peek()), 42n);
-  is(toJS(vm().evalInstr(4, doubleToBigInt(12.5)).peek()), 12.5);
-  const p = vm().evalInstr(3, 0n).evalInstr(1).evalInstr(5).peek();
+  is(toJS(vm().evalInstr(PUSH_INT, 42n).peek()), 42n);
+  is(toJS(vm().evalInstr(PUSH_FLOAT, doubleToBigInt(12.5)).peek()), 12.5);
+  const p = vm()
+    .evalInstr(PUSH_INT, 0n)
+    .evalInstr(PUSH_1)
+    .evalInstr(POP_PAIR)
+    .peek();
   is(isPair(p), 1);
   is(toJS(pairGetA(p)), 1n);
   is(toJS(pairGetB(p)), 0n);
 
-  const arr = toJS(vm().pushInt(10).pushInt(20).pushInt(2).evalInstr(6).peek());
+  const arr = toJS(
+    vm().pushInt(10).pushInt(20).pushInt(2).evalInstr(POP_ARRAY).peek(),
+  );
   is(arr[0], 20n);
   is(arr[1], 10n);
 
   is(
-    toJS(vm().pushInt(10).pushInt(20).pushInt(2).evalInstr(7).evalTop().peek()),
+    toJS(
+      vm()
+        .pushInt(10)
+        .pushInt(20)
+        .pushInt(2)
+        .evalInstr(POP_BLOCK)
+        .evalTop()
+        .peek(),
+    ),
     10n,
   );
-  is(isLater(vm().pushInt(10).evalInstr(8).peek()), 1);
-  is(isName(vm().pushSymAdd().evalInstr(9).peek()), 1);
-  is(isMsg(vm().pushInt(20).pushSymAdd().evalInstr(10).peek()), 1);
-  is(isSend(vm().pushInt(10).pushSymAdd().pushInt(20).evalInstr(11).peek()), 1);
+  is(isLater(vm().pushInt(10).evalInstr(POP_LATER).peek()), 1);
+  is(isName(vm().pushSymAdd().evalInstr(POP_NAME).peek()), 1);
+  is(isMsg(vm().pushInt(20).pushSymAdd().evalInstr(POP_MSG).peek()), 1);
+  is(
+    isSend(
+      vm().pushInt(10).pushSymAdd().pushInt(20).evalInstr(POP_SEND).peek(),
+    ),
+    1,
+  );
 });
 
 function writeI64(memU8, v, start) {
@@ -1326,38 +1373,38 @@ function writeF64(memU8, v, start) {
 test("vm eval next instr", () => {
   let s, pc;
 
-  memU8[0] = 0; // push nil
+  memU8[0] = PUSH_NIL;
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   is(isNil(sPeek(s)), 1);
   is(pc, 1);
 
-  memU8[pc] = 1; // push 1
+  memU8[pc] = PUSH_1;
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   is(toJS(sPeek(s)), 1n);
   is(pc, 2);
 
-  memU8[pc] = 3; // push int
+  memU8[pc] = PUSH_INT;
   writeI64(memU8, 42n, pc + 1);
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   is(toJS(sPeek(s)), 42n);
   is(pc, 11);
 
-  memU8[pc] = 4; // push float
+  memU8[pc] = PUSH_FLOAT;
   writeF64(memU8, 12.5, pc + 1);
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   is(toJS(sPeek(s)), 12.5);
   is(pc, 20);
 
   copyStringToMem("hello!!?", 0);
-  memU8[pc] = 2; // push str
+  memU8[pc] = 2;
   writeI64(memU8, encodeStrStartLen(0, 7), pc + 1);
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   is(toJS(sPeek(s)), "hello!!");
   is(pc, 29);
 
-  memU8[0] = 0; // push nil
-  memU8[1] = 1; // push 1
-  memU8[2] = 5; // pop pair
+  memU8[0] = PUSH_NIL;
+  memU8[1] = PUSH_1;
+  memU8[2] = POP_PAIR;
   pc = 0;
   [s, pc] = vmEvalNextInstr(sEmpty(), pc);
   [s, pc] = vmEvalNextInstr(s, pc);
@@ -1368,7 +1415,7 @@ test("vm eval next instr", () => {
   is(pc, 3);
 
   const pcIn = pc;
-  memU8[pc] = 255; // halt
+  memU8[pc] = HALT; // halt
   const sIn = sEmpty();
   [s, pc] = vmEvalNextInstr(sIn, pc);
   is(pc, pcIn);
@@ -1376,13 +1423,35 @@ test("vm eval next instr", () => {
 });
 
 test("vm eval run", () => {
-  memU8[0] = 0; // push nil
-  memU8[1] = 1; // push 1
-  memU8[2] = 5; // pop pair
-  memU8[3] = 255; // halt
+  memU8[0] = PUSH_NIL;
+  memU8[1] = PUSH_1;
+  memU8[2] = POP_PAIR;
+  memU8[3] = HALT;
   const [s, pc] = vmEvalRun(sEmpty(), 0);
   is(isPair(sPeek(s)), 1);
   is(toJS(pairGetA(sPeek(s))), 1n);
   is(isNil(pairGetB(sPeek(s))), 1);
   is(pc, 3);
+});
+
+test("parse ast", () => {
+  is(parseAst("()").equals(ANIL), true);
+  is(parseAst("100").equals(new Int(100n)), true);
+  is(parseAst("100.0").equals(new Float(100)), true);
+  is(parseAst('"hi"').equals(new Str("hi")), true);
+  is(parseAst("foo").equals(new Name("foo")), true);
+  is(parseAst("@foo").equals(new Later(new Name("foo"))), true);
+  is(
+    parseAst("foo : 42").equals(new Pair(new Name("foo"), new Int(42n))),
+    true,
+  );
+  is(parseAst("\\ foo 42").equals(new Msg("foo", new Int(42n))), true);
+  is(
+    parseAst("1 + 42").equals(
+      new Send(new Int(1n), new Msg("+", new Int(42n))),
+    ),
+    true,
+  );
+  is(parseAst("[1, 42]").equals(new Arr([new Int(1n), new Int(42n)])), true);
+  is(parseAst("{1, 42}").equals(new Block([new Int(1n), new Int(42n)])), true);
 });
