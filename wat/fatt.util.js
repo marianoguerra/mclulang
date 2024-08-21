@@ -1,5 +1,12 @@
 import { makeParser } from "./fatt.parser.js";
 
+class Pair {
+  constructor(a, b) {
+    this.a = a;
+    this.b = b;
+  }
+}
+
 export function mkUtils(exports) {
   const {
       mem,
@@ -18,6 +25,9 @@ export function mkUtils(exports) {
       TYPE_FLOAT: { value: TYPE_FLOAT },
       TYPE_STR: { value: TYPE_STR },
       TYPE_ARRAY: { value: TYPE_ARRAY },
+      TYPE_PAIR: { value: TYPE_PAIR },
+      pairGetA,
+      pairGetB,
       strLen,
       strGetChar,
       arrayLen,
@@ -95,6 +105,9 @@ export function mkUtils(exports) {
   }
 
   function toJS(v) {
+    if (v instanceof Pair) {
+      return v;
+    }
     switch (valGetTag(v)) {
       case TYPE_NIL:
         return v;
@@ -106,6 +119,8 @@ export function mkUtils(exports) {
         return strToJS(v);
       case TYPE_ARRAY:
         return arrayToJS(v);
+      case TYPE_PAIR:
+        return new Pair(toJS(pairGetA(v)), toJS(pairGetB(v)));
       default:
         return null;
     }

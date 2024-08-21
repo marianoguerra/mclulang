@@ -14,6 +14,23 @@ import {
   Send,
   Arr,
   Block,
+  PUSH_NIL,
+  PUSH_1,
+  PUSH_INT,
+  PUSH_FLOAT,
+  PUSH_STR,
+  POP_PAIR,
+  POP_ARRAY,
+  POP_BLOCK,
+  POP_LATER,
+  POP_NAME,
+  POP_MSG,
+  POP_SEND,
+  HALT,
+  encodeStrStartLen,
+  doubleToBigInt,
+  writeI64,
+  writeF64,
 } from "./fatt.ast.js";
 
 const bin = Deno.readFileSync("./fatt.wasm"),
@@ -1283,32 +1300,6 @@ test("vm", () => {
   );
 });
 
-const _doubleToBigIntBuffer = new ArrayBuffer(8),
-  _doubleToBigIntInt8Array = new Uint8Array(_doubleToBigIntBuffer),
-  _doubleToBigIntInt64Array = new BigInt64Array(_doubleToBigIntBuffer),
-  _doubleToBigIntFloat64Array = new Float64Array(_doubleToBigIntBuffer);
-function doubleToBigInt(v) {
-  _doubleToBigIntFloat64Array[0] = v;
-  return _doubleToBigIntInt64Array[0];
-}
-
-function encodeStrStartLen(start, len) {
-  return BigInt(start) | (BigInt(len) << 32n);
-}
-
-const PUSH_NIL = 0,
-  PUSH_1 = 1,
-  PUSH_INT = 2,
-  PUSH_FLOAT = 3,
-  PUSH_STR = 4,
-  POP_PAIR = 5,
-  POP_ARRAY = 6,
-  POP_BLOCK = 7,
-  POP_LATER = 8,
-  POP_NAME = 9,
-  POP_MSG = 10,
-  POP_SEND = 11,
-  HALT = 255;
 test("vm instructions", () => {
   let vm = () => new VM();
   is(isNil(vm().evalInstr(PUSH_NIL).peek()), 1);
@@ -1355,20 +1346,6 @@ test("vm instructions", () => {
     1,
   );
 });
-
-function writeI64(memU8, v, start) {
-  _doubleToBigIntInt64Array[0] = BigInt(v);
-  for (let i = 0; i < 8; i++) {
-    memU8[start + i] = _doubleToBigIntInt8Array[i];
-  }
-}
-
-function writeF64(memU8, v, start) {
-  _doubleToBigIntFloat64Array[0] = v;
-  for (let i = 0; i < 8; i++) {
-    memU8[start + i] = _doubleToBigIntInt8Array[i];
-  }
-}
 
 test("vm eval next instr", () => {
   let s, pc;
@@ -1454,4 +1431,34 @@ test("parse ast", () => {
   );
   is(parseAst("[1, 42]").equals(new Arr([new Int(1n), new Int(42n)])), true);
   is(parseAst("{1, 42}").equals(new Block([new Int(1n), new Int(42n)])), true);
+});
+
+function writeInstrsToMem(instrs0, start = 0, printInstrs = false) {
+  const instrs = instrs0.flat(Infinity);
+  let memIdx = start;
+  if (printInstrs) {
+    console.log(instrs);
+  }
+  for (let i = 0; i < instrs.length; i++, memIdx++) {
+    memU8[memIdx] = instrs[i];
+  }
+  memU8[memIdx] = HALT;
+}
+
+function parseAndRun(code, pc) {
+  writeInstrsToMem(parseAst(code).toInstrs(), pc);
+  const [s] = vmEvalRun(sEmpty(), pc);
+  return { s, top: toJS(sPeek(s)) };
+}
+
+test("ast to instructions", () => {
+  is(parseAndRun("()", 0).top, NIL);
+  is(parseAndRun("1", 0).top, 1n);
+  is(parseAndRun("50", 0).top, 50n);
+  is(parseAndRun("1.5", 0).top, 1.5);
+  is(parseAndRun("1 : 2 : 3").top.a, 1n);
+  is(parseAndRun("1 : 2 : 3").top.b.a, 2n);
+  is(parseAndRun("1 : 2 : 3").top.b.b, 3n);
+  is(parseAndRun("1 : 5").top.a, 1n);
+  is(parseAndRun("1 : 5").top.b, 5n);
 });

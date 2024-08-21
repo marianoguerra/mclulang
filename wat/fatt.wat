@@ -210,7 +210,7 @@
 	(func $isPair (export "isPair") (param $v (ref $Val)) (result i32)
 		(i32.eq (call $valGetTag (local.get $v)) (global.get $TYPE_PAIR)))
 
-	(func $newPairFromRaw
+	(func $newPairFromRaw (export "newPairFromRaw")
 			(param $p (ref $Pair)) (result (ref $Val))
 		(struct.new $Val
 			(global.get $TYPE_PAIR)
