@@ -22,6 +22,15 @@ export function mkUtils(exports) {
       strGetChar,
       arrayLen,
       arrayGetItem,
+      NIL: { value: NIL },
+      newInt,
+      newFloat,
+      newLater,
+      newName,
+      newPair,
+      newMsg,
+      newSend,
+      valGetMsgRaw,
     } = exports,
     memU8 = new Uint8Array(mem.buffer),
     memF64 = new Float64Array(mem.buffer),
@@ -102,7 +111,20 @@ export function mkUtils(exports) {
     }
   }
 
-  const { parse } = makeParser(exports, { mkStr, mkRawStr, mkBlock, mkArray });
+  const { parse } = makeParser({
+    mkStr,
+    mkRawStr,
+    mkBlock,
+    mkArray,
+    mkNil: () => NIL,
+    newInt,
+    newFloat,
+    newLater,
+    newName: (s) => newName(mkRawStr(s)),
+    newPair,
+    newMsg,
+    newSend: (subj, msg) => newSend(subj, valGetMsgRaw(msg)),
+  });
 
   function run(f, code) {
     return toJS(frameEval(f, parse(code)));

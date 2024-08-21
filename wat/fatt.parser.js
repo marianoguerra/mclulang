@@ -1,23 +1,25 @@
 import * as ohm from "../node_modules/ohm-js/index.mjs";
 
-export function makeParser(exports, { mkStr, mkRawStr, mkBlock, mkArray }) {
-  const {
-    NIL: { value: NIL },
-    newInt,
-    newFloat,
-    newLater,
-    newName,
-    newPair,
-    newMsg,
-    newSend,
-    valGetMsgRaw,
-  } = exports;
-
+export function makeParser({
+  mkStr,
+  mkRawStr,
+  mkBlock,
+  mkArray,
+  newInt,
+  newFloat,
+  newLater,
+  newName,
+  newPair,
+  newMsg,
+  newSend,
+  valGetMsgRaw,
+  mkNil,
+}) {
   const grammar = ohm.grammar(`McLulang {
     Main = Send
     nil = "(" ")"
     Pair = PairHead ":" Value
-    PairHead = Block | Array | Map | Scalar | Later | ParSend
+    PairHead = Block | Array | Scalar | Later | ParSend
     name = (letter | "_" | "$") (letter | "_" | digit)*
     Block = "{" Exprs "}"
     Exprs = Send ("," Send )*
@@ -28,7 +30,7 @@ export function makeParser(exports, { mkStr, mkRawStr, mkBlock, mkArray }) {
     verbPart = verbStart | digit
     Send = Value Msg*
     ParSend = "(" Send ")"
-    Later = "@" (ParSend | Block | Array | Map | name)
+    Later = "@" (ParSend | Block | Array | name)
     Value = Pair | PairHead
     Scalar = float | int | str | nil | name | MsgQuote
     float = "-"? digit+ "." digit+
@@ -36,15 +38,12 @@ export function makeParser(exports, { mkStr, mkRawStr, mkBlock, mkArray }) {
     str = "\\\"" (~"\\\"" any)* "\\\""
     Array = "[" "]" -- empty
       | "[" Exprs "]" -- items
-    Map = "#" "{" "}" -- empty
-      | "#" "{" Pairs "}" -- items
-    Pairs = Pair ("," Pair)*
   }`),
     semantics = grammar.createSemantics().addOperation("toAst", {
-      nil: (_o, _c) => NIL,
+      nil: (_o, _c) => mkNil(),
       Pair: (a, _, b) => newPair(a.toAst(), b.toAst()),
       name(_1, _2) {
-        return newName(mkRawStr(this.sourceString));
+        return newName(this.sourceString);
       },
       Block: (_o, exprs, _c) => mkBlock(exprs.toAst()),
       Exprs: (first, _, rest) =>
@@ -56,7 +55,7 @@ export function makeParser(exports, { mkStr, mkRawStr, mkBlock, mkArray }) {
       MsgQuote: (_, msg) => msg.toAst(),
       Send: (v, msgs) =>
         msgs.children.reduce(
-          (acc, msg) => newSend(acc, valGetMsgRaw(msg.toAst())),
+          (acc, msg) => newSend(acc, msg.toAst()),
           v.toAst(),
         ),
       ParSend: (_o, v, _c) => v.toAst(),
@@ -70,11 +69,6 @@ export function makeParser(exports, { mkStr, mkRawStr, mkBlock, mkArray }) {
       str: (_1, s, _3) => mkStr(s.sourceString),
       Array_items: (_o, exprs, _c) => mkArray(exprs.toAst()),
       Array_empty: (_o, _c) => mkArray([]),
-      Map_items: (_h, _o, exprs, _c) =>
-        new Map(exprs.toAst().map((p, _i, _) => [p.a, p.b])),
-      Map_empty: (_h, _o, _c) => new Map(),
-      Pairs: (first, _, rest) =>
-        [first.toAst()].concat(rest.children.map((v) => v.toAst())),
     }),
     parse = (code) => {
       const matchResult = grammar.match(code);
