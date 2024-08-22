@@ -1865,7 +1865,9 @@
 			(param $s (ref null $Pair)) (param $instr i32) (param $imm i64)
 			(result (ref null $Pair))
 
-		block $out        ;; default
+		block $out            ;; default
+		block $push_sym_that   ;; 13
+		block $push_sym_it     ;; 12
 		block $pop_send   ;; 11
 		block $pop_msg    ;; 10
 		block $pop_name   ;; 9
@@ -1891,6 +1893,8 @@
 				$pop_name
 				$pop_msg
 				$pop_send
+				$push_sym_it
+				$push_sym_that
 				$out
 				(local.get $instr))
 		end ;; 0 push nil
@@ -1926,6 +1930,10 @@
 		(return (call $sNewMsg (local.get $s)))
 		end ;; 11 pop send
 		(return (call $sNewSend (local.get $s)))
+		end ;; 12 push sym it
+		(return (call $sPushSymIt (local.get $s)))
+		end ;; 13 push sym that
+		(return (call $sPushSymThat (local.get $s)))
 		end ;; default
 		(local.get $s))
 
