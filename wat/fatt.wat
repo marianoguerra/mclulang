@@ -1810,7 +1810,7 @@
 
 		(local.set $instr (i32.load8_u (local.get $pc)))
 
-		(i32.lt_u (local.get $instr) (i32.const 12))
+		(i32.lt_u (local.get $instr) (i32.const 14))
 		if (result (ref null $Pair) i32)
 			(i32.and
 				(i32.ge_u (local.get $instr) (i32.const 2))

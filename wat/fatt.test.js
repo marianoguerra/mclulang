@@ -1477,6 +1477,8 @@ test("ast to instructions", () => {
   is(parseAndRun('"hi" : "hello"').top.a, "hi");
   is(parseAndRun('"hi" : "hello"').top.b, "hello");
   is(parseAndRun("foo").top.v, "foo");
+  is(parseAndRun("it").top.v, "it");
+  is(parseAndRun("that").top.v, "that");
   is(parseAndRun("\\ + 2").top.verb, "+");
   is(parseAndRun("\\ + 2").top.obj, 2n);
   is(parseAndRun("10 + 20").top.subj, 10n);
