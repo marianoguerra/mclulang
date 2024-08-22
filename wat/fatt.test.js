@@ -31,6 +31,7 @@ import {
   doubleToBigInt,
   writeI64,
   writeF64,
+  Ctx,
 } from "./fatt.ast.js";
 
 const bin = Deno.readFileSync("./fatt.wasm"),
@@ -1269,7 +1270,7 @@ test("vm", () => {
   is(valGetI64(pairGetA(vm().pushInt(10).pushInt(20).newPair().peek())), 20n);
   is(valGetI64(pairGetB(vm().pushInt(10).pushInt(20).newPair().peek())), 10n);
 
-  is(isMsg(vm().pushInt(20).pushSymAdd().newMsg().peek()), 1);
+  is(isMsg(vm().pushSymAdd().pushInt(20).newMsg().peek()), 1);
   is(isSend(vm().pushInt(10).pushSymAdd().pushInt(20).newSend().peek()), 1);
   is(
     valGetI64(
@@ -1338,7 +1339,7 @@ test("vm instructions", () => {
   );
   is(isLater(vm().pushInt(10).evalInstr(POP_LATER).peek()), 1);
   is(isName(vm().pushSymAdd().evalInstr(POP_NAME).peek()), 1);
-  is(isMsg(vm().pushInt(20).pushSymAdd().evalInstr(POP_MSG).peek()), 1);
+  is(isMsg(vm().pushSymAdd().pushInt(20).evalInstr(POP_MSG).peek()), 1);
   is(
     isSend(
       vm().pushInt(10).pushSymAdd().pushInt(20).evalInstr(POP_SEND).peek(),
@@ -1445,10 +1446,14 @@ function writeInstrsToMem(instrs0, start = 0, printInstrs = false) {
   memU8[memIdx] = HALT;
 }
 
-function parseAndRun(code, pc, printInstrs = false) {
-  writeInstrsToMem(parseAst(code).toInstrs(), pc, printInstrs);
-  const [s] = vmEvalRun(sEmpty(), pc);
-  return { s, top: toJS(sPeek(s)) };
+function parseAndRun(code, pc = 0, printInstrs = false) {
+  const ctx = new Ctx(pc),
+    instrs = parseAst(code).toInstrs(ctx),
+    codeStart = ctx.strEnd;
+  ctx.writeStrsToMem(memU8);
+  writeInstrsToMem(instrs, codeStart, printInstrs);
+  const [s] = vmEvalRun(sEmpty(), ctx.strEnd);
+  return { s, top: toJS(sPeek(s)), ctx };
 }
 
 test("ast to instructions", () => {
@@ -1463,4 +1468,18 @@ test("ast to instructions", () => {
   is(parseAndRun("1 : 5").top.b, 5n);
   is(parseAndRun("[]").top.length, 0);
   is(parseAndRun("[10]").top[0], 10n);
+  is(parseAndRun("@(10)").top.v, 10n);
+  const c1 = parseAndRun('"hi" : "hello"').ctx;
+  is(c1.strEnd, 7);
+  is(c1.strs.size, 2);
+  is(c1.strs.get("hi").index, 5);
+  is(c1.strs.get("hello").index, 0);
+  is(parseAndRun('"hi" : "hello"').top.a, "hi");
+  is(parseAndRun('"hi" : "hello"').top.b, "hello");
+  is(parseAndRun("foo").top.v, "foo");
+  is(parseAndRun("\\ + 2").top.verb, "+");
+  is(parseAndRun("\\ + 2").top.obj, 2n);
+  is(parseAndRun("10 + 20").top.subj, 10n);
+  is(parseAndRun("10 + 20").top.msg.verb, "+");
+  is(parseAndRun("10 + 20").top.msg.obj, 20n);
 });

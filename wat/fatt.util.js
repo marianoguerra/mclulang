@@ -1,9 +1,42 @@
 import { makeParser } from "./fatt.parser.js";
 
-class Pair {
+class FattBase {}
+
+class Later extends FattBase {
+  constructor(v) {
+    super();
+    this.v = v;
+  }
+}
+
+class Name extends FattBase {
+  constructor(v) {
+    super();
+    this.v = v;
+  }
+}
+
+class Pair extends FattBase {
   constructor(a, b) {
+    super();
     this.a = a;
     this.b = b;
+  }
+}
+
+class Msg extends FattBase {
+  constructor(verb, obj) {
+    super();
+    this.verb = verb;
+    this.obj = obj;
+  }
+}
+
+class Send extends FattBase {
+  constructor(subj, msg) {
+    super();
+    this.subj = subj;
+    this.msg = msg;
   }
 }
 
@@ -20,12 +53,22 @@ export function mkUtils(exports) {
       arraySetItem,
       valGetI64,
       valGetF64,
+      laterUnwrap,
+      valGetNameStr,
       TYPE_NIL: { value: TYPE_NIL },
       TYPE_INT: { value: TYPE_INT },
       TYPE_FLOAT: { value: TYPE_FLOAT },
       TYPE_STR: { value: TYPE_STR },
+      TYPE_LATER: { value: TYPE_LATER },
+      TYPE_NAME: { value: TYPE_NAME },
       TYPE_ARRAY: { value: TYPE_ARRAY },
       TYPE_PAIR: { value: TYPE_PAIR },
+      TYPE_MSG: { value: TYPE_MSG },
+      TYPE_SEND: { value: TYPE_SEND },
+      valGetMsgVerb,
+      valGetMsgObj,
+      valGetSendSubj,
+      valGetSendMsg,
       pairGetA,
       pairGetB,
       strLen,
@@ -105,7 +148,7 @@ export function mkUtils(exports) {
   }
 
   function toJS(v) {
-    if (v instanceof Pair) {
+    if (v instanceof FattBase) {
       return v;
     }
     switch (valGetTag(v)) {
@@ -117,10 +160,18 @@ export function mkUtils(exports) {
         return valGetF64(v);
       case TYPE_STR:
         return strToJS(v);
+      case TYPE_LATER:
+        return new Later(toJS(laterUnwrap(v)));
+      case TYPE_NAME:
+        return new Name(toJS(valGetNameStr(v)));
       case TYPE_ARRAY:
         return arrayToJS(v);
       case TYPE_PAIR:
         return new Pair(toJS(pairGetA(v)), toJS(pairGetB(v)));
+      case TYPE_MSG:
+        return new Msg(toJS(valGetMsgVerb(v)), toJS(valGetMsgObj(v)));
+      case TYPE_SEND:
+        return new Send(toJS(valGetSendSubj(v)), toJS(valGetSendMsg(v)));
       default:
         return null;
     }

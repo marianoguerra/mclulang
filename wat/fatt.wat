@@ -1592,10 +1592,10 @@
 			(local $s1 (ref null $Pair))
 			(local $s2 (ref null $Pair))
 
-			(local.set $verb (call $valGetStr (call $sPeekFail (local.get $s))))
+			(local.set $obj (call $sPeekFail (local.get $s)))
 			(local.set $s1 (call $sPop (local.get $s)))
 
-			(local.set $obj (call $sPeekFail (local.get $s1)))
+			(local.set $verb (call $valGetStr (call $sPeekFail (local.get $s1))))
 			(local.set $s2 (call $sPop (local.get $s1)))
 
 			(call $sPushVal
@@ -1614,13 +1614,13 @@
 			(local $s2 (ref null $Pair))
 			(local $s3 (ref null $Pair))
 
-			(local.set $subj (call $sPeekFail (local.get $s)))
+			(local.set $obj (call $sPeekFail (local.get $s)))
 			(local.set $s1 (call $sPop (local.get $s)))
 
 			(local.set $verb (call $valGetStr (call $sPeekFail (local.get $s1))))
 			(local.set $s2 (call $sPop (local.get $s1)))
 
-			(local.set $obj (call $sPeekFail (local.get $s2)))
+			(local.set $subj (call $sPeekFail (local.get $s2)))
 			(local.set $s3 (call $sPop (local.get $s2)))
 
 			(call $sPushVal
