@@ -1282,9 +1282,9 @@ test("vm", () => {
   const arr = toJS(
     vm().pushInt(10).pushInt(20).pushInt(30).pushInt(3).newArray().peek(),
   );
-  is(arr[0], 30n);
+  is(arr[0], 10n);
   is(arr[1], 20n);
-  is(arr[2], 10n);
+  is(arr[2], 30n);
   is(
     toJS(
       vm()
@@ -1296,7 +1296,7 @@ test("vm", () => {
         .evalTop()
         .peek(),
     ),
-    10n,
+    30n,
   );
 });
 
@@ -1321,8 +1321,8 @@ test("vm instructions", () => {
   const arr = toJS(
     vm().pushInt(10).pushInt(20).pushInt(2).evalInstr(POP_ARRAY).peek(),
   );
-  is(arr[0], 20n);
-  is(arr[1], 10n);
+  is(arr[0], 10n);
+  is(arr[1], 20n);
 
   is(
     toJS(
@@ -1334,7 +1334,7 @@ test("vm instructions", () => {
         .evalTop()
         .peek(),
     ),
-    10n,
+    20n,
   );
   is(isLater(vm().pushInt(10).evalInstr(POP_LATER).peek()), 1);
   is(isName(vm().pushSymAdd().evalInstr(POP_NAME).peek()), 1);
@@ -1445,8 +1445,8 @@ function writeInstrsToMem(instrs0, start = 0, printInstrs = false) {
   memU8[memIdx] = HALT;
 }
 
-function parseAndRun(code, pc) {
-  writeInstrsToMem(parseAst(code).toInstrs(), pc);
+function parseAndRun(code, pc, printInstrs = false) {
+  writeInstrsToMem(parseAst(code).toInstrs(), pc, printInstrs);
   const [s] = vmEvalRun(sEmpty(), pc);
   return { s, top: toJS(sPeek(s)) };
 }
@@ -1461,4 +1461,6 @@ test("ast to instructions", () => {
   is(parseAndRun("1 : 2 : 3").top.b.b, 3n);
   is(parseAndRun("1 : 5").top.a, 1n);
   is(parseAndRun("1 : 5").top.b, 5n);
+  is(parseAndRun("[]").top.length, 0);
+  is(parseAndRun("[10]").top[0], 10n);
 });

@@ -1641,13 +1641,13 @@
 			(local.set $len (call $sPeekFail (local.get $s)))
 			(local.set $sr (call $sPop (local.get $s)))
 
-			(local.set $i (i32.const 0))
 			(local.set $end (call $valGetI32 (local.get $len)))
+			(local.set $i (i32.sub (local.get $end) (i32.const 1)))
 			(local.set $arr (call $newArray (local.get $end)))
 
 			block $loop_exit
 			  loop $loop
-			    (i32.ge_s (local.get $i) (local.get $end))
+			    (i32.lt_s (local.get $i) (i32.const 0))
 			    br_if $loop_exit
 
 				(call $arraySetItem
@@ -1656,7 +1656,7 @@
 					(call $sPeekFail (local.get $sr)))
 				(local.set $sr (call $sPop (local.get $sr)))
 
-			    (local.set $i (i32.add (local.get $i) (i32.const 1)))
+			    (local.set $i (i32.sub (local.get $i) (i32.const 1)))
 
 			    br $loop
 			  end
@@ -1677,13 +1677,13 @@
 			(local.set $len (call $sPeekFail (local.get $s)))
 			(local.set $sr (call $sPop (local.get $s)))
 
-			(local.set $i (i32.const 0))
 			(local.set $end (call $valGetI32 (local.get $len)))
+			(local.set $i (i32.sub (local.get $end) (i32.const 1)))
 			(local.set $arr (call $newBlock (local.get $end)))
 
 			block $loop_exit
 			  loop $loop
-			    (i32.ge_s (local.get $i) (local.get $end))
+			    (i32.lt_s (local.get $i) (i32.const 0))
 			    br_if $loop_exit
 
 				(call $blockSetItem
@@ -1692,7 +1692,7 @@
 					(call $sPeekFail (local.get $sr)))
 				(local.set $sr (call $sPop (local.get $sr)))
 
-			    (local.set $i (i32.add (local.get $i) (i32.const 1)))
+			    (local.set $i (i32.sub (local.get $i) (i32.const 1)))
 
 			    br $loop
 			  end
