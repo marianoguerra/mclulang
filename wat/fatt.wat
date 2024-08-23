@@ -1805,10 +1805,14 @@
 			(param $s (ref null $Pair)) (param $pc i32)
 			(result (ref null $Pair) i32)
 		(local $newPc i32)
+		(local $instrRaw i32)
 		(local $instr i32)
 		(local $imm i64)
+		(local $immIsByte i32)
 
-		(local.set $instr (i32.load8_u (local.get $pc)))
+		(local.set $instrRaw  (i32.load8_u (local.get $pc)))
+		(local.set $instr     (i32.and (local.get $instrRaw) (i32.const 127)))
+		(local.set $immIsByte (i32.and (local.get $instrRaw) (i32.const 128)))
 
 		(i32.lt_u (local.get $instr) (i32.const 14))
 		if (result (ref null $Pair) i32)
@@ -1816,8 +1820,20 @@
 				(i32.ge_u (local.get $instr) (i32.const 2))
 				(i32.le_u (local.get $instr) (i32.const 4)))
 			if
-				(local.set $imm (i64.load (i32.add (local.get $pc) (i32.const 1))))
-				(local.set $newPc (i32.add (local.get $pc) (i32.const 9)))
+				(local.get $immIsByte)
+				if
+					(local.set $imm
+						(i64.load8_u
+							(i32.add (local.get $pc)
+							(i32.const 1))))
+					(local.set $newPc (i32.add (local.get $pc) (i32.const 2)))
+				else
+					(local.set $imm
+						(i64.load
+							(i32.add (local.get $pc)
+							(i32.const 1))))
+					(local.set $newPc (i32.add (local.get $pc) (i32.const 9)))
+				end
 			else
 				(local.set $imm (i64.const 0))
 				(local.set $newPc (i32.add (local.get $pc) (i32.const 1)))
